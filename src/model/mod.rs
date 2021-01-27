@@ -26,14 +26,19 @@ struct Basefunction<ScalarType, NData>
           NData: Dim + DimName,
           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
 {
-    function : BaseFuncType<ScalarType,NData>,
-    derivatives : HashSet<usize,BaseFuncType<ScalarType,NData>>,
+    function: BaseFuncType<ScalarType, NData>,
+    derivatives: HashSet<usize, BaseFuncType<ScalarType, NData>>,
 }
 
-/// A set of modelfunctions that can be used to fit a separable problem.
-/// The modelfunctions are typically nonlinear in their parameters, but they don't have to be.
+/// # Separable (Nonlinear) Model
+/// A separable nonlinear model is the linear combination of a set of nonlinear basefunctions.
+/// The basefunctions depend on a vector `alpha` of parameters. They basefunctions are commonly
+/// nonlinear in the parameters `alpha` (but they don't have to be). Each individual base function
+/// may also depend only on a subset of the model parameters `alpha`.
 /// Further, the modelfunctions should be linearly independent to make the fit more numerically
 /// robust.
+/// Fitting a separable nonlinear model consists of finding the best combination of the parameters
+/// for the linear combination of the functions and the nonlinear parameters.
 pub struct SeparableModel<ScalarType, NData>
     where ScalarType: Scalar,
           NData: Dim + DimName,
@@ -68,6 +73,11 @@ impl<S, N> SeparableModel<S, N>
     /// Get the parameters of the
     pub fn parameter_names(&self) -> &Vec<String> {
         &self.parameter_names
+    }
+
+    /// Get the number of nonlinear parameters `alpha` of the model
+    pub fn parameter_count(&self) -> usize {
+        self.parameter_names.len()
     }
 
     //TODO
