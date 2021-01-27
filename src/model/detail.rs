@@ -39,8 +39,8 @@ fn has_only_unique_elements<T>(iter: T) -> bool
 /// The function returns the vector of indices or an error variant if something goes wrong
 /// if the subset is empty, the result is an Ok variant with an empty vector.
 /// if the full set contains duplicates, the index for the first element is used for the index mapping
-pub fn create_index_mapping<T : PartialEq>(full : &[T], subset : &[T]) -> Result<Vec<usize>,ModelfunctionError> {
-    let indices  = subset.iter().map(|value_subset|full.iter().position(|value_full|value_full==value_subset).ok_or(ModelfunctionError::InvalidParametersInSubset));
+pub fn create_index_mapping<T: PartialEq>(full: &[T], subset: &[T]) -> Result<Vec<usize>, ModelfunctionError> {
+    let indices = subset.iter().map(|value_subset| full.iter().position(|value_full| value_full == value_subset).ok_or(ModelfunctionError::InvalidParametersInSubset));
     // see https://stackoverflow.com/questions/26368288/how-do-i-stop-iteration-and-return-an-error-when-iteratormap-returns-a-result
     // the FromIterator trait of Result allows us to go from Vec<Result<A,B>> to Result<Vec<A>,B>
     indices.collect()
@@ -62,23 +62,19 @@ mod test {
     #[test]
     fn test_check_parameter_names() {
         assert!(check_parameter_names(&Vec::<String>::default()).is_err());
-        assert!(check_parameter_names(&vec!{"a"}).is_ok());
-        assert!(check_parameter_names(&vec!{"a","b","c"}).is_ok());
-        assert!(check_parameter_names(&vec!{"a","b","b"}).is_err());
+        assert!(check_parameter_names(&vec! {"a"}).is_ok());
+        assert!(check_parameter_names(&vec! {"a", "b", "c"}).is_ok());
+        assert!(check_parameter_names(&vec! {"a", "b", "b"}).is_err());
     }
 
     #[test]
     fn test_create_index_mapping() {
-        let full_set = ['A','B','C','D'];
-        assert_eq!(create_index_mapping(&full_set,&Vec::new()),Ok(Vec::new()),"Empty subset produces must produce empty index list");
-        assert!(create_index_mapping(&Vec::new(),&vec!{'B','A'}).is_err(),"Empty full set must produce an error");
-        assert_eq!(create_index_mapping(&Vec::<usize>::new(),&Vec::new()),Ok(Vec::new()),"Empty subset must produce empty index list even if full set is empty");
-
-        assert_eq!(create_index_mapping(&full_set,&vec!{'B','A'}),Ok(vec!{1,0}),"Indices must be correctly assigned");
-        assert!(create_index_mapping(&full_set,&vec!{'Z','Q'}).is_err(), "Indices that are not in the full set must produce an error");
-
-        assert_eq!(create_index_mapping(&['A','A','B','D'],&vec!{'B','A'}),Ok(vec!{2,0}),"For duplicates in the full set, the first index is used");
-
+        let full_set = ['A', 'B', 'C', 'D'];
+        assert_eq!(create_index_mapping(&full_set, &Vec::new()), Ok(Vec::new()), "Empty subset produces must produce empty index list");
+        assert!(create_index_mapping(&Vec::new(), &vec! {'B', 'A'}).is_err(), "Empty full set must produce an error");
+        assert_eq!(create_index_mapping(&Vec::<usize>::new(), &Vec::new()), Ok(Vec::new()), "Empty subset must produce empty index list even if full set is empty");
+        assert_eq!(create_index_mapping(&full_set, &vec! {'B', 'A'}), Ok(vec! {1, 0}), "Indices must be correctly assigned");
+        assert!(create_index_mapping(&full_set, &vec! {'Z', 'Q'}).is_err(), "Indices that are not in the full set must produce an error");
+        assert_eq!(create_index_mapping(&['A', 'A', 'B', 'D'], &vec! {'B', 'A'}), Ok(vec! {2, 0}), "For duplicates in the full set, the first index is used");
     }
-
 }

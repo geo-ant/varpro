@@ -1,34 +1,27 @@
 pub mod errors;
 mod detail;
+mod basefunction;
 
 use nalgebra::base::{Scalar, Dim};
 use nalgebra::{Matrix, U1, Dynamic, DimName, DimMax, DimMul};
 use nalgebra::Vector;
 
-use crate::types::*;
 use nalgebra::base::storage::Owned;
 
-/// internal type that indicates a vector that owns its data
-type OwnedVector<ScalarType: Scalar, Rows: Dim> = Vector<ScalarType, Rows, Owned<ScalarType, Rows, U1>>;
+/// typedef for a vector that owns its data
+pub type OwnedVector<ScalarType: Scalar, Rows: Dim> = Vector<ScalarType, Rows, Owned<ScalarType, Rows, U1>>;
 
 //TODO Document
 //modelfunction f(x,alpha), where x is the independent variable, alpha: (potentially) nonlinear params
-type BaseFuncType<ScalarType: Scalar, NData: Dim> = Box<dyn Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, Dynamic>) -> OwnedVector<ScalarType, NData>>;
+pub type BaseFuncType<ScalarType: Scalar, NData: Dim> = Box<dyn Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, Dynamic>) -> OwnedVector<ScalarType, NData>>;
 
 use errors::ModelfunctionError;
 use std::hash::Hash;
-use std::collections::HashSet;
+use std::collections::{HashSet, BTreeMap};
 
 use detail::*;
 
-struct Basefunction<ScalarType, NData>
-    where ScalarType: Scalar,
-          NData: Dim + DimName,
-          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
-{
-    function: BaseFuncType<ScalarType, NData>,
-    derivatives: HashSet<usize, BaseFuncType<ScalarType, NData>>,
-}
+use basefunction::*;
 
 /// # Separable (Nonlinear) Model
 /// A separable nonlinear model is the linear combination of a set of nonlinear basefunctions.
