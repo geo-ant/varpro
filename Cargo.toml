@@ -1,0 +1,12 @@
+[package]
+name = "varpro"
+version = "0.1.0"
+authors = ["geo-ant <54497890+geo-ant@users.noreply.github.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+snafu = "0.6"
+levenberg-marquardt = "0.7"
+nalgebra = "0.24"
