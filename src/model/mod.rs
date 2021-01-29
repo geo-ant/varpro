@@ -2,6 +2,9 @@ pub mod errors;
 mod detail;
 mod basefunction;
 
+#[cfg(test)]
+mod test;
+
 use nalgebra::base::{Scalar, Dim};
 use nalgebra::{Matrix, U1, Dynamic, DimName, DimMax, DimMul};
 use nalgebra::Vector;
@@ -23,6 +26,7 @@ use detail::*;
 
 use basefunction::*;
 
+
 /// # Separable (Nonlinear) Model
 /// A separable nonlinear model is the linear combination of a set of nonlinear basefunctions.
 /// The basefunctions depend on a vector `alpha` of parameters. They basefunctions are commonly
@@ -34,7 +38,7 @@ use basefunction::*;
 /// for the linear combination of the functions and the nonlinear parameters.
 pub struct SeparableModel<ScalarType, NData>
     where ScalarType: Scalar,
-          NData: Dim + DimName,
+          NData: Dim ,
           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// the parameter names of the model. This defines the order in which the
@@ -42,19 +46,20 @@ pub struct SeparableModel<ScalarType, NData>
     /// values and the jacobian are called.
     /// The list of parameter contains a nonzero number of names and these names
     /// are unique.
-    parameter_names: Vec<String>,
+    pub parameter_names: Vec<String>,
     /// the set of model. This already contains the model
     /// which are wrapped inside a lambda function so that they can take the
     /// parameter space of the model function set as an argument
-    modelfunctions: Vec<Basefunction<ScalarType, NData>>,
+    pub(in self) modelfunctions: Vec<Basefunction<ScalarType, NData>>,
 }
 
-impl<S, N> SeparableModel<S, N>
-    where S: Scalar,
-          N: Dim + DimName,
-          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<S, N>
+impl<ScalarType, NData> SeparableModel<ScalarType, NData>
+    where ScalarType: Scalar,
+          NData: Dim ,
+          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>
 {
-    pub fn new<StrType: Into<String>>(param_names: Vec<StrType>) -> Result<Self, ModelfunctionError> {
+    pub fn new<StrType>(param_names: Vec<StrType>) -> Result<Self, ModelfunctionError>
+    where StrType : Into<String> {
         let parameter_names: Vec<String> = param_names.into_iter().map(|param| param.into()).collect();
         check_parameter_names(parameter_names.as_slice())?;
         Ok(Self {
@@ -63,14 +68,21 @@ impl<S, N> SeparableModel<S, N>
         })
     }
 
-    /// Get the parameters of the
-    pub fn parameter_names(&self) -> &Vec<String> {
+    /// Get the parameters of the model
+    pub fn parameters(&self) -> &Vec<String> {
         &self.parameter_names
     }
 
-    /// Get the number of nonlinear parameters `alpha` of the model
+    /// Get the number of nonlinear parameters of the model
     pub fn parameter_count(&self) -> usize {
         self.parameter_names.len()
+    }
+
+
+    /// TODO Document and say to use it in conjunction with push
+    pub fn independent_function<FuncType>(&mut self, function: FuncType) -> ParameterIndepententModelFunctionProxy<ScalarType, NData, FuncType>
+        where FuncType: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> +'static {
+        ParameterIndepententModelFunctionProxy::new(self, function)
     }
 
     //TODO
