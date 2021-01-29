@@ -64,7 +64,8 @@ impl<'a, ScalarType, NData, FuncType> ParameterIndepententModelFunctionProxy<'a,
 
     /// push the function to the set of model functions. This function is
     /// used after the call to [new_independent_function] of [SeparableModel] to push the function
-    /// into the model. This function always returns with an Ok-variant.
+    /// into the model. This function always returns with an Ok-variant but the interface is
+    /// the same as for parameter dependent functions.
     pub fn push(self)->Result<(),ModelfunctionError> {
         let Self{ model, function } = self;
         model.modelfunctions.push(Basefunction::parameter_independent(move |x , _model_params| (function)(x)));
