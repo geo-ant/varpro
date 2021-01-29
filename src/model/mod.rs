@@ -6,21 +6,21 @@ mod basefunction;
 mod test;
 
 use nalgebra::base::{Scalar, Dim};
-use nalgebra::{Matrix, U1, Dynamic, DimName, DimMax, DimMul};
+use nalgebra::{U1, Dynamic};
 use nalgebra::Vector;
 
 use nalgebra::base::storage::Owned;
 
 /// typedef for a vector that owns its data
-pub type OwnedVector<ScalarType: Scalar, Rows: Dim> = Vector<ScalarType, Rows, Owned<ScalarType, Rows, U1>>;
+pub type OwnedVector<ScalarType, Rows> = Vector<ScalarType, Rows, Owned<ScalarType, Rows, U1>>;
 
 //TODO Document
 //modelfunction f(x,alpha), where x is the independent variable, alpha: (potentially) nonlinear params
-pub type BaseFuncType<ScalarType: Scalar, NData: Dim> = Box<dyn Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, Dynamic>) -> OwnedVector<ScalarType, NData>>;
+pub type BaseFuncType<ScalarType, NData> = Box<dyn Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, Dynamic>) -> OwnedVector<ScalarType, NData>>;
 
 use errors::ModelfunctionError;
-use std::hash::Hash;
-use std::collections::{HashSet, BTreeMap};
+
+
 
 use detail::*;
 

@@ -2,11 +2,12 @@ extern crate nalgebra;
 extern crate snafu;
 extern crate levenberg_marquardt;
 
-use crate::model::SeparableModel;
-use nalgebra::Dynamic;
+
+
 
 pub mod model;
 
+#[allow(dead_code)]
 fn unit_function<T:Clone>(x : &T) -> T {
     x.clone()
 }

@@ -1,10 +1,10 @@
 use nalgebra::base::{Scalar, Dim};
-use nalgebra::{Dynamic, DimName};
-use nalgebra::Vector;
+use nalgebra::{Dynamic};
+
 
 use super::BaseFuncType;
 use super::SeparableModel;
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap};
 
 
 use super::OwnedVector;
