@@ -4,12 +4,17 @@ mod basefunction;
 
 #[cfg(test)]
 mod test;
+pub mod builder;
 
 use nalgebra::base::{Scalar, Dim};
 use nalgebra::{U1, Dynamic};
 use nalgebra::Vector;
-
 use nalgebra::base::storage::Owned;
+
+use errors::ModelfunctionError;
+use detail::*;
+use basefunction::*;
+
 
 /// typedef for a vector that owns its data
 pub type OwnedVector<ScalarType, Rows> = Vector<ScalarType, Rows, Owned<ScalarType, Rows, U1>>;
@@ -17,14 +22,6 @@ pub type OwnedVector<ScalarType, Rows> = Vector<ScalarType, Rows, Owned<ScalarTy
 //TODO Document
 //modelfunction f(x,alpha), where x is the independent variable, alpha: (potentially) nonlinear params
 pub type BaseFuncType<ScalarType, NData> = Box<dyn Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, Dynamic>) -> OwnedVector<ScalarType, NData>>;
-
-use errors::ModelfunctionError;
-
-
-
-use detail::*;
-
-use basefunction::*;
 
 
 /// # Separable (Nonlinear) Model
@@ -38,7 +35,7 @@ use basefunction::*;
 /// for the linear combination of the functions and the nonlinear parameters.
 pub struct SeparableModel<ScalarType, NData>
     where ScalarType: Scalar,
-          NData: Dim ,
+          NData: Dim,
           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// the parameter names of the model. This defines the order in which the
@@ -46,7 +43,7 @@ pub struct SeparableModel<ScalarType, NData>
     /// values and the jacobian are called.
     /// The list of parameter contains a nonzero number of names and these names
     /// are unique.
-    pub parameter_names: Vec<String>,
+    pub(in self) parameter_names: Vec<String>,
     /// the set of model. This already contains the model
     /// which are wrapped inside a lambda function so that they can take the
     /// parameter space of the model function set as an argument
@@ -55,11 +52,11 @@ pub struct SeparableModel<ScalarType, NData>
 
 impl<ScalarType, NData> SeparableModel<ScalarType, NData>
     where ScalarType: Scalar,
-          NData: Dim ,
+          NData: Dim,
           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>
 {
-    pub fn new<StrType>(param_names: Vec<StrType>) -> Result<Self, ModelfunctionError>
-    where StrType : Into<String> {
+    pub (in self) fn new<StrType>(param_names: Vec<StrType>) -> Result<Self, ModelfunctionError>
+        where StrType: Into<String> {
         let parameter_names: Vec<String> = param_names.into_iter().map(|param| param.into()).collect();
         check_parameter_names(parameter_names.as_slice())?;
         Ok(Self {
@@ -81,7 +78,7 @@ impl<ScalarType, NData> SeparableModel<ScalarType, NData>
 
     /// TODO Document and say to use it in conjunction with push
     pub fn independent_function<FuncType>(&mut self, function: FuncType) -> ParameterIndepententModelFunctionProxy<ScalarType, NData, FuncType>
-        where FuncType: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> +'static {
+        where FuncType: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static {
         ParameterIndepententModelFunctionProxy::new(self, function)
     }
 

@@ -14,3 +14,14 @@ pub enum ModelfunctionError {
     #[snafu(display("Subset contains parameters that are not in the full set"))]
     InvalidParametersInSubset,
 }
+
+/// An error structure containing error variants related to
+/// the model and the set of model
+#[derive(Debug, Clone, Snafu, PartialEq)]
+#[snafu(visibility = "pub")]
+pub enum ModelBuilderError {
+    #[snafu(context(false))]
+    ModelfunctionError {
+        source : ModelfunctionError,
+    }
+}
