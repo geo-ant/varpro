@@ -98,9 +98,10 @@ where
 
     let wrapped = move |x: &OwnedVector<ScalarType, NData>,
                         params: &OwnedVector<ScalarType, NData>| {
+        //todo: refactor this, since this is unelegant and not parallelizable
         let mut parameter_for_function = Vec::<ScalarType>::with_capacity(index_mapping.len());
-        for (function_param_idx, param_idx) in index_mapping.iter().enumerate() {
-            parameter_for_function[function_param_idx] = params[*param_idx].clone();
+        for (param_idx) in index_mapping.iter() {
+            parameter_for_function.push(params[*param_idx].clone());
         }
         let function_params = DVector::<ScalarType>::from_vec(parameter_for_function);
         (function)(x, &function_params)
@@ -191,7 +192,7 @@ mod test {
 
     // a dummy function that disregards the x argument and just returns the parameters
     // useful to test if the wrapper has correctly distributed the parameters
-    fn dummy_function_that_returns_parameters<ScalarType>(
+    fn dummy_unit_function_for_parameters<ScalarType>(
         x: &OwnedVector<ScalarType, Dynamic>,
         params: &OwnedVector<ScalarType, Dynamic>,
     ) -> OwnedVector<ScalarType, Dynamic>
@@ -204,17 +205,23 @@ mod test {
     #[test]
     fn test_create_wrapped_function_distributes_arguments_correctly() {
         let model_parameters = vec!["a","b","c","d"];
-        let model = SeparableModelBuilder::<f32,Dynamic>::with_parameters(model_parameters.clone()).build().unwrap();
+        let model = SeparableModelBuilder::<f64,Dynamic>::with_parameters(model_parameters.clone()).build().unwrap();
         let function_parameters = vec!["c","a"];
-        let x = DVector::from(vec![1.,3.,3.,7.]);
-        let params = DVector::from(vec![1.,2.,3.,4.]);
+        let x = OwnedVector::<f64,Dynamic>::from(vec![1.,3.,3.,7.]);
+        let params = OwnedVector::<f64,Dynamic>::from(vec![1.,2.,3.,4.]);
 
-        assert_eq!(dummy_function_that_returns_parameters(&x,&params),params,"dummy function must return parameters passed to it");
+        // check that the dummy unit functions work as expected
+        assert_eq!(dummy_unit_function_for_parameters(&x,&params),params,"dummy function must return parameters passed to it");
+        assert_eq!(dummy_unit_function_for_x(&x,&params),x,"dummy function must return the x argument passed to it");
 
-        let expected_out = DVector::from(vec![3.,1.]);
 
-        //let wrapped_function = create_wrapper_function()
+        // check that the wrapped function indeed redistributes the parameters expected
+        let expected_out_params = OwnedVector::<f64,Dynamic>::from(vec![3.,1.]);
+        let wrapped_function_params = create_wrapper_function(&model,&function_parameters, dummy_unit_function_for_parameters).unwrap();
+        assert_eq!(wrapped_function_params(&x,&params),expected_out_params,"Wrapped function must assign the correct function params from model params");
 
-        unimplemented!()
+        // check that the wrapped function passes just passes the x location parameters
+        let wrapped_function_x = create_wrapper_function(&model,&function_parameters, dummy_unit_function_for_x).unwrap();
+        assert_eq!(wrapped_function_x(&x,&params),x,"Wrapped function must pass the location argument unaltered");
     }
 }
