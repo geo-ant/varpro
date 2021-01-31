@@ -1,10 +1,10 @@
 pub mod proxies;
 
 use crate::model::basefunction::Basefunction;
-use nalgebra::{Scalar, Dim, Dynamic};
-use crate::model::{SeparableModel, OwnedVector};
-use crate::model::errors::{ModelfunctionError, ModelBuilderError};
-use crate::model::builder::proxies::{ FunctionBuilderProxy};
+use crate::model::builder::proxies::FunctionBuilderProxy;
+use crate::model::errors::{ModelBuilderError, ModelfunctionError};
+use crate::model::{OwnedVector, SeparableModel};
+use nalgebra::{Dim, Dynamic, Scalar};
 
 //TODO MAYBE RETHINK THIS AND MAYBE GO BACK TO PULLING THE
 // GO BACK FROM TRAITS AND HAVE TWO STRUCTS THAT SeparableModelBuilder and FunctionBuilderProxy which both have internal
@@ -65,53 +65,73 @@ use crate::model::builder::proxies::{ FunctionBuilderProxy};
 // }
 // //todo document
 pub struct SeparableModelBuilder<ScalarType, NData>
-    where ScalarType: Scalar,
-          NData: Dim,
-          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    pub(in self) model_result: Result<SeparableModel<ScalarType, NData>,ModelBuilderError>
+    pub(self) model_result: Result<SeparableModel<ScalarType, NData>, ModelBuilderError>,
 }
 
-impl<ScalarType,NData> From<SeparableModel<ScalarType, NData>> for SeparableModelBuilder<ScalarType, NData>
-    where ScalarType: Scalar,
-          NData: Dim,
-          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData> //see https://github.com/dimforge/nalgebra/issues/580
+impl<ScalarType, NData> From<SeparableModel<ScalarType, NData>>
+    for SeparableModelBuilder<ScalarType, NData>
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     fn from(_: SeparableModel<ScalarType, NData>) -> Self {
         unimplemented!()
     }
 }
 
-
 impl<ScalarType, NData> SeparableModelBuilder<ScalarType, NData>
-    where ScalarType: Scalar,
-          NData: Dim,
-          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     //todo document
-    pub fn with_parameters<StrType>(parameter_names : Vec<StrType>) -> Self
-    where StrType : Into<String>{
-        let model_result = SeparableModel::new(parameter_names).map_err(|err|ModelBuilderError::from(err));
-        Self {
-            model_result
-        }
+    pub fn with_parameters<StrType>(parameter_names: Vec<StrType>) -> Self
+    where
+        StrType: Into<String>,
+    {
+        let model_result =
+            SeparableModel::new(parameter_names).map_err(|err| ModelBuilderError::from(err));
+        Self { model_result }
     }
 
     //todo document
     pub fn push_invariant_function<F>(mut self, function: F) -> Self
-        where F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static {
+    where
+        F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
+    {
         match self.model_result.as_mut() {
             Ok(model) => {
-                model.modelfunctions.push(Basefunction::parameter_independent(move |x, _model_params| (function)(x)));
+                model
+                    .modelfunctions
+                    .push(Basefunction::parameter_independent(
+                        move |x, _model_params| (function)(x),
+                    ));
             }
             Err(err) => {}
         }
         self
     }
 
-    pub fn push_function<F,StrType>(mut self, function_params: Vec<StrType> , function : F) -> SeparableModelBuilderProxyWithDerivatives<ScalarType,NData>
-        where F: Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
-        StrType : Into<String>
+    //todo document
+    pub fn push_function<F, StrType>(
+        mut self,
+        function_params: Vec<StrType>,
+        function: F,
+    ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+    where
+        F: Fn(
+                &OwnedVector<ScalarType, NData>,
+                &OwnedVector<ScalarType, NData>,
+            ) -> OwnedVector<ScalarType, NData>
+            + 'static,
+        StrType: Into<String>,
     {
         // use some common function here that can also be used from the push function in the model builder with derivatives
         // make some common function that wraps the modelfunction into a lambda that distributes the model params to the funciton
@@ -122,17 +142,17 @@ impl<ScalarType, NData> SeparableModelBuilder<ScalarType, NData>
         unimplemented!()
     }
 
-
     //todo document
-    pub fn build(self) -> Result<SeparableModel<ScalarType,NData>,ModelBuilderError>{
+    pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, ModelBuilderError> {
         self.model_result
     }
 }
 
 pub struct SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
-    where ScalarType: Scalar,
-          NData: Dim,
-          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    pub(in self) model_result: Result<SeparableModel<ScalarType, NData>,ModelBuilderError>
+    pub(self) model_result: Result<SeparableModel<ScalarType, NData>, ModelBuilderError>,
 }

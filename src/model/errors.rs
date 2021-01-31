@@ -8,11 +8,12 @@ pub enum ModelfunctionError {
     #[snafu(display("List of parameter contains duplictates."))]
     DuplicateParameterNames,
 
-    #[snafu(display("List of parameters is empty."))]
+    #[snafu(display("Parameter list for a model function with derivatives must not be empty."))]
     EmptyParameters,
 
     #[snafu(display("Subset contains parameters that are not in the full set"))]
-    InvalidParametersInSubset,
+    FunctionParameterNotInModel,
+
 }
 
 /// An error structure containing error variants related to
