@@ -9,17 +9,16 @@ use std::hash::Hash;
 /// * the set of parameters contains only unique elements
 /// # Returns
 /// Ok if the conditions hold, otherwise an error variant.
-pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelfunctionError>
+pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelBuilderError>
 where
-    StrType: AsRef<str>,
     StrType: Hash + Eq,
 {
     if param_names.is_empty() {
-        return Err(ModelfunctionError::EmptyParameters);
+        return Err(ModelBuilderError::EmptyParameters);
     }
 
     if !has_only_unique_elements(param_names.iter()) {
-        return Err(ModelfunctionError::DuplicateParameterNames);
+        return Err(ModelBuilderError::DuplicateParameterNames);
     }
 
     Ok(())
@@ -46,7 +45,7 @@ where
 pub fn create_index_mapping<T1, T2>(
     full: &[T1],
     subset: &[T2],
-) -> Result<Vec<usize>, ModelfunctionError>
+) -> Result<Vec<usize>, ModelBuilderError>
 where
     T1: Clone + PartialEq + PartialEq<T2>,
     T2: Clone + PartialEq + PartialEq<T1>,
@@ -54,13 +53,17 @@ where
     let indices = subset.iter().map(|value_subset| {
         full.iter()
             .position(|value_full| value_full == value_subset)
-            .ok_or(ModelfunctionError::FunctionParameterNotInModel)
+            .ok_or(ModelBuilderError::FunctionParameterNotInModel)
     });
     // see https://stackoverflow.com/questions/26368288/how-do-i-stop-iteration-and-return-an-error-when-iteratormap-returns-a-result
     // the FromIterator trait of Result allows us to go from Vec<Result<A,B>> to Result<Vec<A>,B>
     indices.collect()
 }
 
+/// Create a wrapper callable that can be called with the full parameters of the model
+/// from a function that takes a subset of the model parameters.
+/// # Arguments
+/// * `
 pub fn create_wrapper_function<ScalarType, NData, F, StrType>(
     model: &SeparableModel<ScalarType, NData>,
     function_parameters: &[StrType],
@@ -72,7 +75,7 @@ pub fn create_wrapper_function<ScalarType, NData, F, StrType>(
             &OwnedVector<ScalarType, NData>,
         ) -> OwnedVector<ScalarType, NData>,
     >,
-    ModelfunctionError,
+    ModelBuilderError,
 >
 where
     ScalarType: Scalar,
@@ -87,11 +90,11 @@ where
         + 'static,
 {
     if function_parameters.is_empty() {
-        return Err(ModelfunctionError::EmptyParameters);
+        return Err(ModelBuilderError::EmptyParameters);
     }
 
     if !has_only_unique_elements(function_parameters) {
-        return Err(ModelfunctionError::DuplicateParameterNames);
+        return Err(ModelBuilderError::DuplicateParameterNames);
     }
 
     let index_mapping = create_index_mapping(model.parameters(), function_parameters)?;

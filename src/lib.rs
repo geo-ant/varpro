@@ -2,9 +2,8 @@ extern crate nalgebra;
 extern crate snafu;
 extern crate levenberg_marquardt;
 
-use nalgebra::Dynamic;
-use crate::model::SeparableModel;
 use crate::model::builder::SeparableModelBuilder;
+use nalgebra::Dynamic;
 
 pub mod model;
 pub mod prelude;

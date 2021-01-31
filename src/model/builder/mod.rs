@@ -1,10 +1,12 @@
-pub mod proxies;
+#[cfg(test)]
+mod test;
 
 use crate::model::basefunction::Basefunction;
-use crate::model::builder::proxies::FunctionBuilderProxy;
-use crate::model::errors::{ModelBuilderError, ModelfunctionError};
+use crate::model::errors::{ModelBuilderError};
 use crate::model::{OwnedVector, SeparableModel};
 use nalgebra::{Dim, Dynamic, Scalar};
+use crate::model::detail::check_parameter_names;
+use std::hash::Hash;
 
 //TODO MAYBE RETHINK THIS AND MAYBE GO BACK TO PULLING THE
 // GO BACK FROM TRAITS AND HAVE TWO STRUCTS THAT SeparableModelBuilder and FunctionBuilderProxy which both have internal
@@ -94,11 +96,20 @@ where
     //todo document
     pub fn with_parameters<StrType>(parameter_names: Vec<StrType>) -> Self
     where
-        StrType: Into<String>,
+        StrType: Into<String> + Eq + Hash,
     {
-        let model_result =
-            SeparableModel::new(parameter_names).map_err(|err| ModelBuilderError::from(err));
-        Self { model_result }
+        if let Err(parameter_error) = check_parameter_names(&parameter_names) {
+            Self {
+                model_result: Err(parameter_error)
+            }
+        } else {
+            let parameter_names = parameter_names.into_iter().map(|name| name.into()).collect();
+            let model_result = Ok(SeparableModel {
+                parameter_names,
+                modelfunctions: Vec::default(),
+            });
+            Self { model_result }
+        }
     }
 
     //todo document

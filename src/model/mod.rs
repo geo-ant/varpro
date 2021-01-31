@@ -11,7 +11,7 @@ use nalgebra::{U1, Dynamic};
 use nalgebra::Vector;
 use nalgebra::base::storage::Owned;
 
-use errors::ModelfunctionError;
+use errors::ModelBuilderError;
 use detail::*;
 use basefunction::*;
 
@@ -55,15 +55,15 @@ impl<ScalarType, NData> SeparableModel<ScalarType, NData>
           NData: Dim,
           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>
 {
-    pub (in self) fn new<StrType>(param_names: Vec<StrType>) -> Result<Self, ModelfunctionError>
-        where StrType: Into<String> {
-        let parameter_names: Vec<String> = param_names.into_iter().map(|param| param.into()).collect();
-        check_parameter_names(parameter_names.as_slice())?;
-        Ok(Self {
-            parameter_names,
-            modelfunctions: Vec::default(),
-        })
-    }
+    // pub (in self) fn new<StrType>(param_names: Vec<StrType>) -> Result<Self, ModelfunctionError>
+    //     where StrType: Into<String> {
+    //     let parameter_names: Vec<String> = param_names.into_iter().map(|param| param.into()).collect();
+    //     check_parameter_names(parameter_names.as_slice())?;
+    //     Ok(Self {
+    //         parameter_names,
+    //         modelfunctions: Vec::default(),
+    //     })
+    // }
 
     /// Get the parameters of the model
     pub fn parameters(&self) -> &Vec<String> {
@@ -73,13 +73,6 @@ impl<ScalarType, NData> SeparableModel<ScalarType, NData>
     /// Get the number of nonlinear parameters of the model
     pub fn parameter_count(&self) -> usize {
         self.parameter_names.len()
-    }
-
-
-    /// TODO Document and say to use it in conjunction with push
-    pub fn independent_function<FuncType>(&mut self, function: FuncType) -> ParameterIndepententModelFunctionProxy<ScalarType, NData, FuncType>
-        where FuncType: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static {
-        ParameterIndepententModelFunctionProxy::new(self, function)
     }
 
     //TODO
