@@ -2,69 +2,34 @@
 mod test;
 
 use crate::model::basefunction::Basefunction;
-use crate::model::errors::{ModelBuilderError};
+use crate::model::detail::check_parameter_names;
+use crate::model::errors::ModelBuilderError;
 use crate::model::{OwnedVector, SeparableModel};
 use nalgebra::{Dim, Dynamic, Scalar};
-use crate::model::detail::check_parameter_names;
 use std::hash::Hash;
 
-//TODO MAYBE RETHINK THIS AND MAYBE GO BACK TO PULLING THE
-// GO BACK FROM TRAITS AND HAVE TWO STRUCTS THAT SeparableModelBuilder and FunctionBuilderProxy which both have internal
-// implementations to push independent functions. This should rely on an internal method of the model (just refactor and reuse
-// the one I have, to not require push anymore). The Proxy that deals with derivatives exposes the with_derivatives method also and
-// it has to check in all methods it exposes (also the one for independent functions) that the invariants of the model are respected,
-// i.e. that the complete set of derivatives has been provided before building or pushing another function.
-// BOTH structures carry the model or error internally !!!!
-//todo implement the trait on SeparableModelBuilder, Result<SeparableModelBuilder,...>, and Result<FunctionBuilderProxy,...>
-// pub trait GeneralModelBuilder<ScalarType, NData> : Sized
-//     where ScalarType: Scalar,
-//           NData: Dim,
-//           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
-// {
-//     fn current_model(self) -> Result<SeparableModel<ScalarType, NData>, ModelBuilderError>;
-//
-//     //todo: this thing can just be absorbed into the model
-//     fn push_invariant_function<F>(mut self, function : F) -> Result<SeparableModelBuilder<ScalarType, NData>, ModelBuilderError>
-//         where F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static {
-//         let mut model_result = self.current_model();
-//         match model_result.as_mut() {
-//             Ok(model) => {
-//                 model.modelfunctions.push(Basefunction::parameter_independent(move |x, _model_params| (function)(x)));
-//             }
-//             Err(err) => {}
-//         }
-//         model_result.map(|model| SeparableModelBuilder::from(model))
-//     }
-//
-//     fn push_function<F,StrType>(mut self, function_params: Vec<StrType> , function : F) -> Result<FunctionBuilderProxy<ScalarType, NData>, ModelBuilderError>
-//         where F: Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
-//         StrType : Into<String>
-//     {
-//         //todo make default implementation
-//         unimplemented!()
-//     }
-// }
-//
-// //todo implement this trait for Result<FunctionBuilderProxy, Error>
-// pub trait DerivativeModelBuilder<ScalarType, NData>: GeneralModelBuilder<ScalarType, NData>
-//     where ScalarType: Scalar,
-//           NData: Dim,
-//           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
-// {
-//     fn and_partial_deriv<F,StrType>(derivative_param: StrType , function : F) -> Result<FunctionBuilderProxy<ScalarType, NData>, ModelBuilderError>
-//         where F: Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
-//               StrType : Into<String>;
-// }
-//
-// impl<ScalarType,NData> GeneralModelBuilder<ScalarType, NData> for Result<SeparableModelBuilder<ScalarType,NData>, ModelBuilderError>
-//     where ScalarType: Scalar,
-//           NData: Dim,
-//           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
-// {
-//     fn current_model(self) -> Result<SeparableModel<ScalarType, NData>, ModelBuilderError> {
-//         unimplemented!()
-//     }
-// }
+
+/// Helper trait that provides common **unchecked** implementations to push
+/// functions and derivatives to a Result<SeparableModel, ModelBuilderError> that is internally carried.
+/// It mimics inheritance by providing access to the underlying result types with the two methods
+/// `current_model_result` and `current_model_result_mut`. The other functions allow pushing
+/// fnuctions and derivatives. The functions to push functions and derivatives take care of wrapping
+/// the given functions with the correct parameters BUT they do not check if it is allowed at this
+/// stage of the building process to perform the operation. The callers have to make sure it is
+/// indeed valid and leaves the invariants of the model building process intact.
+trait ModelBuilder<ScalarType, NData>
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>,
+{
+    /// expose the internal model result as mutable
+    fn current_model_result_mut(&mut self) -> Result<&mut SeparableModel<ScalarType,NData>,&mut ModelBuilderError>;
+
+    //TODO implement unchecked methods here
+
+}
+
 // //todo document
 pub struct SeparableModelBuilder<ScalarType, NData>
 where
@@ -75,6 +40,7 @@ where
     pub(self) model_result: Result<SeparableModel<ScalarType, NData>, ModelBuilderError>,
 }
 
+/// This trait can be used to extend an existing model with more functions.
 impl<ScalarType, NData> From<SeparableModel<ScalarType, NData>>
     for SeparableModelBuilder<ScalarType, NData>
 where
@@ -82,8 +48,10 @@ where
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    fn from(_: SeparableModel<ScalarType, NData>) -> Self {
-        unimplemented!()
+    fn from(model: SeparableModel<ScalarType, NData>) -> Self {
+        Self {
+            model_result: Ok(model),
+        }
     }
 }
 
@@ -100,10 +68,13 @@ where
     {
         if let Err(parameter_error) = check_parameter_names(&parameter_names) {
             Self {
-                model_result: Err(parameter_error)
+                model_result: Err(parameter_error),
             }
         } else {
-            let parameter_names = parameter_names.into_iter().map(|name| name.into()).collect();
+            let parameter_names = parameter_names
+                .into_iter()
+                .map(|name| name.into())
+                .collect();
             let model_result = Ok(SeparableModel {
                 parameter_names,
                 modelfunctions: Vec::default(),
