@@ -11,8 +11,6 @@ use nalgebra::{U1, Dynamic};
 use nalgebra::Vector;
 use nalgebra::base::storage::Owned;
 
-use errors::ModelBuilderError;
-use detail::*;
 use basefunction::*;
 
 
@@ -43,11 +41,11 @@ pub struct SeparableModel<ScalarType, NData>
     /// values and the jacobian are called.
     /// The list of parameter contains a nonzero number of names and these names
     /// are unique.
-    pub(in self) parameter_names: Vec<String>,
+    pub parameter_names: Vec<String>,
     /// the set of model. This already contains the model
     /// which are wrapped inside a lambda function so that they can take the
     /// parameter space of the model function set as an argument
-    pub(in self) modelfunctions: Vec<Basefunction<ScalarType, NData>>,
+    pub modelfunctions: Vec<ModelFunction<ScalarType, NData>>,
 }
 
 impl<ScalarType, NData> SeparableModel<ScalarType, NData>
@@ -55,16 +53,6 @@ impl<ScalarType, NData> SeparableModel<ScalarType, NData>
           NData: Dim,
           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>
 {
-    // pub (in self) fn new<StrType>(param_names: Vec<StrType>) -> Result<Self, ModelfunctionError>
-    //     where StrType: Into<String> {
-    //     let parameter_names: Vec<String> = param_names.into_iter().map(|param| param.into()).collect();
-    //     check_parameter_names(parameter_names.as_slice())?;
-    //     Ok(Self {
-    //         parameter_names,
-    //         modelfunctions: Vec::default(),
-    //     })
-    // }
-
     /// Get the parameters of the model
     pub fn parameters(&self) -> &Vec<String> {
         &self.parameter_names

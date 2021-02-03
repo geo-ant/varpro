@@ -4,7 +4,7 @@ use snafu::Snafu;
 /// the model and the set of model
 #[derive(Debug, Clone, Snafu, PartialEq)]
 #[snafu(visibility = "pub")]
-pub enum ModelBuilderError {
+pub enum Error {
     #[snafu(display("List of parameter contains duplictates."))]
     DuplicateParameterNames,
 
@@ -13,5 +13,11 @@ pub enum ModelBuilderError {
 
     #[snafu(display("Subset contains parameters that are not in the full set"))]
     FunctionParameterNotInModel,
+
+    #[snafu(display("Parameter '{}' for derivative not in set '{:?}'",parameter,function_parameters))]
+    InvalidDerivative {
+        parameter: String,
+        function_parameters: Vec<String>,
+    }
 
 }

@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod test;
 
-use crate::model::basefunction::Basefunction;
+use crate::model::basefunction::ModelFunction;
 use crate::model::detail::check_parameter_names;
-use crate::model::errors::ModelBuilderError;
+use crate::model::errors::Error;
 use crate::model::{OwnedVector, SeparableModel};
-use nalgebra::{Dim, Dynamic, Scalar};
+use nalgebra::{Dim, Scalar};
 use std::hash::Hash;
 
 
@@ -24,7 +24,7 @@ where
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>,
 {
     /// expose the internal model result as mutable
-    fn current_model_result_mut(&mut self) -> Result<&mut SeparableModel<ScalarType,NData>,&mut ModelBuilderError>;
+    fn current_model_result_mut(&mut self) -> Result<&mut SeparableModel<ScalarType,NData>,&mut Error>;
 
     //TODO implement unchecked methods here
 
@@ -37,7 +37,7 @@ where
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    pub(self) model_result: Result<SeparableModel<ScalarType, NData>, ModelBuilderError>,
+    pub(self) model_result: Result<SeparableModel<ScalarType, NData>, Error>,
 }
 
 /// This trait can be used to extend an existing model with more functions.
@@ -62,9 +62,9 @@ where
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     //todo document
-    pub fn with_parameters<StrType>(parameter_names: Vec<StrType>) -> Self
+    pub fn with_parameters<StrType>(parameter_names: &[StrType]) -> Self
     where
-        StrType: Into<String> + Eq + Hash,
+        StrType: Clone+ Into<String> + Eq + Hash,
     {
         if let Err(parameter_error) = check_parameter_names(&parameter_names) {
             Self {
@@ -73,7 +73,7 @@ where
         } else {
             let parameter_names = parameter_names
                 .into_iter()
-                .map(|name| name.into())
+                .map(|name| name.clone().into())
                 .collect();
             let model_result = Ok(SeparableModel {
                 parameter_names,
@@ -88,23 +88,18 @@ where
     where
         F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
     {
-        match self.model_result.as_mut() {
-            Ok(model) => {
-                model
-                    .modelfunctions
-                    .push(Basefunction::parameter_independent(
-                        move |x, _model_params| (function)(x),
-                    ));
-            }
-            Err(err) => {}
+        if let Ok(model) = self.model_result.as_mut() {
+            model
+                .modelfunctions
+                .push(ModelFunction::parameter_independent(function));
         }
         self
     }
 
     //todo document
     pub fn push_function<F, StrType>(
-        mut self,
-        function_params: Vec<StrType>,
+        self,
+        function_params: &[StrType],
         function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
     where
@@ -113,7 +108,7 @@ where
                 &OwnedVector<ScalarType, NData>,
             ) -> OwnedVector<ScalarType, NData>
             + 'static,
-        StrType: Into<String>,
+        StrType: Into<String> + Clone,
     {
         // use some common function here that can also be used from the push function in the model builder with derivatives
         // make some common function that wraps the modelfunction into a lambda that distributes the model params to the funciton
@@ -125,7 +120,7 @@ where
     }
 
     //todo document
-    pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, ModelBuilderError> {
+    pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, Error> {
         self.model_result
     }
 }
@@ -136,5 +131,5 @@ where
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    pub(self) model_result: Result<SeparableModel<ScalarType, NData>, ModelBuilderError>,
+    pub(self) model_result: Result<SeparableModel<ScalarType, NData>, Error>,
 }
