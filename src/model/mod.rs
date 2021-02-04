@@ -53,8 +53,8 @@ impl<ScalarType, NData> SeparableModel<ScalarType, NData>
           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>
 {
     /// Get the parameters of the model
-    pub fn parameters(&self) -> &[String] {
-        self.parameter_names.as_slice()
+    pub fn parameters(&self) -> &Vec<String>{
+        &self.parameter_names
     }
 
     /// Get the number of nonlinear parameters of the model
