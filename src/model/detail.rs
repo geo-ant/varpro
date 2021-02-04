@@ -48,7 +48,7 @@ pub fn create_index_mapping<T1, T2>(
 ) -> Result<Vec<usize>, Error>
 where
     T1: Clone + PartialEq + PartialEq<T2>,
-    T2: Clone + PartialEq ,
+    T2: Clone + PartialEq  ,
 {
     let indices = subset.iter().map(|value_subset| {
         full.iter()
@@ -65,9 +65,9 @@ where
 /// # Arguments
 /// todo document
 #[allow(clippy::type_complexity)]
-pub fn create_wrapper_function<ScalarType, NData, F, StrType>(
-    model: &SeparableModel<ScalarType, NData>,
-    function_parameters: &[StrType],
+pub fn create_wrapper_function<ScalarType, NData, F, StrType,StrType2>(
+    model_parameters: &[StrType],
+    function_parameters: &[StrType2],
     function: F,
 ) -> Result<
     Box<
@@ -82,8 +82,9 @@ where
     ScalarType: Scalar,
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
-    StrType: Into<String> + Clone + Hash + Eq,
-    String: PartialEq<StrType>,
+    StrType: Into<String> + Clone + Hash + Eq + PartialEq<StrType2>,
+    StrType2: Into<String> + Clone + Hash + Eq,
+    String: PartialEq<StrType> + PartialEq<StrType2>,
     F: Fn(
             &OwnedVector<ScalarType, NData>,
             &OwnedVector<ScalarType, Dynamic>,
@@ -98,7 +99,7 @@ where
         return Err(Error::DuplicateParameterNames);
     }
 
-    let index_mapping = create_index_mapping(model.parameters(), function_parameters)?;
+    let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
 
     let wrapped = move |x: &OwnedVector<ScalarType, NData>,
                         params: &OwnedVector<ScalarType, Dynamic>| {
@@ -169,11 +170,9 @@ mod test {
     }
 
     // dummy function that just returns the given x
-    fn dummy_unit_function_for_x<T, U>(x: &T, _params: &U) -> T
-    where
-        T: Clone,
+    fn dummy_unit_function_for_x(x: &OwnedVector<f64,Dynamic>, _params: &OwnedVector<f64,Dynamic>) -> OwnedVector<f64,Dynamic>
     {
-        x.clone()
+        OwnedVector::<f64,Dynamic>::clone(x)
     }
 
     #[test]
@@ -184,12 +183,12 @@ mod test {
             .unwrap();
 
         assert!(
-            create_wrapper_function(&model, &Vec::<String>::new(), dummy_unit_function_for_x)
+            create_wrapper_function(model.parameters(), &Vec::<String>::new(), dummy_unit_function_for_x)
                 .is_err(),
             "creating wrapper function with empty parameter list should report error"
         );
         assert!(
-            create_wrapper_function(&model, &["a", "b", "a"], dummy_unit_function_for_x).is_err(),
+            create_wrapper_function(model.parameters(), &["a", "b", "a"], dummy_unit_function_for_x).is_err(),
             "creating wrapper function with duplicates in function params should report error"
         );
     }
@@ -231,7 +230,7 @@ mod test {
         // check that the wrapped function indeed redistributes the parameters expected
         let expected_out_params = OwnedVector::<f64, Dynamic>::from(vec![3., 1.]);
         let wrapped_function_params = create_wrapper_function(
-            &model,
+            &model.parameter_names,
             &function_parameters,
             dummy_unit_function_for_parameters,
         )
@@ -244,7 +243,7 @@ mod test {
 
         // check that the wrapped function passes just passes the x location parameters
         let wrapped_function_x =
-            create_wrapper_function(&model, &function_parameters, dummy_unit_function_for_x)
+            create_wrapper_function(model.parameters(), &function_parameters, dummy_unit_function_for_x)
                 .unwrap();
         assert_eq!(
             wrapped_function_x(&x, &params),

@@ -5,7 +5,7 @@ use nalgebra::{U11, U2,Dynamic};
 fn builder_constructor_constructs_model_with_correct_parameters() {
     let parameter_names = vec!{"a","b","c"};
     let model = SeparableModelBuilder::<f64,U11>::with_parameters(&parameter_names).build().unwrap();
-    assert_eq!(&parameter_names,model.parameters());
+    assert_eq!(parameter_names.as_slice(),model.parameters());
     assert_eq!(model.parameter_count(), parameter_names.len());
 }
 

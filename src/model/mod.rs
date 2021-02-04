@@ -1,18 +1,17 @@
+use nalgebra::{Dynamic, U1};
+use nalgebra::base::{Dim, Scalar};
+use nalgebra::base::storage::Owned;
+use nalgebra::Vector;
+use crate::model::modelfunction::ModelFunction;
+
+
 pub mod errors;
 mod detail;
-mod basefunction;
 
 #[cfg(test)]
 mod test;
 pub mod builder;
-
-use nalgebra::base::{Scalar, Dim};
-use nalgebra::{U1, Dynamic};
-use nalgebra::Vector;
-use nalgebra::base::storage::Owned;
-
-use basefunction::*;
-
+pub mod modelfunction;
 
 /// typedef for a vector that owns its data
 pub type OwnedVector<ScalarType, Rows> = Vector<ScalarType, Rows, Owned<ScalarType, Rows, U1>>;
@@ -54,8 +53,8 @@ impl<ScalarType, NData> SeparableModel<ScalarType, NData>
           nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>
 {
     /// Get the parameters of the model
-    pub fn parameters(&self) -> &Vec<String> {
-        &self.parameter_names
+    pub fn parameters(&self) -> &[String] {
+        self.parameter_names.as_slice()
     }
 
     /// Get the number of nonlinear parameters of the model

@@ -1,68 +1,40 @@
 use nalgebra::base::{Dim, Scalar};
 use nalgebra::Dynamic;
 
-use super::BaseFuncType;
-use super::SeparableModel;
+use crate::model::BaseFuncType;
+use crate::model::SeparableModel;
 use std::collections::HashMap;
 
-use super::OwnedVector;
+use crate::model::OwnedVector;
 use crate::model::detail::{check_parameter_names, create_wrapper_function};
 use crate::model::errors::Error;
 use std::hash::Hash;
+use crate::model::modelfunction::ModelFunction;
 
-pub struct ModelFunction<ScalarType, NData>
-where
-    ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
-{
-    /// the function. Takes the full model parameters alpha.
-    pub(self) function: BaseFuncType<ScalarType, NData>,
-    /// the derivatives of the function by index (also taking the full parameters alpha).
-    /// The index is based on the index of the parameters in the model function set.
-    pub(self) derivatives: HashMap<usize, BaseFuncType<ScalarType, NData>>,
-}
-
-// TODO document
-impl<ScalarType, NData> ModelFunction<ScalarType, NData>
-where
-    ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
-{
-    /// Create a function that does not depend on any model parameters and just
-    /// takes a location parameter as its argument.
-    pub fn parameter_independent<FuncType>(function: FuncType) -> Self
-    where
-        FuncType: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
-    {
-        Self {
-            function: Box::new(move |x, _params| (function)(x)),
-            derivatives: HashMap::default(),
-        }
-    }
-}
 
 /// The modelfunction builder allows to create model functions that depend on
 /// a subset or the whole model parameters. Functions that depend on model parameters
 /// need to have partial derivatives provided for each parameter they depend on.
-pub struct ModelfunctionBuilder<'a, ScalarType, NData>
-where
-    ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+pub struct ModelFunctionBuilder<'a,ScalarType, NData>
+    where
+        ScalarType: Scalar,
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// a reference to the model parameters for the model given in the constructor of this builder
+    //todo: change this to not contain a separable model anymore and NO REFERENCE!!
     model: &'a SeparableModel<ScalarType, NData>,
+    /// the parameters that the function depends on. Must be a subset of the model parameters
     function_parameters: Vec<String>,
+    /// the current result of the building process of the model function
     model_function_result: Result<ModelFunction<ScalarType, NData>, Error>,
 }
 
-impl<'a, ScalarType, NData> ModelfunctionBuilder<'a, ScalarType, NData>
-where
-    ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+impl<'a, ScalarType, NData> ModelFunctionBuilder<'a, ScalarType, NData>
+    where
+        ScalarType: Scalar,
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// begin constructing a modelfunction for a specific model. The modelfunction must take
     /// a subset of the model parameters. This is the first step in creating a function, because
@@ -75,15 +47,13 @@ where
     /// * `function`: the actual function.
     /// # Result
     /// A model builder that can be used to add derivatives.
-    pub fn with_function<StrType, FuncType>(
+    pub fn new<FuncType>(
         model: &'a SeparableModel<ScalarType, NData>,
-        function_parameters: &[StrType],
+        function_parameters: &[String],
         function: FuncType,
     ) -> Self
-    where
-        StrType: Into<String> + Clone + Hash + Eq,
-        String: PartialEq<StrType>,
-        FuncType: Fn(
+        where
+            FuncType: Fn(
                 &OwnedVector<ScalarType, NData>,
                 &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
@@ -103,7 +73,7 @@ where
             };
         }
 
-        let model_function_result = create_wrapper_function(model, function_parameters, function)
+        let model_function_result = create_wrapper_function(model.parameters(), function_parameters, function)
             .map(|function| ModelFunction {
                 function,
                 derivatives: Default::default(),
@@ -127,8 +97,8 @@ where
     /// * `derivative`: the partial derivative of the function with which the
     /// builder was created.
     pub fn partial_deriv<FuncType>(mut self, parameter: &str, derivative: FuncType) -> Self
-    where
-        FuncType: Fn(
+        where
+            FuncType: Fn(
                 &OwnedVector<ScalarType, NData>,
                 &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
@@ -141,7 +111,7 @@ where
             .position(|function_param| function_param == parameter)
         {
             if let Ok(model_function) = self.model_function_result.as_mut() {
-                match create_wrapper_function(self.model, &self.function_parameters, derivative) {
+                match create_wrapper_function(self.model.parameters(), &self.function_parameters, derivative) {
                     Ok(deriv) => {
                         // push derivative and check that the derivative was not already in the set
                         if model_function
@@ -169,5 +139,13 @@ where
                 ..self
             }
         }
+    }
+
+    /// Build a modelfunction with derivatives from the contents of this builder
+    /// # Result
+    /// A modelfunction containing the given function and derivatives or an error
+    /// variant if an error occurred during the building process
+    fn build(self) -> Result<ModelFunction<ScalarType,NData>,Error>{
+        self.model_function_result
     }
 }
