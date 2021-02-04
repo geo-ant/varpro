@@ -15,22 +15,21 @@ use crate::model::modelfunction::ModelFunction;
 /// The modelfunction builder allows to create model functions that depend on
 /// a subset or the whole model parameters. Functions that depend on model parameters
 /// need to have partial derivatives provided for each parameter they depend on.
-pub struct ModelFunctionBuilder<'a,ScalarType, NData>
+pub struct ModelFunctionBuilder<ScalarType, NData>
     where
         ScalarType: Scalar,
         NData: Dim,
         nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    /// a reference to the model parameters for the model given in the constructor of this builder
-    //todo: change this to not contain a separable model anymore and NO REFERENCE!!
-    model: &'a SeparableModel<ScalarType, NData>,
+    /// the model parameters for the model this function belongs to
+    model_parameters: Vec<String>,
     /// the parameters that the function depends on. Must be a subset of the model parameters
     function_parameters: Vec<String>,
     /// the current result of the building process of the model function
     model_function_result: Result<ModelFunction<ScalarType, NData>, Error>,
 }
 
-impl<'a, ScalarType, NData> ModelFunctionBuilder<'a, ScalarType, NData>
+impl<'a, ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
     where
         ScalarType: Scalar,
         NData: Dim,
@@ -48,7 +47,7 @@ impl<'a, ScalarType, NData> ModelFunctionBuilder<'a, ScalarType, NData>
     /// # Result
     /// A model builder that can be used to add derivatives.
     pub fn new<FuncType>(
-        model: &'a SeparableModel<ScalarType, NData>,
+        model_parameters : Vec<String>,
         function_parameters: &[String],
         function: FuncType,
     ) -> Self
@@ -64,7 +63,7 @@ impl<'a, ScalarType, NData> ModelFunctionBuilder<'a, ScalarType, NData>
         if let Err(err) = check_parameter_names(function_parameters) {
             return Self {
                 model_function_result: Err(err),
-                model,
+                model_parameters,
                 function_parameters: function_parameters
                     .iter()
                     .cloned()
@@ -73,7 +72,7 @@ impl<'a, ScalarType, NData> ModelFunctionBuilder<'a, ScalarType, NData>
             };
         }
 
-        let model_function_result = create_wrapper_function(model.parameters(), function_parameters, function)
+        let model_function_result = create_wrapper_function(&model_parameters, function_parameters, function)
             .map(|function| ModelFunction {
                 function,
                 derivatives: Default::default(),
@@ -81,7 +80,7 @@ impl<'a, ScalarType, NData> ModelFunctionBuilder<'a, ScalarType, NData>
 
         Self {
             model_function_result,
-            model,
+            model_parameters ,
             function_parameters: function_parameters
                 .iter()
                 .cloned()
@@ -111,7 +110,7 @@ impl<'a, ScalarType, NData> ModelFunctionBuilder<'a, ScalarType, NData>
             .position(|function_param| function_param == parameter)
         {
             if let Ok(model_function) = self.model_function_result.as_mut() {
-                match create_wrapper_function(self.model.parameters(), &self.function_parameters, derivative) {
+                match create_wrapper_function(&self.model_parameters, &self.function_parameters, derivative) {
                     Ok(deriv) => {
                         // push derivative and check that the derivative was not already in the set
                         if model_function
