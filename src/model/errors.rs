@@ -11,13 +11,19 @@ pub enum Error {
     #[snafu(display("Parameter list for a model function with derivatives must not be empty."))]
     EmptyParameters,
 
-    #[snafu(display("Subset contains parameters that are not in the full set"))]
+    #[snafu(display("Subset contains parameters that are not in the full set."))]
     FunctionParameterNotInModel,
 
-    #[snafu(display("Parameter '{}' for derivative not in set '{:?}'",parameter,function_parameters))]
+    #[snafu(display(
+        "Parameter '{}' for derivative not in set '{:?}'.",
+        parameter,
+        function_parameters
+    ))]
     InvalidDerivative {
         parameter: String,
         function_parameters: Vec<String>,
-    }
+    },
 
+    #[snafu(display("Derivative for parameter '{}' was already given.", parameter))]
+    DuplicateDerivative { parameter: String },
 }
