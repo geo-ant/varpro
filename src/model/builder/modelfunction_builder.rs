@@ -29,7 +29,7 @@ pub struct ModelFunctionBuilder<ScalarType, NData>
     model_function_result: Result<ModelFunction<ScalarType, NData>, Error>,
 }
 
-impl<'a, ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
+impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
     where
         ScalarType: Scalar,
         NData: Dim,
@@ -146,5 +146,14 @@ impl<'a, ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
     /// variant if an error occurred during the building process
     fn build(self) -> Result<ModelFunction<ScalarType,NData>,Error>{
         self.model_function_result
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn test_modelfunction_builder() {
+        unimplemented!("Test the function builder!");
     }
 }

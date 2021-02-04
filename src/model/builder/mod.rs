@@ -136,5 +136,21 @@ where
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     model_result: Result<SeparableModel<ScalarType, NData>, Error>,
-    //current_function_builder: ModelFunctionBuilder<ScalarType, NData>,
+    current_function_builder: Option<ModelFunctionBuilder<ScalarType, NData>>,
+}
+
+impl<ScalarType, NData> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+    where
+        ScalarType: Scalar,
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+{
+    pub fn new<F>(previous : SeparableModelBuilder<ScalarType,NData>, function : F) -> Self
+    where F: Fn(&OwnedVector<ScalarType, NData>,
+    &OwnedVector<ScalarType, NData>,
+    ) -> OwnedVector<ScalarType, NData>
+    + 'static,
+    {
+        todo!()
+    }
 }
