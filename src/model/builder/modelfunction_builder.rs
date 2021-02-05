@@ -5,35 +5,34 @@ use crate::model::BaseFuncType;
 use crate::model::SeparableModel;
 use std::collections::HashMap;
 
-use crate::model::OwnedVector;
-use crate::model::detail::{check_parameter_names, create_wrapper_function};
-use crate::model::errors::Error;
-use std::hash::Hash;
+use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapper_function};
+use crate::model::errors::ModelError;
 use crate::model::modelfunction::ModelFunction;
-
+use crate::model::OwnedVector;
+use std::hash::Hash;
 
 /// The modelfunction builder allows to create model functions that depend on
 /// a subset or the whole model parameters. Functions that depend on model parameters
 /// need to have partial derivatives provided for each parameter they depend on.
 pub struct ModelFunctionBuilder<ScalarType, NData>
-    where
-        ScalarType: Scalar,
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// the model parameters for the model this function belongs to
     model_parameters: Vec<String>,
     /// the parameters that the function depends on. Must be a subset of the model parameters
     function_parameters: Vec<String>,
     /// the current result of the building process of the model function
-    model_function_result: Result<ModelFunction<ScalarType, NData>, Error>,
+    model_function_result: Result<ModelFunction<ScalarType, NData>, ModelError>,
 }
 
 impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
-    where
-        ScalarType: Scalar,
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// begin constructing a modelfunction for a specific model. The modelfunction must take
     /// a subset of the model parameters. This is the first step in creating a function, because
@@ -47,12 +46,12 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
     /// # Result
     /// A model builder that can be used to add derivatives.
     pub fn new<FuncType>(
-        model_parameters : Vec<String>,
+        model_parameters: Vec<String>,
         function_parameters: &[String],
         function: FuncType,
     ) -> Self
-        where
-            FuncType: Fn(
+    where
+        FuncType: Fn(
                 &OwnedVector<ScalarType, NData>,
                 &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
@@ -72,15 +71,17 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
             };
         }
 
-        let model_function_result = create_wrapper_function(&model_parameters, function_parameters, function)
-            .map(|function| ModelFunction {
-                function,
-                derivatives: Default::default(),
-            });
+        let model_function_result =
+            create_wrapper_function(&model_parameters, function_parameters, function).map(
+                |function| ModelFunction {
+                    function,
+                    derivatives: Default::default(),
+                },
+            );
 
         Self {
             model_function_result,
-            model_parameters ,
+            model_parameters,
             function_parameters: function_parameters
                 .iter()
                 .cloned()
@@ -96,8 +97,8 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
     /// * `derivative`: the partial derivative of the function with which the
     /// builder was created.
     pub fn partial_deriv<FuncType>(mut self, parameter: &str, derivative: FuncType) -> Self
-        where
-            FuncType: Fn(
+    where
+        FuncType: Fn(
                 &OwnedVector<ScalarType, NData>,
                 &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
@@ -110,7 +111,11 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
             .position(|function_param| function_param == parameter)
         {
             if let Ok(model_function) = self.model_function_result.as_mut() {
-                match create_wrapper_function(&self.model_parameters, &self.function_parameters, derivative) {
+                match create_wrapper_function(
+                    &self.model_parameters,
+                    &self.function_parameters,
+                    derivative,
+                ) {
                     Ok(deriv) => {
                         // push derivative and check that the derivative was not already in the set
                         if model_function
@@ -118,7 +123,7 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
                             .insert(deriv_index, deriv)
                             .is_some()
                         {
-                            self.model_function_result = Err(Error::DuplicateDerivative {
+                            self.model_function_result = Err(ModelError::DuplicateDerivative {
                                 parameter: parameter.into(),
                             });
                         }
@@ -131,7 +136,7 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
             self
         } else {
             Self {
-                model_function_result: Err(Error::InvalidDerivative {
+                model_function_result: Err(ModelError::InvalidDerivative {
                     parameter: parameter.into(),
                     function_parameters: self.function_parameters.clone(),
                 }),
@@ -144,16 +149,112 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
     /// # Result
     /// A modelfunction containing the given function and derivatives or an error
     /// variant if an error occurred during the building process
-    fn build(self) -> Result<ModelFunction<ScalarType,NData>,Error>{
+    pub fn build(self) -> Result<ModelFunction<ScalarType, NData>, ModelError> {
+        self.check_completion()?;
         self.model_function_result
+    }
+
+    /// If the modelfunction builder is carrying an Error result, this function returns Ok(()).
+    /// If it carries an ok variant, then this function checks that the modelfunction
+    /// has all necessary derivatives provided and if so returns Ok(()), otherwise it returns
+    /// an error indicating that there are missing derivatives
+    fn check_completion(&self) -> Result<(), ModelError> {
+        match self.model_function_result.as_ref() {
+            Ok(modelfunction) => {
+                // this should not go wrong, but to be safe
+                check_parameter_names(self.model_parameters.as_slice())?;
+                check_parameter_names(self.function_parameters.as_slice())?;
+                // create the index mapping
+                let index_mapping = create_index_mapping(
+                    self.model_parameters.as_slice(),
+                    self.function_parameters.as_slice(),
+                )?;
+                // now make sure that the derivatives are provided for all indices of that mapping
+                for (index, parameter) in index_mapping.iter().zip(self.function_parameters.iter()) {
+                    if(!modelfunction.derivatives.contains_key(index)) {
+                        return Err(ModelError::MissingDerivative {
+                            missing_parameter: parameter.clone(),
+                            function_parameters: self.function_parameters.clone(),
+                        })
+                    }
+                }
+                // this is a sanity check. if this came this far, there should not be an error here
+                if index_mapping.len() != modelfunction.derivatives.len() {
+                    // this also should never be the case and indicates a programming error in the library
+                    return Err(ModelError::Fatal {
+                        message: "Too many or too few derivatives in set!".to_string(),
+                    });
+                }
+                // otherwise
+                Ok(())
+            }
+            Err(_) => Ok(()),
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
+    use crate::model::OwnedVector;
+    use nalgebra::{Dim, Dynamic, Scalar};
+
+    /// a function that calculates exp( (t-t0)/tau)) for every location t
+    fn exponential_decay<NData>(
+        tvec: &OwnedVector<f64, NData>,
+        t0: f64,
+        tau: f64,
+    ) -> OwnedVector<f64, NData>
+    where
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, NData>, //see https://github.com/dimforge/nalgebra/issues/580 {
+    {
+        assert!(tau > 0f64, "Parameter tau must be greater than zero");
+        tvec.map(|t| ((t - t0) / tau).exp())
+    }
+
+    /// partial derivative of the exponential decay with respect to t0
+    fn exponential_decay_dt0<NData>(
+        tvec: &OwnedVector<f64, NData>,
+        t0: f64,
+        tau: f64,
+    ) -> OwnedVector<f64, NData>
+    where
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, NData>, //see https://github.com/dimforge/nalgebra/issues/580 {
+    {
+        assert!(tau > 0f64, "Parameter tau must be greater than zero");
+        exponential_decay(tvec, t0, tau).map(|val| val / tau)
+    }
+
+    /// partial derivative of the exponential decay with respect to tau
+    fn exponential_decay_dtau<NData>(
+        tvec: &OwnedVector<f64, NData>,
+        t0: f64,
+        tau: f64,
+    ) -> OwnedVector<f64, NData>
+    where
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, NData>, //see https://github.com/dimforge/nalgebra/issues/580 {
+    {
+        assert!(tau > 0f64, "Parameter tau must be greater than zero");
+        tvec.map(|t| ((t - t0) / tau).exp() * (t0 - t) / tau.powi(2))
+    }
 
     #[test]
     fn test_modelfunction_builder() {
-        unimplemented!("Test the function builder!");
+        let model_parameters = vec![
+            "foo".to_string(),
+            "t0".to_string(),
+            "bar".to_string(),
+            "tau".to_string(),
+        ];
+        let mfb = ModelFunctionBuilder::<f64, Dynamic>::new(
+            model_parameters,
+            ["t0".to_string(), "tau".to_string()].as_ref(),
+            |t, params| exponential_decay(t, params[0], params[1]),
+        );
+
+        todo!("Test the function builder!");
     }
 }

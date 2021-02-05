@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::model::OwnedVector;
 use crate::model::detail::{check_parameter_names, create_wrapper_function};
-use crate::model::errors::Error;
+use crate::model::errors::ModelError;
 use std::hash::Hash;
 
 // todo comment

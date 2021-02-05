@@ -9,19 +9,23 @@ use std::hash::Hash;
 /// * the set of parameters contains only unique elements
 /// # Returns
 /// Ok if the conditions hold, otherwise an error variant.
-pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), Error>
+pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelError>
 where
-    StrType: Hash + Eq,
+    StrType: Hash + Eq+Clone+Into<String>,
 {
     if param_names.is_empty() {
-        return Err(Error::EmptyParameters);
+        return Err(ModelError::EmptyParameters);
     }
 
     if !has_only_unique_elements(param_names.iter()) {
-        return Err(Error::DuplicateParameterNames);
+        let function_parameters: Vec<String> = param_names.into_iter().cloned().map(|n| n.into()).collect();
+        return Err(ModelError::DuplicateParameterNames {
+            function_parameters,
+        });
+    } else {
+        Ok(())
     }
 
-    Ok(())
 }
 
 // check if set is comprised of unique elements only
@@ -42,18 +46,19 @@ where
 /// The function returns the vector of indices or an error variant if something goes wrong
 /// if the subset is empty, the result is an Ok variant with an empty vector.
 /// if the full set contains duplicates, the index for the first element is used for the index mapping
-pub fn create_index_mapping<T1, T2>(
-    full: &[T1],
-    subset: &[T2],
-) -> Result<Vec<usize>, Error>
+pub fn create_index_mapping<T1, T2>(full: &[T1], subset: &[T2]) -> Result<Vec<usize>, ModelError>
 where
     T1: Clone + PartialEq + PartialEq<T2>,
-    T2: Clone + PartialEq  ,
+    T2: Clone + PartialEq + Into<String>,
 {
     let indices = subset.iter().map(|value_subset| {
         full.iter()
             .position(|value_full| value_full == value_subset)
-            .ok_or(Error::FunctionParameterNotInModel)
+            .ok_or_else(|| {
+                ModelError::FunctionParameterNotInModel {
+                    function_parameter : value_subset.clone().into()
+                }
+            })
     });
     // see https://stackoverflow.com/questions/26368288/how-do-i-stop-iteration-and-return-an-error-when-iteratormap-returns-a-result
     // the FromIterator trait of Result allows us to go from Vec<Result<A,B>> to Result<Vec<A>,B>
@@ -65,7 +70,7 @@ where
 /// # Arguments
 /// todo document
 #[allow(clippy::type_complexity)]
-pub fn create_wrapper_function<ScalarType, NData, F, StrType,StrType2>(
+pub fn create_wrapper_function<ScalarType, NData, F, StrType, StrType2>(
     model_parameters: &[StrType],
     function_parameters: &[StrType2],
     function: F,
@@ -76,7 +81,7 @@ pub fn create_wrapper_function<ScalarType, NData, F, StrType,StrType2>(
             &OwnedVector<ScalarType, Dynamic>,
         ) -> OwnedVector<ScalarType, NData>,
     >,
-    Error,
+    ModelError,
 >
 where
     ScalarType: Scalar,
@@ -91,13 +96,8 @@ where
         ) -> OwnedVector<ScalarType, NData>
         + 'static,
 {
-    if function_parameters.is_empty() {
-        return Err(Error::EmptyParameters);
-    }
-
-    if !has_only_unique_elements(function_parameters) {
-        return Err(Error::DuplicateParameterNames);
-    }
+    check_parameter_names(&model_parameters)?;
+    check_parameter_names(&function_parameters)?;
 
     let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
 
@@ -170,9 +170,11 @@ mod test {
     }
 
     // dummy function that just returns the given x
-    fn dummy_unit_function_for_x(x: &OwnedVector<f64,Dynamic>, _params: &OwnedVector<f64,Dynamic>) -> OwnedVector<f64,Dynamic>
-    {
-        OwnedVector::<f64,Dynamic>::clone(x)
+    fn dummy_unit_function_for_x(
+        x: &OwnedVector<f64, Dynamic>,
+        _params: &OwnedVector<f64, Dynamic>,
+    ) -> OwnedVector<f64, Dynamic> {
+        OwnedVector::<f64, Dynamic>::clone(x)
     }
 
     #[test]
@@ -183,12 +185,21 @@ mod test {
             .unwrap();
 
         assert!(
-            create_wrapper_function(model.parameters(), &Vec::<String>::new(), dummy_unit_function_for_x)
-                .is_err(),
+            create_wrapper_function(
+                model.parameters(),
+                &Vec::<String>::new(),
+                dummy_unit_function_for_x
+            )
+            .is_err(),
             "creating wrapper function with empty parameter list should report error"
         );
         assert!(
-            create_wrapper_function(model.parameters(), &["a", "b", "a"], dummy_unit_function_for_x).is_err(),
+            create_wrapper_function(
+                model.parameters(),
+                &["a", "b", "a"],
+                dummy_unit_function_for_x
+            )
+            .is_err(),
             "creating wrapper function with duplicates in function params should report error"
         );
     }
@@ -242,9 +253,12 @@ mod test {
         );
 
         // check that the wrapped function passes just passes the x location parameters
-        let wrapped_function_x =
-            create_wrapper_function(model.parameters(), &function_parameters, dummy_unit_function_for_x)
-                .unwrap();
+        let wrapped_function_x = create_wrapper_function(
+            model.parameters(),
+            &function_parameters,
+            dummy_unit_function_for_x,
+        )
+        .unwrap();
         assert_eq!(
             wrapped_function_x(&x, &params),
             x,
