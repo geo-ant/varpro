@@ -1,15 +1,15 @@
 use nalgebra::base::{Dim, Scalar};
 use nalgebra::Dynamic;
 
-use crate::model::BaseFuncType;
-use crate::model::SeparableModel;
-use std::collections::HashMap;
+
+
+
 
 use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapper_function};
 use crate::model::errors::ModelError;
 use crate::model::modelfunction::ModelFunction;
 use crate::model::OwnedVector;
-use std::hash::Hash;
+
 
 /// The modelfunction builder allows to create model functions that depend on
 /// a subset or the whole model parameters. Functions that depend on model parameters
@@ -64,10 +64,7 @@ where
                 model_function_result: Err(err),
                 model_parameters,
                 function_parameters: function_parameters
-                    .iter()
-                    .cloned()
-                    .map(|s| s.into())
-                    .collect(),
+                    .to_vec(),
             };
         }
 
@@ -83,10 +80,7 @@ where
             model_function_result,
             model_parameters,
             function_parameters: function_parameters
-                .iter()
-                .cloned()
-                .map(|s| s.into())
-                .collect(),
+                .to_vec(),
         }
     }
 
@@ -171,7 +165,7 @@ where
                 )?;
                 // now make sure that the derivatives are provided for all indices of that mapping
                 for (index, parameter) in index_mapping.iter().zip(self.function_parameters.iter()) {
-                    if(!modelfunction.derivatives.contains_key(index)) {
+                    if !modelfunction.derivatives.contains_key(index) {
                         return Err(ModelError::MissingDerivative {
                             missing_parameter: parameter.clone(),
                             function_parameters: self.function_parameters.clone(),
@@ -197,7 +191,7 @@ where
 mod test {
     use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
     use crate::model::OwnedVector;
-    use nalgebra::{Dim, Dynamic, Scalar};
+    use nalgebra::{Dim, Dynamic};
 
     /// a function that calculates exp( (t-t0)/tau)) for every location t
     fn exponential_decay<NData>(
@@ -249,7 +243,7 @@ mod test {
             "bar".to_string(),
             "tau".to_string(),
         ];
-        let mfb = ModelFunctionBuilder::<f64, Dynamic>::new(
+        let _mfb = ModelFunctionBuilder::<f64, Dynamic>::new(
             model_parameters,
             ["t0".to_string(), "tau".to_string()].as_ref(),
             |t, params| exponential_decay(t, params[0], params[1]),

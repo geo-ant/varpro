@@ -77,7 +77,7 @@ where
             }
         } else {
             let parameter_names = parameter_names
-                .into_iter()
+                .iter()
                 .map(|name| name.clone().into())
                 .collect();
             let model_result = Ok(SeparableModel {
@@ -104,8 +104,8 @@ where
     //todo document
     pub fn push_function<F, StrType>(
         self,
-        function_params: &[StrType],
-        function: F,
+        _function_params: &[StrType],
+        _function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
     where
         F: Fn(
@@ -146,7 +146,7 @@ where
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    pub fn new<F>(previous: SeparableModelBuilder<ScalarType, NData>, function: F) -> Self
+    pub fn new<F>(_previous: SeparableModelBuilder<ScalarType, NData>, _function: F) -> Self
     where
         F: Fn(
                 &OwnedVector<ScalarType, NData>,
