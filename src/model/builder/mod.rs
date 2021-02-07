@@ -126,7 +126,11 @@ where
 
     //todo document
     pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, ModelError> {
-        self.model_result
+        //TODO: add a check for completeness function that checks
+        // 1. that the model has at least one modelfunction
+        // 2. each modelparameter has at least one modelfunction that depends on it
+        todo!()
+        //self.model_result
     }
 }
 

@@ -180,13 +180,10 @@ mod test {
     #[test]
     fn test_create_wrapped_function_gives_error_for_empty_function_parameters_or_duplicate_elements(
     ) {
-        let model = SeparableModelBuilder::<f32, Dynamic>::with_parameters(&["a", "b", "c"])
-            .build()
-            .unwrap();
-
+        let model_parameters = vec!["a".to_string(), "b".to_string(), "c".to_string()];
         assert!(
             create_wrapper_function(
-                model.parameters(),
+                &model_parameters,
                 &Vec::<String>::new(),
                 dummy_unit_function_for_x
             )
@@ -195,7 +192,7 @@ mod test {
         );
         assert!(
             create_wrapper_function(
-                model.parameters(),
+                &model_parameters,
                 &["a", "b", "a"],
                 dummy_unit_function_for_x
             )
@@ -219,9 +216,6 @@ mod test {
     #[test]
     fn test_create_wrapped_function_distributes_arguments_correctly() {
         let model_parameters = vec!["a", "b", "c", "d"];
-        let model = SeparableModelBuilder::<f64, Dynamic>::with_parameters(&model_parameters)
-            .build()
-            .unwrap();
         let function_parameters = vec!["c", "a"];
         let x = OwnedVector::<f64, Dynamic>::from(vec![1., 3., 3., 7.]);
         let params = OwnedVector::<f64, Dynamic>::from(vec![1., 2., 3., 4.]);
@@ -241,7 +235,7 @@ mod test {
         // check that the wrapped function indeed redistributes the parameters expected
         let expected_out_params = OwnedVector::<f64, Dynamic>::from(vec![3., 1.]);
         let wrapped_function_params = create_wrapper_function(
-            &model.parameter_names,
+            &model_parameters,
             &function_parameters,
             dummy_unit_function_for_parameters,
         )
@@ -254,7 +248,7 @@ mod test {
 
         // check that the wrapped function passes just passes the x location parameters
         let wrapped_function_x = create_wrapper_function(
-            model.parameters(),
+            &model_parameters,
             &function_parameters,
             dummy_unit_function_for_x,
         )

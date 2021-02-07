@@ -1,15 +1,10 @@
 use nalgebra::base::{Dim, Scalar};
 use nalgebra::Dynamic;
 
-
-
-
-
 use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapper_function};
 use crate::model::errors::ModelError;
 use crate::model::modelfunction::ModelFunction;
 use crate::model::OwnedVector;
-
 
 /// The modelfunction builder allows to create model functions that depend on
 /// a subset or the whole model parameters. Functions that depend on model parameters
@@ -63,8 +58,7 @@ where
             return Self {
                 model_function_result: Err(err),
                 model_parameters,
-                function_parameters: function_parameters
-                    .to_vec(),
+                function_parameters: function_parameters.to_vec(),
             };
         }
 
@@ -79,8 +73,7 @@ where
         Self {
             model_function_result,
             model_parameters,
-            function_parameters: function_parameters
-                .to_vec(),
+            function_parameters: function_parameters.to_vec(),
         }
     }
 
@@ -100,9 +93,9 @@ where
     {
         //check to see if parameter is in list
         if let Some(deriv_index) = self
-            .function_parameters
+            .model_parameters
             .iter()
-            .position(|function_param| function_param == parameter)
+            .position(|model_param| model_param == parameter)
         {
             if let Ok(model_function) = self.model_function_result.as_mut() {
                 match create_wrapper_function(
@@ -164,12 +157,13 @@ where
                     self.function_parameters.as_slice(),
                 )?;
                 // now make sure that the derivatives are provided for all indices of that mapping
-                for (index, parameter) in index_mapping.iter().zip(self.function_parameters.iter()) {
+                for (index, parameter) in index_mapping.iter().zip(self.function_parameters.iter())
+                {
                     if !modelfunction.derivatives.contains_key(index) {
                         return Err(ModelError::MissingDerivative {
                             missing_parameter: parameter.clone(),
                             function_parameters: self.function_parameters.clone(),
-                        })
+                        });
                     }
                 }
                 // this is a sanity check. if this came this far, there should not be an error here
@@ -236,19 +230,35 @@ mod test {
     }
 
     #[test]
-    fn test_modelfunction_builder() {
+    // check that the modelfunction builder assigns the function and derivatives correctly
+    // and that they can be called using the model parameters and produce the correct results
+    fn modelfunction_builder_creates_correct_modelfunction_with_valid_parameters() {
         let model_parameters = vec![
             "foo".to_string(),
             "t0".to_string(),
             "bar".to_string(),
             "tau".to_string(),
         ];
-        let _mfb = ModelFunctionBuilder::<f64, Dynamic>::new(
+        let mf = ModelFunctionBuilder::<f64,Dynamic>::new(
             model_parameters,
             ["t0".to_string(), "tau".to_string()].as_ref(),
             |t, params| exponential_decay(t, params[0], params[1]),
-        );
+        )
+        .partial_deriv("t0", |t, params| {
+            exponential_decay_dt0(t, params[0], params[1])
+        })
+        .partial_deriv("tau", |t, params| {
+            exponential_decay_dtau(t, params[0], params[1])
+        })
+        .build()
+        .expect("Modelfunction builder with valid parameters should not return an error");
 
-        todo!("Test the function builder!");
+        let t0 = 2.;
+        let tau = 1.5;
+        let model_params = OwnedVector::<f64,Dynamic>::from(vec!{-2.,t0,-1.,tau});
+        let t = OwnedVector::<f64,Dynamic>::from(vec!{0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.});
+        assert_eq!( (mf.function)(&t,&model_params),exponential_decay(&t,t0,tau),"Function must produce correct results");
+        assert_eq!( (mf.derivatives.get(&1).expect("Derivative for t0 must be in set"))(&t,&model_params),exponential_decay_dt0(&t,t0,tau),"Derivative for t0 must produce correct results");
+        assert_eq!( (mf.derivatives.get(&3).expect("Derivative for tau must be in set"))(&t,&model_params),exponential_decay_dtau(&t,t0,tau),"Derivative for tau must produce correct results");
     }
 }
