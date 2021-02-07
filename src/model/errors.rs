@@ -19,7 +19,7 @@ pub enum ModelError {
     },
 
     #[snafu(display(
-        "Parameter '{}' for derivative does not exist in parameter list '{:?}'.",
+        "Parameter '{}' given for partial derivative does not exist in parameter list '{:?}'.",
         parameter,
         function_parameters
     ))]

@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod test;
+
 use nalgebra::base::{Dim, Scalar};
 use nalgebra::Dynamic;
 
@@ -10,10 +13,10 @@ use crate::model::OwnedVector;
 /// a subset or the whole model parameters. Functions that depend on model parameters
 /// need to have partial derivatives provided for each parameter they depend on.
 pub struct ModelFunctionBuilder<ScalarType, NData>
-where
-    ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+    where
+        ScalarType: Scalar,
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// the model parameters for the model this function belongs to
     model_parameters: Vec<String>,
@@ -24,10 +27,10 @@ where
 }
 
 impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
-where
-    ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+    where
+        ScalarType: Scalar,
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// begin constructing a modelfunction for a specific model. The modelfunction must take
     /// a subset of the model parameters. This is the first step in creating a function, because
@@ -45,8 +48,8 @@ where
         function_parameters: &[String],
         function: FuncType,
     ) -> Self
-    where
-        FuncType: Fn(
+        where
+            FuncType: Fn(
                 &OwnedVector<ScalarType, NData>,
                 &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
@@ -84,18 +87,22 @@ where
     /// * `derivative`: the partial derivative of the function with which the
     /// builder was created.
     pub fn partial_deriv<FuncType>(mut self, parameter: &str, derivative: FuncType) -> Self
-    where
-        FuncType: Fn(
+        where
+            FuncType: Fn(
                 &OwnedVector<ScalarType, NData>,
                 &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
             + 'static,
     {
-        //check to see if parameter is in list
-        if let Some(deriv_index) = self
+        //this makes sure that the index of the derivative is calculated with respect to the
+        //model parameter list while also making sure that the given derivative exists in the function
+        //parameters
+        if let Some((deriv_index_in_model, _)) = self
             .model_parameters
             .iter()
-            .position(|model_param| model_param == parameter)
+            .enumerate()
+            .filter(|(_idx, model_param)| self.function_parameters.contains(model_param))
+            .find(|(_idx, model_param)| model_param == &parameter)
         {
             if let Ok(model_function) = self.model_function_result.as_mut() {
                 match create_wrapper_function(
@@ -107,7 +114,7 @@ where
                         // push derivative and check that the derivative was not already in the set
                         if model_function
                             .derivatives
-                            .insert(deriv_index, deriv)
+                            .insert(deriv_index_in_model, deriv)
                             .is_some()
                         {
                             self.model_function_result = Err(ModelError::DuplicateDerivative {
@@ -137,7 +144,9 @@ where
     /// A modelfunction containing the given function and derivatives or an error
     /// variant if an error occurred during the building process
     pub fn build(self) -> Result<ModelFunction<ScalarType, NData>, ModelError> {
-        self.check_completion()?;
+        if self.model_function_result.is_ok() {
+            self.check_completion()?;
+        }
         self.model_function_result
     }
 
@@ -181,142 +190,3 @@ where
     }
 }
 
-#[cfg(test)]
-mod test {
-    use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
-    use crate::model::OwnedVector;
-    use nalgebra::{Dim, Dynamic};
-    use crate::model::errors::ModelError;
-
-    /// a function that calculates exp( (t-t0)/tau)) for every location t
-    fn exponential_decay<NData>(
-        tvec: &OwnedVector<f64, NData>,
-        t0: f64,
-        tau: f64,
-    ) -> OwnedVector<f64, NData>
-    where
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, NData>, //see https://github.com/dimforge/nalgebra/issues/580 {
-    {
-        assert!(tau > 0f64, "Parameter tau must be greater than zero");
-        tvec.map(|t| ((t - t0) / tau).exp())
-    }
-
-    /// partial derivative of the exponential decay with respect to t0
-    fn exponential_decay_dt0<NData>(
-        tvec: &OwnedVector<f64, NData>,
-        t0: f64,
-        tau: f64,
-    ) -> OwnedVector<f64, NData>
-    where
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, NData>, //see https://github.com/dimforge/nalgebra/issues/580 {
-    {
-        assert!(tau > 0f64, "Parameter tau must be greater than zero");
-        exponential_decay(tvec, t0, tau).map(|val| val / tau)
-    }
-
-    /// partial derivative of the exponential decay with respect to tau
-    fn exponential_decay_dtau<NData>(
-        tvec: &OwnedVector<f64, NData>,
-        t0: f64,
-        tau: f64,
-    ) -> OwnedVector<f64, NData>
-    where
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, NData>, //see https://github.com/dimforge/nalgebra/issues/580 {
-    {
-        assert!(tau > 0f64, "Parameter tau must be greater than zero");
-        tvec.map(|t| ((t - t0) / tau).exp() * (t0 - t) / tau.powi(2))
-    }
-
-    #[test]
-    // check that the modelfunction builder assigns the function and derivatives correctly
-    // and that they can be called using the model parameters and produce the correct results
-    fn modelfunction_builder_creates_correct_modelfunction_with_valid_parameters() {
-        let model_parameters = vec![
-            "foo".to_string(),
-            "t0".to_string(),
-            "bar".to_string(),
-            "tau".to_string(),
-        ];
-        let mf = ModelFunctionBuilder::<f64,Dynamic>::new(
-            model_parameters,
-            ["t0".to_string(), "tau".to_string()].as_ref(),
-            |t, params| exponential_decay(t, params[0], params[1]),
-        )
-        .partial_deriv("t0", |t, params| {
-            exponential_decay_dt0(t, params[0], params[1])
-        })
-        .partial_deriv("tau", |t, params| {
-            exponential_decay_dtau(t, params[0], params[1])
-        })
-        .build()
-        .expect("Modelfunction builder with valid parameters should not return an error");
-
-        let t0 = 2.;
-        let tau = 1.5;
-        let model_params = OwnedVector::<f64,Dynamic>::from(vec!{-2.,t0,-1.,tau});
-        let t = OwnedVector::<f64,Dynamic>::from(vec!{0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.});
-        assert_eq!( (mf.function)(&t,&model_params),exponential_decay(&t,t0,tau),"Function must produce correct results");
-        assert_eq!( (mf.derivatives.get(&1).expect("Derivative for t0 must be in set"))(&t,&model_params),exponential_decay_dt0(&t,t0,tau),"Derivative for t0 must produce correct results");
-        assert_eq!( (mf.derivatives.get(&3).expect("Derivative for tau must be in set"))(&t,&model_params),exponential_decay_dtau(&t,t0,tau),"Derivative for tau must produce correct results");
-    }
-
-    #[test]
-    // test that the modelfunction builder fails with invalid model paramters, i.e
-    // when the model parameters contain duplicates or are empty
-    fn modelfunction_builder_fails_with_invalid_model_parameters() {
-        let model_parameters = vec![
-            "foo".to_string(),
-            "t0".to_string(),
-            "foo".to_string(),
-            "tau".to_string(),
-        ];
-        let result = ModelFunctionBuilder::<f64,Dynamic>::new(
-            model_parameters.clone(),
-            ["t0".to_string(), "tau".to_string()].as_ref(),
-            |t, params| exponential_decay(t, params[0], params[1]),
-        ).build();
-
-        // the derivatives are also incomplete, but this should be the first recorded error
-        assert!(matches!(result,Err(ModelError::DuplicateParameterNames{..})), "Modelfunction builder must indicate duplicate parameters!");
-
-        let result = ModelFunctionBuilder::<f64,Dynamic>::new(
-            Vec::<String>::default(),
-            ["t0".to_string(), "tau".to_string()].as_ref(),
-            |t, params| exponential_decay(t, params[0], params[1]),
-        ).build();
-
-        assert!(matches!(result,Err(ModelError::EmptyParameters)), "Builder must indicate error when model parameters are emtpy");
-    }
-
-    #[test]
-    // test that the modelfunction builder fails with invalid model paramters, i.e
-    // when the model parameters contain duplicates or are empty
-    fn modelfunction_builder_fails_with_invalid_function_parameters() {
-        let model_parameters = vec![
-            "foo".to_string(),
-            "t0".to_string(),
-            "bar".to_string(),
-            "tau".to_string(),
-        ];
-        let result = ModelFunctionBuilder::<f64, Dynamic>::new(
-            model_parameters.clone(),
-            ["tau".to_string(), "tau".to_string()].as_ref(),
-            |t, params| exponential_decay(t, params[0], params[1]),
-        ).build();
-
-        // the derivatives are also incomplete, but this should be the first recorded error
-        assert!(matches!(result,Err(ModelError::DuplicateParameterNames{..})), "Modelfunction builder must indicate duplicate parameters!");
-
-        let result = ModelFunctionBuilder::<f64, Dynamic>::new(
-            Vec::<String>::default(),
-            Vec::<String>::default().as_ref(),
-            |t, params| exponential_decay(t, params[0], params[1]),
-        ).build();
-
-        assert!(matches!(result,Err(ModelError::EmptyParameters)), "Builder must indicate error when function parameters are emtpy");
-    }
-
-}
