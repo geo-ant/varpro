@@ -186,6 +186,7 @@ mod test {
     use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
     use crate::model::OwnedVector;
     use nalgebra::{Dim, Dynamic};
+    use crate::model::errors::ModelError;
 
     /// a function that calculates exp( (t-t0)/tau)) for every location t
     fn exponential_decay<NData>(
@@ -261,4 +262,61 @@ mod test {
         assert_eq!( (mf.derivatives.get(&1).expect("Derivative for t0 must be in set"))(&t,&model_params),exponential_decay_dt0(&t,t0,tau),"Derivative for t0 must produce correct results");
         assert_eq!( (mf.derivatives.get(&3).expect("Derivative for tau must be in set"))(&t,&model_params),exponential_decay_dtau(&t,t0,tau),"Derivative for tau must produce correct results");
     }
+
+    #[test]
+    // test that the modelfunction builder fails with invalid model paramters, i.e
+    // when the model parameters contain duplicates or are empty
+    fn modelfunction_builder_fails_with_invalid_model_parameters() {
+        let model_parameters = vec![
+            "foo".to_string(),
+            "t0".to_string(),
+            "foo".to_string(),
+            "tau".to_string(),
+        ];
+        let result = ModelFunctionBuilder::<f64,Dynamic>::new(
+            model_parameters.clone(),
+            ["t0".to_string(), "tau".to_string()].as_ref(),
+            |t, params| exponential_decay(t, params[0], params[1]),
+        ).build();
+
+        // the derivatives are also incomplete, but this should be the first recorded error
+        assert!(matches!(result,Err(ModelError::DuplicateParameterNames{..})), "Modelfunction builder must indicate duplicate parameters!");
+
+        let result = ModelFunctionBuilder::<f64,Dynamic>::new(
+            Vec::<String>::default(),
+            ["t0".to_string(), "tau".to_string()].as_ref(),
+            |t, params| exponential_decay(t, params[0], params[1]),
+        ).build();
+
+        assert!(matches!(result,Err(ModelError::EmptyParameters)), "Builder must indicate error when model parameters are emtpy");
+    }
+
+    #[test]
+    // test that the modelfunction builder fails with invalid model paramters, i.e
+    // when the model parameters contain duplicates or are empty
+    fn modelfunction_builder_fails_with_invalid_function_parameters() {
+        let model_parameters = vec![
+            "foo".to_string(),
+            "t0".to_string(),
+            "bar".to_string(),
+            "tau".to_string(),
+        ];
+        let result = ModelFunctionBuilder::<f64, Dynamic>::new(
+            model_parameters.clone(),
+            ["tau".to_string(), "tau".to_string()].as_ref(),
+            |t, params| exponential_decay(t, params[0], params[1]),
+        ).build();
+
+        // the derivatives are also incomplete, but this should be the first recorded error
+        assert!(matches!(result,Err(ModelError::DuplicateParameterNames{..})), "Modelfunction builder must indicate duplicate parameters!");
+
+        let result = ModelFunctionBuilder::<f64, Dynamic>::new(
+            Vec::<String>::default(),
+            Vec::<String>::default().as_ref(),
+            |t, params| exponential_decay(t, params[0], params[1]),
+        ).build();
+
+        assert!(matches!(result,Err(ModelError::EmptyParameters)), "Builder must indicate error when function parameters are emtpy");
+    }
+
 }
