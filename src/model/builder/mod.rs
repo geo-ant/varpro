@@ -37,6 +37,21 @@ where
     }
 }
 
+impl<ScalarType, NData> From<ModelError>
+for SeparableModelBuilder<ScalarType, NData>
+    where
+        ScalarType: Scalar,
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+{
+    fn from(err: ModelError) -> Self {
+        Self {
+            model_result: Err(err),
+        }
+    }
+}
+
+
 impl<ScalarType, NData> SeparableModelBuilder<ScalarType, NData>
 where
     ScalarType: Scalar,
@@ -139,6 +154,20 @@ where
     current_result: Result<ModelAndFunctionBuilder<ScalarType, NData>, ModelError>,
 }
 
+impl<ScalarType,NData> From<ModelError> for SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+    where
+        ScalarType: Scalar,
+        NData: Dim,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+{
+    fn from(err: ModelError) -> Self {
+        Self {
+            current_result: Err(err)
+        }
+    }
+}
+
+
 impl<ScalarType, NData> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
 where
     ScalarType: Scalar,
@@ -190,9 +219,62 @@ where
                     builder: result.builder.partial_deriv(parameter.as_ref(), derivative),
                 }),
             },
-            Err(err) => Self {
-                current_result: Err(err),
-            },
+            Err(err) => Self::from(err),
         }
     }
+
+    //todo document
+    pub fn push_invariant_function<F>(self, function: F) -> SeparableModelBuilder<ScalarType,NData>
+        where
+            F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
+    {
+        match self.current_result {
+            Ok(result) => {
+                let ModelAndFunctionBuilder {
+                    mut model  ,
+                    builder,
+                } = result;
+                if let Err(err) =  builder.build().map(|func|{model.modelfunctions.push(func)}) {
+                    SeparableModelBuilder::from(err)
+                } else {
+                    SeparableModelBuilder::from(model).push_invariant_function(function)
+                }
+            }
+            Err(err) => {
+                SeparableModelBuilder::from(err)
+            }
+        }
+    }
+
+    //todo document
+    pub fn push_function<F>(self, function_params : &[String], function: F) -> SeparableModelBuilderProxyWithDerivatives<ScalarType,NData>
+        where
+            F: Fn(&OwnedVector<ScalarType, NData>,&OwnedVector<ScalarType,Dynamic>) -> OwnedVector<ScalarType, NData> + 'static,
+    {
+        match self.current_result {
+            Ok(result) => {
+                let ModelAndFunctionBuilder {
+                    mut model  ,
+                    builder,
+                } = result;
+                if let Err(err) =  builder.build().map(|func|{model.modelfunctions.push(func)}) {
+                    SeparableModelBuilderProxyWithDerivatives::from(err)
+                } else {
+                    SeparableModelBuilderProxyWithDerivatives::new(Ok(model), function_params, function)
+                }
+            }
+            Err(err) => {
+                SeparableModelBuilderProxyWithDerivatives::from(err)
+            }
+        }
+    }
+
+    //todo document
+    pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, ModelError> {
+        // TODO implement this by converting this into a separable model and then using the
+        // build method on it to avoid code duplication when checking for completeness
+
+        todo!()
+    }
+
 }
