@@ -13,10 +13,10 @@ use crate::model::OwnedVector;
 /// a subset or the whole model parameters. Functions that depend on model parameters
 /// need to have partial derivatives provided for each parameter they depend on.
 pub struct ModelFunctionBuilder<ScalarType, NData>
-    where
-        ScalarType: Scalar,
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// the model parameters for the model this function belongs to
     model_parameters: Vec<String>,
@@ -27,17 +27,17 @@ pub struct ModelFunctionBuilder<ScalarType, NData>
 }
 
 impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
-    where
-        ScalarType: Scalar,
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// begin constructing a modelfunction for a specific model. The modelfunction must take
     /// a subset of the model parameters. This is the first step in creating a function, because
     /// the modelfunction must have partial derivatives specified for each parameter it takes.
     /// # Arguments
-    /// * `model`: the model for which this function should be generated. This is important
-    /// so the builder understands how the parameters of the function relate to the parameters of the model
+    /// * `model_parameters`: the model parameters of the model to which this function belongs. This is important
+    /// so the builder understands how the parameters of the function relate to the parameters of the model.
     /// * `function_parameters`: the parameters that the function takes. Those must be in the order
     /// of the parameter vector. The paramters must not be empty, nor may they contain duplicates
     /// * `function`: the actual function.
@@ -48,8 +48,8 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
         function_parameters: &[String],
         function: FuncType,
     ) -> Self
-        where
-            FuncType: Fn(
+    where
+        FuncType: Fn(
                 &OwnedVector<ScalarType, NData>,
                 &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
@@ -87,8 +87,8 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
     /// * `derivative`: the partial derivative of the function with which the
     /// builder was created.
     pub fn partial_deriv<FuncType>(mut self, parameter: &str, derivative: FuncType) -> Self
-        where
-            FuncType: Fn(
+    where
+        FuncType: Fn(
                 &OwnedVector<ScalarType, NData>,
                 &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
@@ -144,16 +144,14 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
     /// A modelfunction containing the given function and derivatives or an error
     /// variant if an error occurred during the building process
     pub fn build(self) -> Result<ModelFunction<ScalarType, NData>, ModelError> {
-        if self.model_function_result.is_ok() {
-            self.check_completion()?;
-        }
+        self.check_completion()?;
         self.model_function_result
     }
 
     /// If the modelfunction builder is carrying an Error result, this function returns Ok(()).
     /// If it carries an ok variant, then this function checks that the modelfunction
     /// has all necessary derivatives provided and if so returns Ok(()), otherwise it returns
-    /// an error indicating that there are missing derivatives
+    /// an error indicating that there are missing derivatives.
     fn check_completion(&self) -> Result<(), ModelError> {
         match self.model_function_result.as_ref() {
             Ok(modelfunction) => {
@@ -189,4 +187,3 @@ impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
         }
     }
 }
-

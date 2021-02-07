@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use nalgebra::{Dim, Scalar};
+use nalgebra::{Dim, Dynamic, Scalar};
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
 use crate::model::detail::check_parameter_names;
@@ -11,28 +11,6 @@ use crate::model::{OwnedVector, SeparableModel};
 mod modelfunction_builder;
 #[cfg(test)]
 mod test;
-
-/// Helper trait that provides common **unchecked** implementations to push
-/// functions and derivatives to a Result<SeparableModel, ModelBuilderError> that is internally carried.
-/// It mimics inheritance by providing access to the underlying result types with the two methods
-/// `current_model_result` and `current_model_result_mut`. The other functions allow pushing
-/// fnuctions and derivatives. The functions to push functions and derivatives take care of wrapping
-/// the given functions with the correct parameters BUT they do not check if it is allowed at this
-/// stage of the building process to perform the operation. The callers have to make sure it is
-/// indeed valid and leaves the invariants of the model building process intact.
-trait ModelBuilder<ScalarType, NData>
-where
-    ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>,
-{
-    /// expose the internal model result as mutable
-    fn current_model_result_mut(
-        &mut self,
-    ) -> Result<&mut SeparableModel<ScalarType, NData>, &mut ModelError>;
-
-    //TODO implement unchecked methods here
-}
 
 // //todo document
 pub struct SeparableModelBuilder<ScalarType, NData>
@@ -102,26 +80,19 @@ where
     }
 
     //todo document
-    pub fn push_function<F, StrType>(
+    pub fn push_function<F>(
         self,
-        _function_params: &[StrType],
-        _function: F,
+        function_params: &[String],
+        function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
     where
         F: Fn(
                 &OwnedVector<ScalarType, NData>,
-                &OwnedVector<ScalarType, NData>,
+                &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
             + 'static,
-        StrType: Into<String> + Clone,
     {
-        // use some common function here that can also be used from the push function in the model builder with derivatives
-        // make some common function that wraps the modelfunction into a lambda that distributes the model params to the funciton
-        // params. This can then be used for the other functions.
-        //
-        // IDEA: when pushing derivatives(in the other builder) we can always track if the last() element of the vector
-        // has the derivatives it needs and such
-        unimplemented!()
+        SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
 
     //todo document
@@ -133,6 +104,31 @@ where
         //self.model_result
     }
 }
+// helper struct that contains a seperable model as well as a model function builder
+// used inside the SeparableModelBuilderProxyWithDerivatives.
+struct ModelAndFunctionBuilder<ScalarType, NData>
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+{
+    model: SeparableModel<ScalarType, NData>,
+    builder: ModelFunctionBuilder<ScalarType, NData>,
+}
+
+impl<ScalarType, NData> ModelAndFunctionBuilder<ScalarType, NData>
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+{
+    pub fn new(
+        model: SeparableModel<ScalarType, NData>,
+        builder: ModelFunctionBuilder<ScalarType, NData>,
+    ) -> Self {
+        Self { model, builder }
+    }
+}
 
 pub struct SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
 where
@@ -140,8 +136,7 @@ where
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    model_result: Result<SeparableModel<ScalarType, NData>, ModelError>,
-    current_function_builder: Option<ModelFunctionBuilder<ScalarType, NData>>,
+    current_result: Result<ModelAndFunctionBuilder<ScalarType, NData>, ModelError>,
 }
 
 impl<ScalarType, NData> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
@@ -150,14 +145,54 @@ where
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    pub fn new<F>(_previous: SeparableModelBuilder<ScalarType, NData>, _function: F) -> Self
+    //todo document
+    pub(self) fn new<F>(
+        model_result: Result<SeparableModel<ScalarType, NData>, ModelError>,
+        function_parameters: &[String],
+        function: F,
+    ) -> Self
     where
         F: Fn(
                 &OwnedVector<ScalarType, NData>,
-                &OwnedVector<ScalarType, NData>,
+                &OwnedVector<ScalarType, Dynamic>,
             ) -> OwnedVector<ScalarType, NData>
             + 'static,
     {
-        todo!()
+        match model_result {
+            Ok(model) => {
+                let model_parameters = model.parameters().clone();
+                Self {
+                    current_result: Ok(ModelAndFunctionBuilder::new(
+                        model,
+                        ModelFunctionBuilder::new(model_parameters, function_parameters, function),
+                    )),
+                }
+            }
+            Err(err) => Self {
+                current_result: Err(err),
+            },
+        }
+    }
+
+    //todo document
+    pub fn partial_deriv<StrType: AsRef<str>, F>(self, parameter: StrType, derivative: F) -> Self
+    where
+        F: Fn(
+                &OwnedVector<ScalarType, NData>,
+                &OwnedVector<ScalarType, Dynamic>,
+            ) -> OwnedVector<ScalarType, NData>
+            + 'static,
+    {
+        match self.current_result {
+            Ok(result) => Self {
+                current_result: Ok(ModelAndFunctionBuilder {
+                    model: result.model,
+                    builder: result.builder.partial_deriv(parameter.as_ref(), derivative),
+                }),
+            },
+            Err(err) => Self {
+                current_result: Err(err),
+            },
+        }
     }
 }

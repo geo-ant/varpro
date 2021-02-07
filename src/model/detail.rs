@@ -118,7 +118,6 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::model::builder::SeparableModelBuilder;
 
     #[test]
     fn test_has_only_unique_elements() {

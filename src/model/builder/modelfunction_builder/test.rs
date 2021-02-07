@@ -211,6 +211,7 @@ fn modelfunction_builder_fails_when_invalid_derivatives_are_given() {
 }
 
 // check that the modelfunction builder fails when duplicate derivatives are given
+#[test]
 fn modelfunction_builder_fails_when_duplicate_derivatives_are_given() {
     let model_parameters = vec![
         "foo".to_string(),
