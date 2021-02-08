@@ -37,6 +37,14 @@ pub enum ModelError {
         function_parameters : Vec<String>,
     },
 
+    #[snafu(display("Tried to construct model with no functions. A model must contain at least one function."))]
+    EmptyModel,
+
+    #[snafu(display("Model depends on parameter '{}', but none of its functions use it. Each model parameter must occur in at least one function.",parameter))]
+    UnusedParameter {
+        parameter : String,
+    },
+
     #[snafu(display("Fatal error: '{}'. This indicates a programming error in the library",message))]
     Fatal {
         message : String

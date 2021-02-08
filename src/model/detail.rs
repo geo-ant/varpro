@@ -19,9 +19,9 @@ where
 
     if !has_only_unique_elements(param_names.iter()) {
         let function_parameters: Vec<String> = param_names.iter().cloned().map(|n| n.into()).collect();
-        return Err(ModelError::DuplicateParameterNames {
+        Err(ModelError::DuplicateParameterNames {
             function_parameters,
-        });
+        })
     } else {
         Ok(())
     }

@@ -106,7 +106,7 @@ fn modelfunction_builder_fails_with_invalid_model_parameters() {
         "tau".to_string(),
     ];
     let result = ModelFunctionBuilder::<f64, Dynamic>::new(
-        model_parameters.clone(),
+        model_parameters,
         ["t0".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
@@ -142,7 +142,7 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
         "tau".to_string(),
     ];
     let result = ModelFunctionBuilder::<f64, Dynamic>::new(
-        model_parameters.clone(),
+        model_parameters,
         ["tau".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )

@@ -9,6 +9,7 @@ use crate::model::modelfunction::ModelFunction;
 use crate::model::{OwnedVector, SeparableModel};
 
 mod modelfunction_builder;
+
 #[cfg(test)]
 mod test;
 
@@ -37,12 +38,11 @@ where
     }
 }
 
-impl<ScalarType, NData> From<ModelError>
-for SeparableModelBuilder<ScalarType, NData>
-    where
-        ScalarType: Scalar,
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+impl<ScalarType, NData> From<ModelError> for SeparableModelBuilder<ScalarType, NData>
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     fn from(err: ModelError) -> Self {
         Self {
@@ -50,7 +50,6 @@ for SeparableModelBuilder<ScalarType, NData>
         }
     }
 }
-
 
 impl<ScalarType, NData> SeparableModelBuilder<ScalarType, NData>
 where
@@ -112,13 +111,43 @@ where
 
     //todo document
     pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, ModelError> {
-        //TODO: add a check for completeness function that checks
-        // 1. that the model has at least one modelfunction
-        // 2. each modelparameter has at least one modelfunction that depends on it
-        todo!()
-        //self.model_result
+        self.model_result.and_then(check_validity)
     }
 }
+
+/// a helper function that checks a model for validity.
+/// # Returns
+/// If the model is valid, then the model is returned as an ok variant, otherwise an error variant
+/// A model is valid, when
+///  * the model has at least one modelfunction, and
+///  * for each model parameter we have at least one function that depends on this
+///    parameter.
+fn check_validity<ScalarType, NData>(
+    model: SeparableModel<ScalarType, NData>,
+) -> Result<SeparableModel<ScalarType, NData>, ModelError>
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+{
+    if model.modelfunctions.is_empty() {
+        Err(ModelError::EmptyModel)
+    }
+    else {
+        // now check that all model parameters are referenced in at least one parameter of one
+        // of the given model functions. We do this by checking the indices of the derivatives
+        // because each model parameter must occur at least once as a key in at least one of the
+        // modelfunctions derivatives
+        for (param_index,parameter_name) in model.parameter_names.iter().enumerate() {
+            if !model.modelfunctions.iter().any(|function|function.derivatives.contains_key(&param_index)) {
+                return Err(ModelError::UnusedParameter {parameter: parameter_name.clone()})
+            }
+        }
+        // otherwise return this model
+        Ok(model)
+    }
+}
+
 // helper struct that contains a seperable model as well as a model function builder
 // used inside the SeparableModelBuilderProxyWithDerivatives.
 struct ModelAndFunctionBuilder<ScalarType, NData>
@@ -154,19 +183,19 @@ where
     current_result: Result<ModelAndFunctionBuilder<ScalarType, NData>, ModelError>,
 }
 
-impl<ScalarType,NData> From<ModelError> for SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
-    where
-        ScalarType: Scalar,
-        NData: Dim,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
+impl<ScalarType, NData> From<ModelError>
+    for SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     fn from(err: ModelError) -> Self {
         Self {
-            current_result: Err(err)
+            current_result: Err(err),
         }
     }
 }
-
 
 impl<ScalarType, NData> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
 where
@@ -224,57 +253,67 @@ where
     }
 
     //todo document
-    pub fn push_invariant_function<F>(self, function: F) -> SeparableModelBuilder<ScalarType,NData>
-        where
-            F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
+    pub fn push_invariant_function<F>(self, function: F) -> SeparableModelBuilder<ScalarType, NData>
+    where
+        F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
     {
         match self.current_result {
             Ok(result) => {
-                let ModelAndFunctionBuilder {
-                    mut model  ,
-                    builder,
-                } = result;
-                if let Err(err) =  builder.build().map(|func|{model.modelfunctions.push(func)}) {
+                let ModelAndFunctionBuilder { mut model, builder } = result;
+                if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
                     SeparableModelBuilder::from(err)
                 } else {
                     SeparableModelBuilder::from(model).push_invariant_function(function)
                 }
             }
-            Err(err) => {
-                SeparableModelBuilder::from(err)
-            }
+            Err(err) => SeparableModelBuilder::from(err),
         }
     }
 
     //todo document
-    pub fn push_function<F>(self, function_params : &[String], function: F) -> SeparableModelBuilderProxyWithDerivatives<ScalarType,NData>
-        where
-            F: Fn(&OwnedVector<ScalarType, NData>,&OwnedVector<ScalarType,Dynamic>) -> OwnedVector<ScalarType, NData> + 'static,
+    pub fn push_function<F>(
+        self,
+        function_params: &[String],
+        function: F,
+    ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+    where
+        F: Fn(
+                &OwnedVector<ScalarType, NData>,
+                &OwnedVector<ScalarType, Dynamic>,
+            ) -> OwnedVector<ScalarType, NData>
+            + 'static,
     {
         match self.current_result {
             Ok(result) => {
-                let ModelAndFunctionBuilder {
-                    mut model  ,
-                    builder,
-                } = result;
-                if let Err(err) =  builder.build().map(|func|{model.modelfunctions.push(func)}) {
+                let ModelAndFunctionBuilder { mut model, builder } = result;
+                if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
                     SeparableModelBuilderProxyWithDerivatives::from(err)
                 } else {
-                    SeparableModelBuilderProxyWithDerivatives::new(Ok(model), function_params, function)
+                    SeparableModelBuilderProxyWithDerivatives::new(
+                        Ok(model),
+                        function_params,
+                        function,
+                    )
                 }
             }
-            Err(err) => {
-                SeparableModelBuilderProxyWithDerivatives::from(err)
-            }
+            Err(err) => SeparableModelBuilderProxyWithDerivatives::from(err),
         }
     }
 
     //todo document
     pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, ModelError> {
-        // TODO implement this by converting this into a separable model and then using the
-        // build method on it to avoid code duplication when checking for completeness
-
-        todo!()
+        // this method converts the internal results into a separable model and uses its
+        // facilities to check for completion and the like
+        match self.current_result {
+            Ok(result) => {
+                let ModelAndFunctionBuilder { mut model, builder } = result;
+                if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
+                    SeparableModelBuilder::from(err).build()
+                } else {
+                    SeparableModelBuilder::from(model).build()
+                }
+            }
+            Err(err) => SeparableModelBuilder::from(err).build(),
+        }
     }
-
 }

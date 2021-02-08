@@ -148,6 +148,7 @@ where
         self.model_function_result
     }
 
+    /// Helper function to check if the function builder carries a complete and valid function
     /// If the modelfunction builder is carrying an Error result, this function returns Ok(()).
     /// If it carries an ok variant, then this function checks that the modelfunction
     /// has all necessary derivatives provided and if so returns Ok(()), otherwise it returns
