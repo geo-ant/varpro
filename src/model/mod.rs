@@ -1,25 +1,28 @@
-use nalgebra::{Dynamic, U1};
-use nalgebra::base::{Dim, Scalar};
-use nalgebra::base::storage::Owned;
-use nalgebra::Vector;
 use crate::model::modelfunction::ModelFunction;
+use nalgebra::base::storage::Owned;
+use nalgebra::base::{Dim, Scalar};
+use nalgebra::Vector;
+use nalgebra::{DimName, Dynamic, Matrix, U1};
 
-
-pub mod errors;
 mod detail;
+pub mod errors;
 
-#[cfg(test)]
-mod test;
 pub mod builder;
 pub mod modelfunction;
+#[cfg(test)]
+mod test;
 
 /// typedef for a vector that owns its data
 pub type OwnedVector<ScalarType, Rows> = Vector<ScalarType, Rows, Owned<ScalarType, Rows, U1>>;
 
 //TODO Document
 //modelfunction f(x,alpha), where x is the independent variable, alpha: (potentially) nonlinear params
-pub type BaseFuncType<ScalarType, NData> = Box<dyn Fn(&OwnedVector<ScalarType, NData>, &OwnedVector<ScalarType, Dynamic>) -> OwnedVector<ScalarType, NData>>;
-
+pub type BaseFuncType<ScalarType, NData> = Box<
+    dyn Fn(
+        &OwnedVector<ScalarType, NData>,
+        &OwnedVector<ScalarType, Dynamic>,
+    ) -> OwnedVector<ScalarType, NData>,
+>;
 
 /// # Separable (Nonlinear) Model
 /// A separable nonlinear model is the linear combination of a set of nonlinear basefunctions.
@@ -31,29 +34,31 @@ pub type BaseFuncType<ScalarType, NData> = Box<dyn Fn(&OwnedVector<ScalarType, N
 /// Fitting a separable nonlinear model consists of finding the best combination of the parameters
 /// for the linear combination of the functions and the nonlinear parameters.
 pub struct SeparableModel<ScalarType, NData>
-    where ScalarType: Scalar,
-          NData: Dim,
-          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>  //see https://github.com/dimforge/nalgebra/issues/580
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// the parameter names of the model. This defines the order in which the
     /// parameters are expected when the methods for evaluating the function
     /// values and the jacobian are called.
     /// The list of parameter contains a nonzero number of names and these names
     /// are unique.
-    pub parameter_names: Vec<String>,
+    parameter_names: Vec<String>,
     /// the set of model. This already contains the model
     /// which are wrapped inside a lambda function so that they can take the
     /// parameter space of the model function set as an argument
-    pub modelfunctions: Vec<ModelFunction<ScalarType, NData>>,
+    modelfunctions: Vec<ModelFunction<ScalarType, NData>>,
 }
 
 impl<ScalarType, NData> SeparableModel<ScalarType, NData>
-    where ScalarType: Scalar,
-          NData: Dim,
-          nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>
+where
+    ScalarType: Scalar,
+    NData: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>,
 {
     /// Get the parameters of the model
-    pub fn parameters(&self) -> &Vec<String>{
+    pub fn parameters(&self) -> &Vec<String> {
         &self.parameter_names
     }
 
@@ -62,12 +67,29 @@ impl<ScalarType, NData> SeparableModel<ScalarType, NData>
         self.parameter_names.len()
     }
 
-    //TODO
-    // make methods to push a function which is dependent on some parameters and also
-    // a method that pushes a function which is independent of parameters to the set
-    // those could be different spatially varying backgrounds
-    // so functions f(x, alpha) with derivatives with respect to alpha but also
-    // a function type f(x) which does not depend on the nonlinear params alpha
+    /// Get the model functions that comprise the model
+    pub fn functions(&self) -> &[ModelFunction<ScalarType, NData>] {
+        self.modelfunctions.as_slice()
+    }
 }
 
+//TODO: find out if this will really work!!!!!!
+impl<ScalarType, NData> SeparableModel<ScalarType, NData>
+where
+    ScalarType: Scalar,
+    NData: Dim + DimName,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData, Dynamic>,
+    <NData as nalgebra::DimName>::Value:
+        std::ops::Mul<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>>,
+    <<NData as nalgebra::DimName>::Value as std::ops::Mul<
+        typenum::UInt<typenum::UTerm, typenum::B1>,
+    >>::Output: generic_array::ArrayLength<ScalarType>,
+{
 
+    pub fn eval(
+        &self,
+        _parameters: &OwnedVector<ScalarType, NData>,
+    ) -> Matrix<ScalarType, NData, Dynamic, Owned<ScalarType, NData, Dynamic>> {
+        todo!()
+    }
+}

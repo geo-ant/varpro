@@ -58,7 +58,7 @@ where
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     //todo document
-    pub fn with_parameters<StrType>(parameter_names: &[StrType]) -> Self
+    pub fn new<StrType>(parameter_names: &[StrType]) -> Self
     where
         StrType: Clone + Into<String> + Eq + Hash,
         String: From<StrType>,
@@ -81,7 +81,7 @@ where
     }
 
     //todo document
-    pub fn push_invariant_function<F>(mut self, function: F) -> Self
+    pub fn invariant_function<F>(mut self, function: F) -> Self
     where
         F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
     {
@@ -94,7 +94,7 @@ where
     }
 
     //todo document
-    pub fn push_function<F>(
+    pub fn function<F>(
         self,
         function_params: &[String],
         function: F,
@@ -253,7 +253,7 @@ where
     }
 
     //todo document
-    pub fn push_invariant_function<F>(self, function: F) -> SeparableModelBuilder<ScalarType, NData>
+    pub fn invariant_function<F>(self, function: F) -> SeparableModelBuilder<ScalarType, NData>
     where
         F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
     {
@@ -263,7 +263,7 @@ where
                 if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
                     SeparableModelBuilder::from(err)
                 } else {
-                    SeparableModelBuilder::from(model).push_invariant_function(function)
+                    SeparableModelBuilder::from(model).invariant_function(function)
                 }
             }
             Err(err) => SeparableModelBuilder::from(err),
@@ -271,7 +271,7 @@ where
     }
 
     //todo document
-    pub fn push_function<F>(
+    pub fn function<F>(
         self,
         function_params: &[String],
         function: F,
