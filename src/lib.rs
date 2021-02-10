@@ -14,10 +14,6 @@ pub mod prelude;
 #[cfg(test)]
 mod test_helpers;
 
-#[allow(dead_code)]
-fn unit_function<T: Clone>(x: &T) -> T {
-    x.clone()
-}
 
 #[test]
 fn test_some_syntax() {

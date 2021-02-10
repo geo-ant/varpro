@@ -24,7 +24,31 @@ pub type BaseFuncType<ScalarType, NData> = Box<
     ) -> OwnedVector<ScalarType, NData>,
 >;
 
-/// # Separable (Nonlinear) Model
+/// # A Separable Nonlinear Model
+/// TODO Document:
+/// A separable nonlinear model is a (nonlinear) function `$f(\vec{x},\vec{\alpha})$` which depends on
+/// * the independent variable `$\vec{x}$`, e.g. a location, time, etc...
+/// * the actual model parameters `$\vec{\alpha}$`.
+///
+/// *Separable* means that the nonlinear model function can be written as the
+/// linear combination of nonlinear base functions, i.e.
+/// ```math
+/// f(\vec{x},\vec{\alpha}) = \sum_j f_j(\vec{x},\vec{\alpha})
+/// ```
+/// The base functions `$f_j$` typically depend on individual subsets of the model parameters `$\vec{\alpha}$`.
+///
+/// ## Base Functions
+/// It perfectly fine for a base function to depend on all or none of the model parameters or any
+/// subset of the model parameters.
+/// ### Invariant Functions
+/// We refer to functions `$f_j(\vec{x})$` that depend on none of the model parameters as *invariant
+/// functions*. We offer special methods to add invariant functions during the model building process.
+/// ### Base Functions
+/// TODO FURTHER: can depend on subset, must have derivatives, should be nonlinear and should be
+/// linearly independent
+/// TODO FURTHER
+///
+///
 /// A separable nonlinear model is the linear combination of a set of nonlinear basefunctions.
 /// The basefunctions depend on a vector `alpha` of parameters. They basefunctions are commonly
 /// nonlinear in the parameters `alpha` (but they don't have to be). Each individual base function

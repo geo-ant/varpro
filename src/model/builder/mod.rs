@@ -20,7 +20,7 @@ where
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    pub(self) model_result: Result<SeparableModel<ScalarType, NData>, ModelError>,
+    model_result: Result<SeparableModel<ScalarType, NData>, ModelError>,
 }
 
 /// This trait can be used to extend an existing model with more functions.
@@ -148,9 +148,9 @@ where
     }
 }
 
-// helper struct that contains a seperable model as well as a model function builder
-// used inside the SeparableModelBuilderProxyWithDerivatives.
-struct ModelAndFunctionBuilder<ScalarType, NData>
+/// helper struct that contains a seperable model as well as a model function builder
+/// used inside the SeparableModelBuilderProxyWithDerivatives.
+struct ModelAndFunctionbuilderPair<ScalarType, NData>
 where
     ScalarType: Scalar,
     NData: Dim,
@@ -160,13 +160,13 @@ where
     builder: ModelFunctionBuilder<ScalarType, NData>,
 }
 
-impl<ScalarType, NData> ModelAndFunctionBuilder<ScalarType, NData>
+impl<ScalarType, NData> ModelAndFunctionbuilderPair<ScalarType, NData>
 where
     ScalarType: Scalar,
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    pub fn new(
+    fn new(
         model: SeparableModel<ScalarType, NData>,
         builder: ModelFunctionBuilder<ScalarType, NData>,
     ) -> Self {
@@ -180,7 +180,7 @@ where
     NData: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    current_result: Result<ModelAndFunctionBuilder<ScalarType, NData>, ModelError>,
+    current_result: Result<ModelAndFunctionbuilderPair<ScalarType, NData>, ModelError>,
 }
 
 impl<ScalarType, NData> From<ModelError>
@@ -204,7 +204,7 @@ where
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     //todo document
-    pub(self) fn new<F>(
+    fn new<F>(
         model_result: Result<SeparableModel<ScalarType, NData>, ModelError>,
         function_parameters: &[String],
         function: F,
@@ -220,7 +220,7 @@ where
             Ok(model) => {
                 let model_parameters = model.parameters().clone();
                 Self {
-                    current_result: Ok(ModelAndFunctionBuilder::new(
+                    current_result: Ok(ModelAndFunctionbuilderPair::new(
                         model,
                         ModelFunctionBuilder::new(model_parameters, function_parameters, function),
                     )),
@@ -243,7 +243,7 @@ where
     {
         match self.current_result {
             Ok(result) => Self {
-                current_result: Ok(ModelAndFunctionBuilder {
+                current_result: Ok(ModelAndFunctionbuilderPair {
                     model: result.model,
                     builder: result.builder.partial_deriv(parameter.as_ref(), derivative),
                 }),
@@ -259,7 +259,7 @@ where
     {
         match self.current_result {
             Ok(result) => {
-                let ModelAndFunctionBuilder { mut model, builder } = result;
+                let ModelAndFunctionbuilderPair { mut model, builder } = result;
                 if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
                     SeparableModelBuilder::from(err)
                 } else {
@@ -285,7 +285,7 @@ where
     {
         match self.current_result {
             Ok(result) => {
-                let ModelAndFunctionBuilder { mut model, builder } = result;
+                let ModelAndFunctionbuilderPair { mut model, builder } = result;
                 if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
                     SeparableModelBuilderProxyWithDerivatives::from(err)
                 } else {
@@ -306,7 +306,7 @@ where
         // facilities to check for completion and the like
         match self.current_result {
             Ok(result) => {
-                let ModelAndFunctionBuilder { mut model, builder } = result;
+                let ModelAndFunctionbuilderPair { mut model, builder } = result;
                 if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
                     SeparableModelBuilder::from(err).build()
                 } else {
