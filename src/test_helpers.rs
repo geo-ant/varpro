@@ -15,7 +15,7 @@ pub fn exponential_decay<NData>(
         nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, NData>, //see https://github.com/dimforge/nalgebra/issues/580 {
 {
     assert!(tau > 0f64, "Parameter tau must be greater than zero");
-    tvec.map(|t| ((t - t0) / tau).exp())
+    tvec.map(|t| (-(t - t0) / tau).exp())
 }
 
 /// partial derivative of the exponential decay with respect to t0
@@ -43,7 +43,7 @@ pub fn exponential_decay_dtau<NData>(
         nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<f64, NData>, //see https://github.com/dimforge/nalgebra/issues/580 {
 {
     assert!(tau > 0f64, "Parameter tau must be greater than zero");
-    tvec.map(|t| ((t - t0) / tau).exp() * (t0 - t) / tau.powi(2))
+    tvec.map(|t| ((-t - t0) / tau).exp() * (t0 - t) / tau.powi(2))
 }
 
 /// implements the function sin(omega*t) for argument t

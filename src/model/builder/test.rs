@@ -76,8 +76,6 @@ fn identity_function<T: Clone>(x: &T) -> T {
     x.clone()
 }
 
-
-
 #[test]
 // test that the builder correctly produces a model with functions with and without derivatives,
 // when the parameters and functions are valid
@@ -87,14 +85,15 @@ fn builder_produces_correct_model_from_functions() {
         "tau".to_string(),
         "omega".to_string(),
     ])
+        .invariant_function(|x|2.*identity_function(x))// double the x value
     .function(&["t0".to_string(), "tau".to_string()], |x, params| {
         exponential_decay(x, params[0], params[1])
     })
-    .partial_deriv("t0", |x, params| {
-        exponential_decay_dt0(x, params[0], params[1])
-    })
     .partial_deriv("tau", |x, params| {
         exponential_decay_dtau(x, params[0], params[1])
+    })
+    .partial_deriv("t0", |x, params| {
+        exponential_decay_dt0(x, params[0], params[1])
     })
     .invariant_function(identity_function)
     .function(&["omega".to_string()], |x, params| {
@@ -104,5 +103,43 @@ fn builder_produces_correct_model_from_functions() {
     .build()
     .expect("Valid builder calls should produce a valid model function.");
 
-    todo!("Make sure the model actually consists of the correct functions")
+    // now check that each function behaves as expected given the model parameters
+    let ts = OwnedVector::<f64, Dynamic>::from(vec![
+        1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14.,
+    ]);
+    let t0 = 3.;
+    let tau = 2.;
+    let omega = std::f64::consts::FRAC_1_PI * 3.;
+
+    let params = OwnedVector::<f64, Dynamic>::from(vec!{t0,tau,omega});
+
+    // assert that the correct number of functions is in the set
+    assert_eq!(
+        model.modelfunctions.len(),
+        4,
+        "Number of functions in model is incorrect"
+    );
+
+    // check the first function f(t) = 2t
+    let func = &model.modelfunctions[0];
+    assert!(func.derivatives.is_empty(), "This function should have no derivatives");
+    assert_eq!((func.function)(&ts,&params),2.* ts.clone(),"Function should be f(x)=2x");
+
+    // check the second function f(t,t0,tau) = exp( -(t-t0)/tau )
+    let func = &model.modelfunctions[1];
+    assert_eq!(func.derivatives.len(),2, "Incorrect number of derivatives");
+    assert_eq!((func.function)(&ts,&params),exponential_decay(&ts,t0,tau),"Incorrect function value");
+    assert_eq!((func.derivatives.get(&0).unwrap())(&ts,&params),exponential_decay_dt0(&ts,t0,tau),"Incorrect first derivative value");
+    assert_eq!((func.derivatives.get(&1).unwrap())(&ts,&params),exponential_decay_dtau(&ts,t0,tau),"Incorrect second derivative value");
+
+    // check that the third function is f(t) = t
+    let func = &model.modelfunctions[2];
+    assert!(func.derivatives.is_empty(), "This function should have no derivatives");
+    assert_eq!((func.function)(&ts,&params), ts.clone(),"Function should be f(x)=2x");
+
+    // check that the fourth funciton is f(t) = sin(omega*t)
+    let func = &model.modelfunctions[3];
+    assert_eq!(func.derivatives.len(),1, "Incorrect number of derivatives");
+    assert_eq!((func.function)(&ts,&params),sinusoid_omega(&ts,omega),"Incorrect function value");
+    assert_eq!((func.derivatives.get(&2).unwrap())(&ts,&params),sinusoid_omega_domega(&ts,omega),"Incorrect first derivative value");
 }
