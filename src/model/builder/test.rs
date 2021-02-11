@@ -142,4 +142,6 @@ fn builder_produces_correct_model_from_functions() {
     assert_eq!(func.derivatives.len(),1, "Incorrect number of derivatives");
     assert_eq!((func.function)(&ts,&params),sinusoid_omega(&ts,omega),"Incorrect function value");
     assert_eq!((func.derivatives.get(&2).unwrap())(&ts,&params),sinusoid_omega_domega(&ts,omega),"Incorrect first derivative value");
+
+    //let _ = model.eval(&ts,&params);
 }
