@@ -1,6 +1,5 @@
 use crate::model::errors::*;
-use crate::model::{OwnedVector};
-use nalgebra::{DVector, Dim, Dynamic, Scalar};
+use nalgebra::{DVector, Dim,  Scalar};
 use std::collections::HashSet;
 use std::hash::Hash;
 
@@ -70,30 +69,28 @@ where
 /// # Arguments
 /// todo document
 #[allow(clippy::type_complexity)]
-pub fn create_wrapper_function<ScalarType, NData, F, StrType, StrType2>(
+pub fn create_wrapper_function<ScalarType, F, StrType, StrType2>(
     model_parameters: &[StrType],
     function_parameters: &[StrType2],
     function: F,
 ) -> Result<
     Box<
         dyn Fn(
-            &OwnedVector<ScalarType, NData>,
-            &OwnedVector<ScalarType, Dynamic>,
-        ) -> OwnedVector<ScalarType, NData>,
+            &DVector<ScalarType>,
+            &DVector<ScalarType>,
+        ) -> DVector<ScalarType>,
     >,
     ModelError,
 >
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
     StrType: Into<String> + Clone + Hash + Eq + PartialEq<StrType2>,
     StrType2: Into<String> + Clone + Hash + Eq,
     String: PartialEq<StrType> + PartialEq<StrType2>,
     F: Fn(
-            &OwnedVector<ScalarType, NData>,
-            &OwnedVector<ScalarType, Dynamic>,
-        ) -> OwnedVector<ScalarType, NData>
+            &DVector<ScalarType>,
+            &DVector<ScalarType>,
+        ) -> DVector<ScalarType>
         + 'static,
 {
     check_parameter_names(&model_parameters)?;
@@ -101,8 +98,8 @@ where
 
     let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
 
-    let wrapped = move |x: &OwnedVector<ScalarType, NData>,
-                        params: &OwnedVector<ScalarType, Dynamic>| {
+    let wrapped = move |x: &DVector<ScalarType>,
+                        params: &DVector<ScalarType>| {
         //todo: refactor this, since this is unelegant and not parallelizable
         let mut parameter_for_function = Vec::<ScalarType>::with_capacity(index_mapping.len());
         for param_idx in index_mapping.iter() {
@@ -170,10 +167,10 @@ mod test {
 
     // dummy function that just returns the given x
     fn dummy_unit_function_for_x(
-        x: &OwnedVector<f64, Dynamic>,
-        _params: &OwnedVector<f64, Dynamic>,
-    ) -> OwnedVector<f64, Dynamic> {
-        OwnedVector::<f64, Dynamic>::clone(x)
+        x: &DVector<f64>,
+        _params: &DVector<f64>,
+    ) -> DVector<f64> {
+        DVector::<f64>::clone(x)
     }
 
     #[test]
@@ -203,9 +200,9 @@ mod test {
     // a dummy function that disregards the x argument and just returns the parameters
     // useful to test if the wrapper has correctly distributed the parameters
     fn dummy_unit_function_for_parameters<ScalarType>(
-        _x: &OwnedVector<ScalarType, Dynamic>,
-        params: &OwnedVector<ScalarType, Dynamic>,
-    ) -> OwnedVector<ScalarType, Dynamic>
+        _x: &DVector<ScalarType>,
+        params: &DVector<ScalarType>,
+    ) -> DVector<ScalarType>
     where
         ScalarType: Scalar,
     {
@@ -216,8 +213,8 @@ mod test {
     fn test_create_wrapped_function_distributes_arguments_correctly() {
         let model_parameters = vec!["a", "b", "c", "d"];
         let function_parameters = vec!["c", "a"];
-        let x = OwnedVector::<f64, Dynamic>::from(vec![1., 3., 3., 7.]);
-        let params = OwnedVector::<f64, Dynamic>::from(vec![1., 2., 3., 4.]);
+        let x = DVector::<f64>::from(vec![1., 3., 3., 7.]);
+        let params = DVector::<f64>::from(vec![1., 2., 3., 4.]);
 
         // check that the dummy unit functions work as expected
         assert_eq!(
@@ -232,7 +229,7 @@ mod test {
         );
 
         // check that the wrapped function indeed redistributes the parameters expected
-        let expected_out_params = OwnedVector::<f64, Dynamic>::from(vec![3., 1.]);
+        let expected_out_params = DVector::<f64>::from(vec![3., 1.]);
         let wrapped_function_params = create_wrapper_function(
             &model_parameters,
             &function_parameters,

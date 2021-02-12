@@ -2,35 +2,31 @@
 mod test;
 
 use nalgebra::base::{Dim, Scalar};
-use nalgebra::Dynamic;
+use nalgebra::{ DVector};
 
 use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapper_function};
 use crate::model::errors::ModelError;
 use crate::model::modelfunction::ModelFunction;
-use crate::model::OwnedVector;
+
 
 /// The modelfunction builder allows to create model functions that depend on
 /// a subset or the whole model parameters. Functions that depend on model parameters
 /// need to have partial derivatives provided for each parameter they depend on.
-pub struct ModelFunctionBuilder<ScalarType, NData>
+pub struct ModelFunctionBuilder<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// the model parameters for the model this function belongs to
     model_parameters: Vec<String>,
     /// the parameters that the function depends on. Must be a subset of the model parameters
     function_parameters: Vec<String>,
     /// the current result of the building process of the model function
-    model_function_result: Result<ModelFunction<ScalarType, NData>, ModelError>,
+    model_function_result: Result<ModelFunction<ScalarType>, ModelError>,
 }
 
-impl<ScalarType, NData> ModelFunctionBuilder<ScalarType, NData>
+impl<ScalarType> ModelFunctionBuilder<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     /// begin constructing a modelfunction for a specific model. The modelfunction must take
     /// a subset of the model parameters. This is the first step in creating a function, because
@@ -50,9 +46,9 @@ where
     ) -> Self
     where
         FuncType: Fn(
-                &OwnedVector<ScalarType, NData>,
-                &OwnedVector<ScalarType, Dynamic>,
-            ) -> OwnedVector<ScalarType, NData>
+                &DVector<ScalarType>,
+                &DVector<ScalarType>,
+            ) -> DVector<ScalarType>
             + 'static,
     {
         // check that the function parameter list is valid, otherwise continue with an
@@ -89,9 +85,9 @@ where
     pub fn partial_deriv<FuncType>(mut self, parameter: &str, derivative: FuncType) -> Self
     where
         FuncType: Fn(
-                &OwnedVector<ScalarType, NData>,
-                &OwnedVector<ScalarType, Dynamic>,
-            ) -> OwnedVector<ScalarType, NData>
+                &DVector<ScalarType>,
+                &DVector<ScalarType>,
+            ) -> DVector<ScalarType>
             + 'static,
     {
         //this makes sure that the index of the derivative is calculated with respect to the
@@ -143,7 +139,7 @@ where
     /// # Result
     /// A modelfunction containing the given function and derivatives or an error
     /// variant if an error occurred during the building process
-    pub fn build(self) -> Result<ModelFunction<ScalarType, NData>, ModelError> {
+    pub fn build(self) -> Result<ModelFunction<ScalarType>, ModelError> {
         self.check_completion()?;
         self.model_function_result
     }
