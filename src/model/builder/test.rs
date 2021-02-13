@@ -108,7 +108,7 @@ fn builder_produces_correct_model_from_functions() {
     let omega1 = std::f64::consts::FRAC_1_PI * 3.;
     let omega2 = std::f64::consts::FRAC_1_PI * 2.;
 
-    let params = DVector::<f64>::from(vec![t0, tau, omega1,omega2]);
+    let params = DVector::<f64>::from(vec![t0, tau, omega1, omega2]);
 
     // assert that the correct number of functions is in the set
     assert_eq!(
