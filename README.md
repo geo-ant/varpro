@@ -3,6 +3,7 @@
 ![build](https://github.com/geo-ant/varpro/workflows/build/badge.svg?branch=main)
 ![tests](https://github.com/geo-ant/varpro/workflows/tests/badge.svg?branch=main)
 ![lints](https://github.com/geo-ant/varpro/workflows/lints/badge.svg?branch=main)
+[![coverage](https://codecov.io/gh/geo-ant/varpro/branch/main/graph/badge.svg?token=1L2PEJFMXP)](https://codecov.io/gh/geo-ant/varpro)
 
 _Work in Progress_
 
