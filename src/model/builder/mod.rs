@@ -1,12 +1,12 @@
 use std::hash::Hash;
 
-use nalgebra::{Dim, Dynamic, Scalar};
+use nalgebra::{Scalar, DVector};
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
 use crate::model::detail::check_parameter_names;
 use crate::model::errors::ModelError;
 use crate::model::modelfunction::ModelFunction;
-use crate::model::{OwnedVector, SeparableModel};
+use crate::model::SeparableModel;
 
 mod modelfunction_builder;
 
@@ -14,35 +14,29 @@ mod modelfunction_builder;
 mod test;
 
 // //todo document
-pub struct SeparableModelBuilder<ScalarType, NData>
+pub struct SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    model_result: Result<SeparableModel<ScalarType, NData>, ModelError>,
+    model_result: Result<SeparableModel<ScalarType>, ModelError>,
 }
 
 /// This trait can be used to extend an existing model with more functions.
-impl<ScalarType, NData> From<SeparableModel<ScalarType, NData>>
-    for SeparableModelBuilder<ScalarType, NData>
+impl<ScalarType> From<SeparableModel<ScalarType>>
+    for SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    fn from(model: SeparableModel<ScalarType, NData>) -> Self {
+    fn from(model: SeparableModel<ScalarType>) -> Self {
         Self {
             model_result: Ok(model),
         }
     }
 }
 
-impl<ScalarType, NData> From<ModelError> for SeparableModelBuilder<ScalarType, NData>
+impl<ScalarType> From<ModelError> for SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     fn from(err: ModelError) -> Self {
         Self {
@@ -51,11 +45,9 @@ where
     }
 }
 
-impl<ScalarType, NData> SeparableModelBuilder<ScalarType, NData>
+impl<ScalarType> SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     //todo document
     pub fn new<StrType>(parameter_names: &[StrType]) -> Self
@@ -83,7 +75,7 @@ where
     //todo document
     pub fn invariant_function<F>(mut self, function: F) -> Self
     where
-        F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
+        F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         if let Ok(model) = self.model_result.as_mut() {
             model
@@ -98,19 +90,19 @@ where
         self,
         function_params: &[String],
         function: F,
-    ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+    ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
     where
         F: Fn(
-                &OwnedVector<ScalarType, NData>,
-                &OwnedVector<ScalarType, Dynamic>,
-            ) -> OwnedVector<ScalarType, NData>
+                &DVector<ScalarType>,
+                &DVector<ScalarType>,
+            ) -> DVector<ScalarType>
             + 'static,
     {
         SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
 
     //todo document
-    pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, ModelError> {
+    pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelError> {
         self.model_result.and_then(check_validity)
     }
 }
@@ -122,13 +114,11 @@ where
 ///  * the model has at least one modelfunction, and
 ///  * for each model parameter we have at least one function that depends on this
 ///    parameter.
-fn check_validity<ScalarType, NData>(
-    model: SeparableModel<ScalarType, NData>,
-) -> Result<SeparableModel<ScalarType, NData>, ModelError>
+fn check_validity<ScalarType>(
+    model: SeparableModel<ScalarType>,
+) -> Result<SeparableModel<ScalarType>, ModelError>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     if model.modelfunctions.is_empty() {
         Err(ModelError::EmptyModel)
@@ -150,45 +140,37 @@ where
 
 /// helper struct that contains a seperable model as well as a model function builder
 /// used inside the SeparableModelBuilderProxyWithDerivatives.
-struct ModelAndFunctionbuilderPair<ScalarType, NData>
+struct ModelAndFunctionbuilderPair<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    model: SeparableModel<ScalarType, NData>,
-    builder: ModelFunctionBuilder<ScalarType, NData>,
+    model: SeparableModel<ScalarType>,
+    builder: ModelFunctionBuilder<ScalarType>,
 }
 
-impl<ScalarType, NData> ModelAndFunctionbuilderPair<ScalarType, NData>
+impl<ScalarType> ModelAndFunctionbuilderPair<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     fn new(
-        model: SeparableModel<ScalarType, NData>,
-        builder: ModelFunctionBuilder<ScalarType, NData>,
+        model: SeparableModel<ScalarType>,
+        builder: ModelFunctionBuilder<ScalarType>,
     ) -> Self {
         Self { model, builder }
     }
 }
 
-pub struct SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+pub struct SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
-    current_result: Result<ModelAndFunctionbuilderPair<ScalarType, NData>, ModelError>,
+    current_result: Result<ModelAndFunctionbuilderPair<ScalarType>, ModelError>,
 }
 
-impl<ScalarType, NData> From<ModelError>
-    for SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+impl<ScalarType> From<ModelError>
+    for SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     fn from(err: ModelError) -> Self {
         Self {
@@ -197,23 +179,21 @@ where
     }
 }
 
-impl<ScalarType, NData> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+impl<ScalarType> SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
-    NData: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData>, //see https://github.com/dimforge/nalgebra/issues/580
 {
     //todo document
     fn new<F>(
-        model_result: Result<SeparableModel<ScalarType, NData>, ModelError>,
+        model_result: Result<SeparableModel<ScalarType>, ModelError>,
         function_parameters: &[String],
         function: F,
     ) -> Self
     where
         F: Fn(
-                &OwnedVector<ScalarType, NData>,
-                &OwnedVector<ScalarType, Dynamic>,
-            ) -> OwnedVector<ScalarType, NData>
+                &DVector<ScalarType>,
+                &DVector<ScalarType>,
+            ) -> DVector<ScalarType>
             + 'static,
     {
         match model_result {
@@ -236,9 +216,9 @@ where
     pub fn partial_deriv<StrType: AsRef<str>, F>(self, parameter: StrType, derivative: F) -> Self
     where
         F: Fn(
-                &OwnedVector<ScalarType, NData>,
-                &OwnedVector<ScalarType, Dynamic>,
-            ) -> OwnedVector<ScalarType, NData>
+                &DVector<ScalarType>,
+                &DVector<ScalarType>,
+            ) -> DVector<ScalarType>
             + 'static,
     {
         match self.current_result {
@@ -253,9 +233,9 @@ where
     }
 
     //todo document
-    pub fn invariant_function<F>(self, function: F) -> SeparableModelBuilder<ScalarType, NData>
+    pub fn invariant_function<F>(self, function: F) -> SeparableModelBuilder<ScalarType>
     where
-        F: Fn(&OwnedVector<ScalarType, NData>) -> OwnedVector<ScalarType, NData> + 'static,
+        F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         match self.current_result {
             Ok(result) => {
@@ -275,12 +255,12 @@ where
         self,
         function_params: &[String],
         function: F,
-    ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType, NData>
+    ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
     where
         F: Fn(
-                &OwnedVector<ScalarType, NData>,
-                &OwnedVector<ScalarType, Dynamic>,
-            ) -> OwnedVector<ScalarType, NData>
+                &DVector<ScalarType>,
+                &DVector<ScalarType>,
+            ) -> DVector<ScalarType>
             + 'static,
     {
         match self.current_result {
@@ -301,7 +281,7 @@ where
     }
 
     //todo document
-    pub fn build(self) -> Result<SeparableModel<ScalarType, NData>, ModelError> {
+    pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelError> {
         // this method converts the internal results into a separable model and uses its
         // facilities to check for completion and the like
         match self.current_result {
