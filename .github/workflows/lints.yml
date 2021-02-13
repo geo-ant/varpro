@@ -1,4 +1,4 @@
-name: build
+name: lints
 
 on:
   push:
