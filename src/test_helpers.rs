@@ -1,6 +1,6 @@
 //! This module includes helper functionality that is useful for testing across all modules
 
-use nalgebra::{Dim, DVector};
+use nalgebra::{DVector};
 
 
 /// a function that calculates exp( (t-t0)/tau)) for every location t

@@ -1,6 +1,7 @@
 use crate::model::modelfunction::ModelFunction;
-use nalgebra::base::{Dim, Scalar};
-use nalgebra::{ DVector};
+use nalgebra::base::{ Scalar};
+use nalgebra::{DVector, DMatrix};
+use num_traits::Zero;
 
 mod detail;
 pub mod errors;
@@ -91,39 +92,33 @@ where
     }
 }
 
-// //TODO: find out if this will really work!!!!!!
-// impl<ScalarType, NData> SeparableModel<ScalarType, NData>
-// where
-//     ScalarType: Scalar + Zero,
-//     NData: Dim + DimName,
-//     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, NData, Dynamic>,
-//     <NData as nalgebra::DimName>::Value:
-//         std::ops::Mul<typenum::uint::UInt<typenum::uint::UTerm, typenum::bit::B1>>,
-//     <<NData as nalgebra::DimName>::Value as std::ops::Mul<
-//         typenum::UInt<typenum::UTerm, typenum::B1>,
-//     >>::Output: generic_array::ArrayLength<ScalarType>,
-// {
-//     pub fn eval(
-//         &self,
-//         location: &DVector<ScalarType>,
-//         parameters: &DVector<ScalarType>,
-//     ) -> Matrix<ScalarType, NData, Dynamic, Owned<ScalarType, NData, Dynamic>> {
-//         // helpful links:
-//         //https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwi6-v2O1eLuAhVqDWMBHU-tBqMQFjAAegQIARAC&url=https%3A%2F%2Fdiscourse.nphysics.org%2Ft%2Fusing-nalgebra-in-generics%2F90&usg=AOvVaw1rBwzIclum71sfw-6Ejvlh
-//         //https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwi6-v2O1eLuAhVqDWMBHU-tBqMQFjABegQIBBAC&url=https%3A%2F%2Fdiscourse.nphysics.org%2Ft%2Fhelp-understanding-trait-bounds-required-allocators%2F440&usg=AOvVaw2mbvY28cSFLzTzRnX9rWAN
-//
-//
-//         let nrows = NData::try_to_usize().unwrap_or(location.len());
-//         let ncols = self.modelfunctions.len();
-//         //todo: optimize this by using unsafe initialization (https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#method.new_uninitialized_generic)
-//         // https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#generic-constructors
-//         // phew, this was hard to understand how to make that work (so far)
-//         let mut function_value_matrix = Matrix::<ScalarType, NData, Dynamic, Owned<ScalarType, NData, Dynamic>>::zeros_generic(NData::from_usize(nrows),Dynamic::from_usize(ncols));
-//
-//         for (basefunc, mut column) in self.modelfunctions.iter().zip(function_value_matrix.column_iter_mut()) {
-//             let function_value = (basefunc.function)(location, parameters);
-//             column.copy_from(&function_value);
-//         }
-//         function_value_matrix
-//     }
-// }
+//TODO: find out if this will really work!!!!!!
+impl<ScalarType> SeparableModel<ScalarType>
+where
+    ScalarType: Scalar + Zero
+{
+    pub fn eval(
+        &self,
+        location: &DVector<ScalarType>,
+        parameters: &DVector<ScalarType>,
+    ) -> DMatrix<ScalarType> {
+        // helpful links:
+        //https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwi6-v2O1eLuAhVqDWMBHU-tBqMQFjAAegQIARAC&url=https%3A%2F%2Fdiscourse.nphysics.org%2Ft%2Fusing-nalgebra-in-generics%2F90&usg=AOvVaw1rBwzIclum71sfw-6Ejvlh
+        //https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwi6-v2O1eLuAhVqDWMBHU-tBqMQFjABegQIBBAC&url=https%3A%2F%2Fdiscourse.nphysics.org%2Ft%2Fhelp-understanding-trait-bounds-required-allocators%2F440&usg=AOvVaw2mbvY28cSFLzTzRnX9rWAN
+
+        //todo include panics or errors if functions don't produce correct length. Maybe better error!
+
+        let nrows = location.len();
+        let ncols = self.modelfunctions.len();
+        //todo: optimize this by using unsafe initialization (https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#method.new_uninitialized_generic)
+        // https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#generic-constructors
+        // phew, this was hard to understand how to make that work (so far)
+        let mut function_value_matrix = DMatrix::<ScalarType>::from_element(nrows,ncols,Zero::zero());
+
+        for (basefunc, mut column) in self.modelfunctions.iter().zip(function_value_matrix.column_iter_mut()) {
+            let function_value = (basefunc.function)(location, parameters);
+            column.copy_from(&function_value);
+        }
+        function_value_matrix
+    }
+}

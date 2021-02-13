@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use nalgebra::{Dim,  Scalar, DVector};
+use nalgebra::{Scalar, DVector};
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
 use crate::model::detail::check_parameter_names;

@@ -1,4 +1,4 @@
-use nalgebra::base::{Dim, Scalar};
+use nalgebra::base::{Scalar};
 
 
 use crate::model::BaseFuncType;

@@ -1,5 +1,5 @@
 use crate::model::errors::*;
-use nalgebra::{DVector, Dim,  Scalar};
+use nalgebra::{DVector, Scalar};
 use std::collections::HashSet;
 use std::hash::Hash;
 

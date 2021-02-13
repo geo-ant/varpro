@@ -3,7 +3,7 @@ use crate::test_helpers::{
     exponential_decay, exponential_decay_dt0, exponential_decay_dtau, sinusoid_omega,
     sinusoid_omega_domega,
 };
-use nalgebra::{U11, DVector};
+use nalgebra::{ DVector};
 
 #[test]
 // creating obviously invalid models must fail and return the correct error, i.e.
@@ -142,6 +142,4 @@ fn builder_produces_correct_model_from_functions() {
     assert_eq!(func.derivatives.len(),1, "Incorrect number of derivatives");
     assert_eq!((func.function)(&ts,&params),sinusoid_omega(&ts,omega),"Incorrect function value");
     assert_eq!((func.derivatives.get(&2).unwrap())(&ts,&params),sinusoid_omega_domega(&ts,omega),"Incorrect first derivative value");
-
-    //let _ = model.eval(&ts,&params);
 }

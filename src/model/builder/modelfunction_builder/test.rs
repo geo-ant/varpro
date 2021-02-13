@@ -1,4 +1,4 @@
-use nalgebra::{Dynamic, DVector};
+use nalgebra::{DVector};
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
 use crate::model::errors::ModelError;

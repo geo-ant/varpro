@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test;
 
-use nalgebra::base::{Dim, Scalar};
+use nalgebra::base::{ Scalar};
 use nalgebra::{ DVector};
 
 use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapper_function};
