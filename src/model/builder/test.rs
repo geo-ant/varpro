@@ -74,7 +74,8 @@ fn builder_produces_correct_model_from_functions() {
     let model = SeparableModelBuilder::<f64>::new(&[
         "t0".to_string(),
         "tau".to_string(),
-        "omega".to_string(),
+        "omega1".to_string(),
+        "omega2".to_string(),
     ])
     .invariant_function(|x| 2. * identity_function(x)) // double the x value
     .function(&["t0".to_string(), "tau".to_string()], |x, params| {
@@ -87,10 +88,14 @@ fn builder_produces_correct_model_from_functions() {
         exponential_decay_dt0(x, params[0], params[1])
     })
     .invariant_function(identity_function)
-    .function(&["omega".to_string()], |x, params| {
+    .function(&["omega1".to_string()], |x, params| {
         sinusoid_omega(x, params[0])
     })
-    .partial_deriv("omega", |x, params| sinusoid_omega_domega(x, params[0]))
+    .partial_deriv("omega1", |x, params| sinusoid_omega_domega(x, params[0]))
+    .function(&["omega2".to_string()], |x, params| {
+        sinusoid_omega(x, params[0])
+    })
+    .partial_deriv("omega2", |x, params| sinusoid_omega_domega(x, params[0]))
     .build()
     .expect("Valid builder calls should produce a valid model function.");
 
@@ -100,14 +105,15 @@ fn builder_produces_correct_model_from_functions() {
     ]);
     let t0 = 3.;
     let tau = 2.;
-    let omega = std::f64::consts::FRAC_1_PI * 3.;
+    let omega1 = std::f64::consts::FRAC_1_PI * 3.;
+    let omega2 = std::f64::consts::FRAC_1_PI * 2.;
 
-    let params = DVector::<f64>::from(vec![t0, tau, omega]);
+    let params = DVector::<f64>::from(vec![t0, tau, omega1,omega2]);
 
     // assert that the correct number of functions is in the set
     assert_eq!(
         model.modelfunctions.len(),
-        4,
+        5,
         "Number of functions in model is incorrect"
     );
 
@@ -154,17 +160,31 @@ fn builder_produces_correct_model_from_functions() {
         "Function should be f(x)=2x"
     );
 
-    // check that the fourth funciton is f(t) = sin(omega*t)
+    // check that the fourth function is f(t) = sin(omega1*t)
     let func = &model.modelfunctions[3];
     assert_eq!(func.derivatives.len(), 1, "Incorrect number of derivatives");
     assert_eq!(
         (func.function)(&ts, &params),
-        sinusoid_omega(&ts, omega),
+        sinusoid_omega(&ts, omega1),
         "Incorrect function value"
     );
     assert_eq!(
         (func.derivatives.get(&2).unwrap())(&ts, &params),
-        sinusoid_omega_domega(&ts, omega),
+        sinusoid_omega_domega(&ts, omega1),
+        "Incorrect first derivative value"
+    );
+
+    // check that the fifth function is f(t) = sin(omega2*t)
+    let func = &model.modelfunctions[4];
+    assert_eq!(func.derivatives.len(), 1, "Incorrect number of derivatives");
+    assert_eq!(
+        (func.function)(&ts, &params),
+        sinusoid_omega(&ts, omega2),
+        "Incorrect function value"
+    );
+    assert_eq!(
+        (func.derivatives.get(&3).unwrap())(&ts, &params),
+        sinusoid_omega_domega(&ts, omega2),
         "Incorrect first derivative value"
     );
 }
