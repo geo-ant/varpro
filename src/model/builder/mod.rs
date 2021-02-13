@@ -49,11 +49,16 @@ where
     ScalarType: Scalar,
 {
     //todo document
-    pub fn new<StrType>(parameter_names: &[StrType]) -> Self
+    pub fn new<StrCollection>(parameter_names: StrCollection) -> Self
     where
-        StrType: Clone + Into<String> + Eq + Hash,
-        String: From<StrType>,
+        StrCollection: IntoIterator,
+        StrCollection::Item: AsRef<str>,
     {
+        let parameter_names: Vec<String> = parameter_names
+            .into_iter()
+            .map(|s| s.as_ref().to_string())
+            .collect();
+
         if let Err(parameter_error) = check_parameter_names(&parameter_names) {
             Self {
                 model_result: Err(parameter_error),
@@ -180,14 +185,17 @@ where
     ScalarType: Scalar,
 {
     //todo document
-    fn new<F>(
+    fn new<F, StrCollection>(
         model_result: Result<SeparableModel<ScalarType>, ModelError>,
-        function_parameters: &[String],
+        function_parameters: StrCollection,
         function: F,
     ) -> Self
     where
         F: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
+        StrCollection: IntoIterator,
+        StrCollection::Item: AsRef<str>,
     {
+
         match model_result {
             Ok(model) => {
                 let model_parameters = model.parameters().clone();

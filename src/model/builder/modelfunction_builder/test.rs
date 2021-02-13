@@ -114,7 +114,7 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
 
     let result = ModelFunctionBuilder::<f64>::new(
         Vec::<String>::default(),
-        Vec::<String>::default().as_ref(),
+        Vec::<String>::default(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
     .build();
