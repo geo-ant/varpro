@@ -1,6 +1,8 @@
 # varpro
 
-![CI](https://github.com/geo-ant/varpro/workflows/CI/badge.svg?branch=main)
+![build](https://github.com/geo-ant/varpro/workflows/build/badge.svg?branch=main)
+![tests](https://github.com/geo-ant/varpro/workflows/tests/badge.svg?branch=main)
+![lints](https://github.com/geo-ant/varpro/workflows/lints/badge.svg?branch=main)
 
 _Work in Progress_
 
