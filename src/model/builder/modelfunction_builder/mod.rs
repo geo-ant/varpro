@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod test;
 
-use nalgebra::base::{ Scalar};
-use nalgebra::{ DVector};
+use nalgebra::base::Scalar;
+use nalgebra::DVector;
 
 use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapper_function};
 use crate::model::errors::ModelError;
 use crate::model::modelfunction::ModelFunction;
-
 
 /// The modelfunction builder allows to create model functions that depend on
 /// a subset or the whole model parameters. Functions that depend on model parameters
@@ -45,11 +44,7 @@ where
         function: FuncType,
     ) -> Self
     where
-        FuncType: Fn(
-                &DVector<ScalarType>,
-                &DVector<ScalarType>,
-            ) -> DVector<ScalarType>
-            + 'static,
+        FuncType: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         // check that the function parameter list is valid, otherwise continue with an
         // internal error state
@@ -84,11 +79,7 @@ where
     /// builder was created.
     pub fn partial_deriv<FuncType>(mut self, parameter: &str, derivative: FuncType) -> Self
     where
-        FuncType: Fn(
-                &DVector<ScalarType>,
-                &DVector<ScalarType>,
-            ) -> DVector<ScalarType>
-            + 'static,
+        FuncType: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         //this makes sure that the index of the derivative is calculated with respect to the
         //model parameter list while also making sure that the given derivative exists in the function

@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use nalgebra::{Scalar, DVector};
+use nalgebra::{DVector, Scalar};
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
 use crate::model::detail::check_parameter_names;
@@ -22,8 +22,7 @@ where
 }
 
 /// This trait can be used to extend an existing model with more functions.
-impl<ScalarType> From<SeparableModel<ScalarType>>
-    for SeparableModelBuilder<ScalarType>
+impl<ScalarType> From<SeparableModel<ScalarType>> for SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
@@ -92,11 +91,7 @@ where
         function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
     where
-        F: Fn(
-                &DVector<ScalarType>,
-                &DVector<ScalarType>,
-            ) -> DVector<ScalarType>
-            + 'static,
+        F: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
@@ -122,15 +117,20 @@ where
 {
     if model.modelfunctions.is_empty() {
         Err(ModelError::EmptyModel)
-    }
-    else {
+    } else {
         // now check that all model parameters are referenced in at least one parameter of one
         // of the given model functions. We do this by checking the indices of the derivatives
         // because each model parameter must occur at least once as a key in at least one of the
         // modelfunctions derivatives
-        for (param_index,parameter_name) in model.parameter_names.iter().enumerate() {
-            if !model.modelfunctions.iter().any(|function|function.derivatives.contains_key(&param_index)) {
-                return Err(ModelError::UnusedParameter {parameter: parameter_name.clone()})
+        for (param_index, parameter_name) in model.parameter_names.iter().enumerate() {
+            if !model
+                .modelfunctions
+                .iter()
+                .any(|function| function.derivatives.contains_key(&param_index))
+            {
+                return Err(ModelError::UnusedParameter {
+                    parameter: parameter_name.clone(),
+                });
             }
         }
         // otherwise return this model
@@ -152,10 +152,7 @@ impl<ScalarType> ModelAndFunctionbuilderPair<ScalarType>
 where
     ScalarType: Scalar,
 {
-    fn new(
-        model: SeparableModel<ScalarType>,
-        builder: ModelFunctionBuilder<ScalarType>,
-    ) -> Self {
+    fn new(model: SeparableModel<ScalarType>, builder: ModelFunctionBuilder<ScalarType>) -> Self {
         Self { model, builder }
     }
 }
@@ -167,8 +164,7 @@ where
     current_result: Result<ModelAndFunctionbuilderPair<ScalarType>, ModelError>,
 }
 
-impl<ScalarType> From<ModelError>
-    for SeparableModelBuilderProxyWithDerivatives<ScalarType>
+impl<ScalarType> From<ModelError> for SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
 {
@@ -190,11 +186,7 @@ where
         function: F,
     ) -> Self
     where
-        F: Fn(
-                &DVector<ScalarType>,
-                &DVector<ScalarType>,
-            ) -> DVector<ScalarType>
-            + 'static,
+        F: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         match model_result {
             Ok(model) => {
@@ -215,11 +207,7 @@ where
     //todo document
     pub fn partial_deriv<StrType: AsRef<str>, F>(self, parameter: StrType, derivative: F) -> Self
     where
-        F: Fn(
-                &DVector<ScalarType>,
-                &DVector<ScalarType>,
-            ) -> DVector<ScalarType>
-            + 'static,
+        F: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         match self.current_result {
             Ok(result) => Self {
@@ -257,11 +245,7 @@ where
         function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
     where
-        F: Fn(
-                &DVector<ScalarType>,
-                &DVector<ScalarType>,
-            ) -> DVector<ScalarType>
-            + 'static,
+        F: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         match self.current_result {
             Ok(result) => {

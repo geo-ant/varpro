@@ -1,4 +1,3 @@
-
 //! TODO Document this crate
 //! let's try some math
 //! ```math
@@ -13,7 +12,6 @@ pub mod model;
 pub mod prelude;
 #[cfg(test)]
 mod test_helpers;
-
 
 #[test]
 fn test_some_syntax() {

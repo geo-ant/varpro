@@ -10,21 +10,21 @@ use std::hash::Hash;
 /// Ok if the conditions hold, otherwise an error variant.
 pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelError>
 where
-    StrType: Hash + Eq+Clone+Into<String>,
+    StrType: Hash + Eq + Clone + Into<String>,
 {
     if param_names.is_empty() {
         return Err(ModelError::EmptyParameters);
     }
 
     if !has_only_unique_elements(param_names.iter()) {
-        let function_parameters: Vec<String> = param_names.iter().cloned().map(|n| n.into()).collect();
+        let function_parameters: Vec<String> =
+            param_names.iter().cloned().map(|n| n.into()).collect();
         Err(ModelError::DuplicateParameterNames {
             function_parameters,
         })
     } else {
         Ok(())
     }
-
 }
 
 // check if set is comprised of unique elements only
@@ -53,10 +53,8 @@ where
     let indices = subset.iter().map(|value_subset| {
         full.iter()
             .position(|value_full| value_full == value_subset)
-            .ok_or_else(|| {
-                ModelError::FunctionParameterNotInModel {
-                    function_parameter : value_subset.clone().into()
-                }
+            .ok_or_else(|| ModelError::FunctionParameterNotInModel {
+                function_parameter: value_subset.clone().into(),
             })
     });
     // see https://stackoverflow.com/questions/26368288/how-do-i-stop-iteration-and-return-an-error-when-iteratormap-returns-a-result
@@ -74,12 +72,7 @@ pub fn create_wrapper_function<ScalarType, F, StrType, StrType2>(
     function_parameters: &[StrType2],
     function: F,
 ) -> Result<
-    Box<
-        dyn Fn(
-            &DVector<ScalarType>,
-            &DVector<ScalarType>,
-        ) -> DVector<ScalarType>,
-    >,
+    Box<dyn Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType>>,
     ModelError,
 >
 where
@@ -87,19 +80,14 @@ where
     StrType: Into<String> + Clone + Hash + Eq + PartialEq<StrType2>,
     StrType2: Into<String> + Clone + Hash + Eq,
     String: PartialEq<StrType> + PartialEq<StrType2>,
-    F: Fn(
-            &DVector<ScalarType>,
-            &DVector<ScalarType>,
-        ) -> DVector<ScalarType>
-        + 'static,
+    F: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
 {
     check_parameter_names(&model_parameters)?;
     check_parameter_names(&function_parameters)?;
 
     let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
 
-    let wrapped = move |x: &DVector<ScalarType>,
-                        params: &DVector<ScalarType>| {
+    let wrapped = move |x: &DVector<ScalarType>, params: &DVector<ScalarType>| {
         //todo: refactor this, since this is unelegant and not parallelizable
         let mut parameter_for_function = Vec::<ScalarType>::with_capacity(index_mapping.len());
         for param_idx in index_mapping.iter() {
@@ -166,10 +154,7 @@ mod test {
     }
 
     // dummy function that just returns the given x
-    fn dummy_unit_function_for_x(
-        x: &DVector<f64>,
-        _params: &DVector<f64>,
-    ) -> DVector<f64> {
+    fn dummy_unit_function_for_x(x: &DVector<f64>, _params: &DVector<f64>) -> DVector<f64> {
         DVector::<f64>::clone(x)
     }
 

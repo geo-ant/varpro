@@ -1,9 +1,8 @@
-use nalgebra::{DVector};
+use nalgebra::DVector;
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
 use crate::model::errors::ModelError;
-use crate::test_helpers::{exponential_decay_dtau,exponential_decay,exponential_decay_dt0};
-
+use crate::test_helpers::{exponential_decay, exponential_decay_dt0, exponential_decay_dtau};
 
 #[test]
 // check that the modelfunction builder assigns the function and derivatives correctly
@@ -20,20 +19,19 @@ fn modelfunction_builder_creates_correct_modelfunction_with_valid_parameters() {
         ["t0".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
-        .partial_deriv("t0", |t, params| {
-            exponential_decay_dt0(t, params[0], params[1])
-        })
-        .partial_deriv("tau", |t, params| {
-            exponential_decay_dtau(t, params[0], params[1])
-        })
-        .build()
-        .expect("Modelfunction builder with valid parameters should not return an error");
+    .partial_deriv("t0", |t, params| {
+        exponential_decay_dt0(t, params[0], params[1])
+    })
+    .partial_deriv("tau", |t, params| {
+        exponential_decay_dtau(t, params[0], params[1])
+    })
+    .build()
+    .expect("Modelfunction builder with valid parameters should not return an error");
 
     let t0 = 2.;
     let tau = 1.5;
     let model_params = DVector::<f64>::from(vec![-2., t0, -1., tau]);
-    let t =
-        DVector::<f64>::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
+    let t = DVector::<f64>::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     assert_eq!(
         (mf.function)(&t, &model_params),
         exponential_decay(&t, t0, tau),
@@ -70,7 +68,7 @@ fn modelfunction_builder_fails_with_invalid_model_parameters() {
         ["t0".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
-        .build();
+    .build();
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
@@ -83,7 +81,7 @@ fn modelfunction_builder_fails_with_invalid_model_parameters() {
         ["t0".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
-        .build();
+    .build();
 
     assert!(
         matches!(result, Err(ModelError::EmptyParameters)),
@@ -106,7 +104,7 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
         ["tau".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
-        .build();
+    .build();
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
@@ -119,7 +117,7 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
         Vec::<String>::default().as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
-        .build();
+    .build();
 
     assert!(
         matches!(result, Err(ModelError::EmptyParameters)),
@@ -143,10 +141,10 @@ fn modelfunction_builder_fails_when_invalid_derivatives_are_given() {
         ["t0".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
-        .partial_deriv("bar", |t, params| {
-            exponential_decay_dtau(t, params[0], params[1])
-        })
-        .build();
+    .partial_deriv("bar", |t, params| {
+        exponential_decay_dtau(t, params[0], params[1])
+    })
+    .build();
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
@@ -159,10 +157,10 @@ fn modelfunction_builder_fails_when_invalid_derivatives_are_given() {
         ["t0".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
-        .partial_deriv("tau", |t, params| {
-            exponential_decay_dtau(t, params[0], params[1])
-        })
-        .build();
+    .partial_deriv("tau", |t, params| {
+        exponential_decay_dtau(t, params[0], params[1])
+    })
+    .build();
 
     assert!(
         matches!(result, Err(ModelError::MissingDerivative { .. })),
@@ -184,17 +182,16 @@ fn modelfunction_builder_fails_when_duplicate_derivatives_are_given() {
         ["t0".to_string(), "tau".to_string()].as_ref(),
         |t, params| exponential_decay(t, params[0], params[1]),
     )
-        .partial_deriv("tau", |t, params| {
-            exponential_decay_dtau(t, params[0], params[1])
-        })
-        .partial_deriv("tau", |t, params| {
-            exponential_decay_dtau(t, params[0], params[1])
-        })
-        .build();
+    .partial_deriv("tau", |t, params| {
+        exponential_decay_dtau(t, params[0], params[1])
+    })
+    .partial_deriv("tau", |t, params| {
+        exponential_decay_dtau(t, params[0], params[1])
+    })
+    .build();
 
     assert!(
         matches!(result, Err(ModelError::DuplicateDerivative { .. })),
         "Builder must indicate that one derivative is missing"
     );
 }
-

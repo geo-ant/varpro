@@ -1,11 +1,9 @@
-use nalgebra::base::{Scalar};
-
+use nalgebra::base::Scalar;
 
 use crate::model::BaseFuncType;
 
-use std::collections::HashMap;
 use nalgebra::DVector;
-
+use std::collections::HashMap;
 
 // todo comment
 pub struct ModelFunction<ScalarType>

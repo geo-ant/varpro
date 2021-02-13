@@ -1,6 +1,6 @@
 use crate::model::modelfunction::ModelFunction;
-use nalgebra::base::{ Scalar};
-use nalgebra::{DVector, DMatrix};
+use nalgebra::base::Scalar;
+use nalgebra::{DMatrix, DVector};
 use num_traits::Zero;
 
 mod detail;
@@ -11,16 +11,10 @@ pub mod modelfunction;
 #[cfg(test)]
 mod test;
 
-
-
 //TODO Document
 //modelfunction f(x,alpha), where x is the independent variable, alpha: (potentially) nonlinear params
-pub type BaseFuncType<ScalarType> = Box<
-    dyn Fn(
-        &DVector<ScalarType>,
-        &DVector<ScalarType>,
-    ) -> DVector<ScalarType>,
->;
+pub type BaseFuncType<ScalarType> =
+    Box<dyn Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType>>;
 
 /// # A Separable Nonlinear Model
 /// TODO Document:
@@ -71,7 +65,6 @@ where
     modelfunctions: Vec<ModelFunction<ScalarType>>,
 }
 
-
 impl<ScalarType> SeparableModel<ScalarType>
 where
     ScalarType: Scalar,
@@ -95,7 +88,7 @@ where
 //TODO: find out if this will really work!!!!!!
 impl<ScalarType> SeparableModel<ScalarType>
 where
-    ScalarType: Scalar + Zero
+    ScalarType: Scalar + Zero,
 {
     pub fn eval(
         &self,
@@ -113,9 +106,14 @@ where
         //todo: optimize this by using unsafe initialization (https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#method.new_uninitialized_generic)
         // https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#generic-constructors
         // phew, this was hard to understand how to make that work (so far)
-        let mut function_value_matrix = DMatrix::<ScalarType>::from_element(nrows,ncols,Zero::zero());
+        let mut function_value_matrix =
+            DMatrix::<ScalarType>::from_element(nrows, ncols, Zero::zero());
 
-        for (basefunc, mut column) in self.modelfunctions.iter().zip(function_value_matrix.column_iter_mut()) {
+        for (basefunc, mut column) in self
+            .modelfunctions
+            .iter()
+            .zip(function_value_matrix.column_iter_mut())
+        {
             let function_value = (basefunc.function)(location, parameters);
             column.copy_from(&function_value);
         }
