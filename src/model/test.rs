@@ -1,5 +1,6 @@
 
 #[test]
+#[ignore]
 // test that the eval method produces correct results and gives a matrix that is ordered correctly
 fn model_function_eval_produces_correct_result() {
 

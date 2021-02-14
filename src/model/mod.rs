@@ -114,9 +114,15 @@ where
     }
 
     /// TODO DOCUMENT
-    pub fn deriv<'a,'b,'c>(&self,location: &'a DVector<ScalarType>, parameters : &'b DVector<ScalarType>) -> DerivativeProxy<'c,ScalarType>
-    where 'c : 'a+'b{
-        todo!()
+    pub fn deriv<'a,'b,'c,'d>(&'a self,location: &'b DVector<ScalarType>, parameters : &'c DVector<ScalarType>) -> DerivativeProxy<'d,ScalarType>
+    where 'a : 'd, 'b : 'd, 'c:'d
+    {
+        DerivativeProxy {
+            basefunctions: &self.basefunctions,
+            location,
+            parameters,
+            model_parameter_names: &self.parameter_names
+        }
     }
 }
 /// A helper proxy that is used in conjuntion with the method to evalue the derivative of a
@@ -131,6 +137,7 @@ pub struct DerivativeProxy<'a,ScalarType: Scalar> {
 
 impl<'a,ScalarType:Scalar+Zero> DerivativeProxy<'a,ScalarType> {
     /// TODO DOCUMENT
+    #[inline]
     pub fn eval_at_param_index(&self,index : usize) -> Result<DMatrix<ScalarType>,ModelError>{
         if index >= self.model_parameter_names.len() {
             return Err(ModelError::DerivativeIndexOutOfBounds {index});
@@ -159,6 +166,7 @@ impl<'a,ScalarType:Scalar+Zero> DerivativeProxy<'a,ScalarType> {
     /// If the parameter is in the model parameters, returns the same result as calculating
     /// the derivative at the same parameter index. Otherwise returns an error indicating
     /// the parameter is not in the model parameters.
+    #[inline]
     pub fn eval_at_param_name<StrType: AsRef<str>>(&self,param_name : StrType) -> Result<DMatrix<ScalarType>,ModelError> {
         let index = self.model_parameter_names.iter().position(|p|p==param_name.as_ref()).ok_or(ModelError::ParameterNotInModel {parameter:param_name.as_ref().into()})?;
         self.eval_at_param_index(index)
