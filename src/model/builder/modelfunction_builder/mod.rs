@@ -38,26 +38,32 @@ where
     /// * `function`: the actual function.
     /// # Result
     /// A model builder that can be used to add derivatives.
-    pub fn new<FuncType>(
+    pub fn new<FuncType, StrCollection>(
         model_parameters: Vec<String>,
-        function_parameters: &[String],
+        function_parameters: StrCollection,
         function: FuncType,
     ) -> Self
     where
         FuncType: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
+        StrCollection: IntoIterator,
+        StrCollection::Item: AsRef<str>,
     {
+        let function_parameters: Vec<String> = function_parameters
+            .into_iter()
+            .map(|s| s.as_ref().to_string())
+            .collect();
         // check that the function parameter list is valid, otherwise continue with an
         // internal error state
-        if let Err(err) = check_parameter_names(function_parameters) {
+        if let Err(err) = check_parameter_names(&function_parameters) {
             return Self {
                 model_function_result: Err(err),
                 model_parameters,
-                function_parameters: function_parameters.to_vec(),
+                function_parameters,
             };
         }
 
         let model_function_result =
-            create_wrapper_function(&model_parameters, function_parameters, function).map(
+            create_wrapper_function(&model_parameters, &function_parameters, function).map(
                 |function| ModelFunction {
                     function,
                     derivatives: Default::default(),
