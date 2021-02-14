@@ -6,7 +6,7 @@ use nalgebra::DVector;
 use std::collections::HashMap;
 
 // todo comment
-pub struct ModelFunction<ScalarType>
+pub struct BaseFunction<ScalarType>
 where
     ScalarType: Scalar,
 {
@@ -18,7 +18,7 @@ where
 }
 
 // TODO document
-impl<ScalarType> ModelFunction<ScalarType>
+impl<ScalarType> BaseFunction<ScalarType>
 where
     ScalarType: Scalar,
 {

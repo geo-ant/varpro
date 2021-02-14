@@ -2,24 +2,25 @@ use crate::model::errors::*;
 use nalgebra::{DVector, Scalar};
 use std::collections::HashSet;
 use std::hash::Hash;
+use crate::model::BaseFuncType;
 
 /// check that the parameter names obey the following rules
 /// * the set of parameters is not empty
 /// * the set of parameters contains only unique elements
 /// # Returns
 /// Ok if the conditions hold, otherwise an error variant.
-pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelError>
+pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelBuildError>
 where
     StrType: Hash + Eq + Clone + Into<String>,
 {
     if param_names.is_empty() {
-        return Err(ModelError::EmptyParameters);
+        return Err(ModelBuildError::EmptyParameters);
     }
 
     if !has_only_unique_elements(param_names.iter()) {
         let function_parameters: Vec<String> =
             param_names.iter().cloned().map(|n| n.into()).collect();
-        Err(ModelError::DuplicateParameterNames {
+        Err(ModelBuildError::DuplicateParameterNames {
             function_parameters,
         })
     } else {
@@ -45,7 +46,10 @@ where
 /// The function returns the vector of indices or an error variant if something goes wrong
 /// if the subset is empty, the result is an Ok variant with an empty vector.
 /// if the full set contains duplicates, the index for the first element is used for the index mapping
-pub fn create_index_mapping<T1, T2>(full: &[T1], subset: &[T2]) -> Result<Vec<usize>, ModelError>
+pub fn create_index_mapping<T1, T2>(
+    full: &[T1],
+    subset: &[T2],
+) -> Result<Vec<usize>, ModelBuildError>
 where
     T1: Clone + PartialEq + PartialEq<T2>,
     T2: Clone + PartialEq + Into<String>,
@@ -53,7 +57,7 @@ where
     let indices = subset.iter().map(|value_subset| {
         full.iter()
             .position(|value_full| value_full == value_subset)
-            .ok_or_else(|| ModelError::FunctionParameterNotInModel {
+            .ok_or_else(|| ModelBuildError::FunctionParameterNotInModel {
                 function_parameter: value_subset.clone().into(),
             })
     });
@@ -73,7 +77,7 @@ pub fn create_wrapper_function<ScalarType, F, StrType, StrType2>(
     function: F,
 ) -> Result<
     Box<dyn Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType>>,
-    ModelError,
+    ModelBuildError,
 >
 where
     ScalarType: Scalar,
@@ -239,5 +243,22 @@ mod test {
             x,
             "Wrapped function must pass the location argument unaltered"
         );
+    }
+}
+
+#[inline]
+pub fn evaluate<ScalarType: Scalar>(
+    func: &BaseFuncType<ScalarType>,
+    location: &DVector<ScalarType>,
+    parameters: &DVector<ScalarType>,
+) -> Result<DVector<ScalarType>, ModelError> {
+    let result  = (func)(location,parameters);
+    if result.len() == location.len() {
+        Ok(result)
+    } else {
+        Err(ModelError::UnexpectedFunctionOutput {
+            expected_length: location.len(),
+            actual_length: result.len(),
+        })
     }
 }

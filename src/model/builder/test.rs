@@ -15,13 +15,13 @@ fn builder_fails_for_invalid_model_parameters() {
         SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "b".to_string()])
             .build();
     assert!(
-        matches! {result, Err(ModelError::DuplicateParameterNames {..})},
+        matches! {result, Err(ModelBuildError::DuplicateParameterNames {..})},
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 
     let result = SeparableModelBuilder::<f64>::new(&Vec::<String>::default()).build();
     assert!(
-        matches! {result, Err(ModelError::EmptyParameters {..})},
+        matches! {result, Err(ModelBuildError::EmptyParameters {..})},
         "Creating model with empty parameters must fail with correct error"
     );
 
@@ -29,7 +29,7 @@ fn builder_fails_for_invalid_model_parameters() {
         SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "c".to_string()])
             .build();
     assert!(
-        matches! {result, Err(ModelError::EmptyModel {..})},
+        matches! {result, Err(ModelBuildError::EmptyModel {..})},
         "Creating model without functions must fail with correct error"
     );
 }
@@ -45,7 +45,7 @@ fn builder_fails_when_not_all_model_parameters_are_depended_on_by_the_modelfunct
             .partial_deriv("a", |_, _| unimplemented!())
             .build();
     assert!(
-        matches! {result, Err(ModelError::UnusedParameter {..})},
+        matches! {result, Err(ModelBuildError::UnusedParameter {..})},
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 }
@@ -58,7 +58,7 @@ fn builder_fails_when_not_all_required_partial_derivatives_are_given_for_functio
         .partial_deriv("a", |_, _| unimplemented!())
         .build();
     assert!(
-        matches! {result, Err(ModelError::MissingDerivative {..})},
+        matches! {result, Err(ModelBuildError::MissingDerivative {..})},
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 }
@@ -112,13 +112,13 @@ fn builder_produces_correct_model_from_functions() {
 
     // assert that the correct number of functions is in the set
     assert_eq!(
-        model.modelfunctions.len(),
+        model.basefunctions.len(),
         5,
         "Number of functions in model is incorrect"
     );
 
     // check the first function f(t) = 2t
-    let func = &model.modelfunctions[0];
+    let func = &model.basefunctions[0];
     assert!(
         func.derivatives.is_empty(),
         "This function should have no derivatives"
@@ -130,7 +130,7 @@ fn builder_produces_correct_model_from_functions() {
     );
 
     // check the second function f(t,t0,tau) = exp( -(t-t0)/tau )
-    let func = &model.modelfunctions[1];
+    let func = &model.basefunctions[1];
     assert_eq!(func.derivatives.len(), 2, "Incorrect number of derivatives");
     assert_eq!(
         (func.function)(&ts, &params),
@@ -149,7 +149,7 @@ fn builder_produces_correct_model_from_functions() {
     );
 
     // check that the third function is f(t) = t
-    let func = &model.modelfunctions[2];
+    let func = &model.basefunctions[2];
     assert!(
         func.derivatives.is_empty(),
         "This function should have no derivatives"
@@ -161,7 +161,7 @@ fn builder_produces_correct_model_from_functions() {
     );
 
     // check that the fourth function is f(t) = sin(omega1*t)
-    let func = &model.modelfunctions[3];
+    let func = &model.basefunctions[3];
     assert_eq!(func.derivatives.len(), 1, "Incorrect number of derivatives");
     assert_eq!(
         (func.function)(&ts, &params),
@@ -175,7 +175,7 @@ fn builder_produces_correct_model_from_functions() {
     );
 
     // check that the fifth function is f(t) = sin(omega2*t)
-    let func = &model.modelfunctions[4];
+    let func = &model.basefunctions[4];
     assert_eq!(func.derivatives.len(), 1, "Incorrect number of derivatives");
     assert_eq!(
         (func.function)(&ts, &params),

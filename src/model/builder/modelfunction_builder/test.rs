@@ -1,7 +1,7 @@
 use nalgebra::DVector;
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
-use crate::model::errors::ModelError;
+use crate::model::errors::ModelBuildError;
 use crate::test_helpers::{exponential_decay, exponential_decay_dt0, exponential_decay_dtau};
 
 #[test]
@@ -72,7 +72,7 @@ fn modelfunction_builder_fails_with_invalid_model_parameters() {
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
-        matches!(result, Err(ModelError::DuplicateParameterNames { .. })),
+        matches!(result, Err(ModelBuildError::DuplicateParameterNames { .. })),
         "Modelfunction builder must indicate duplicate parameters!"
     );
 
@@ -84,7 +84,7 @@ fn modelfunction_builder_fails_with_invalid_model_parameters() {
     .build();
 
     assert!(
-        matches!(result, Err(ModelError::EmptyParameters)),
+        matches!(result, Err(ModelBuildError::EmptyParameters)),
         "Builder must indicate error when model parameters are emtpy"
     );
 }
@@ -108,7 +108,7 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
-        matches!(result, Err(ModelError::DuplicateParameterNames { .. })),
+        matches!(result, Err(ModelBuildError::DuplicateParameterNames { .. })),
         "Modelfunction builder must indicate duplicate parameters!"
     );
 
@@ -120,7 +120,7 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
     .build();
 
     assert!(
-        matches!(result, Err(ModelError::EmptyParameters)),
+        matches!(result, Err(ModelBuildError::EmptyParameters)),
         "Builder must indicate error when function parameters are emtpy"
     );
 }
@@ -148,7 +148,7 @@ fn modelfunction_builder_fails_when_invalid_derivatives_are_given() {
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
-        matches!(result, Err(ModelError::InvalidDerivative { .. })),
+        matches!(result, Err(ModelBuildError::InvalidDerivative { .. })),
         "Modelfunction builder must when non-existing derivative is given for function!"
     );
 
@@ -163,7 +163,7 @@ fn modelfunction_builder_fails_when_invalid_derivatives_are_given() {
     .build();
 
     assert!(
-        matches!(result, Err(ModelError::MissingDerivative { .. })),
+        matches!(result, Err(ModelBuildError::MissingDerivative { .. })),
         "Builder must indicate that one derivative is missing"
     );
 }
@@ -191,7 +191,7 @@ fn modelfunction_builder_fails_when_duplicate_derivatives_are_given() {
     .build();
 
     assert!(
-        matches!(result, Err(ModelError::DuplicateDerivative { .. })),
+        matches!(result, Err(ModelBuildError::DuplicateDerivative { .. })),
         "Builder must indicate that one derivative is missing"
     );
 }

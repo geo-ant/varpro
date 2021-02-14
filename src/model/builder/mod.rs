@@ -2,8 +2,8 @@ use nalgebra::{DVector, Scalar};
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
 use crate::model::detail::check_parameter_names;
-use crate::model::errors::ModelError;
-use crate::model::modelfunction::ModelFunction;
+use crate::model::errors::ModelBuildError;
+use crate::model::modelfunction::BaseFunction;
 use crate::model::SeparableModel;
 
 mod modelfunction_builder;
@@ -16,7 +16,7 @@ pub struct SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
-    model_result: Result<SeparableModel<ScalarType>, ModelError>,
+    model_result: Result<SeparableModel<ScalarType>, ModelBuildError>,
 }
 
 /// This trait can be used to extend an existing model with more functions.
@@ -31,11 +31,11 @@ where
     }
 }
 
-impl<ScalarType> From<ModelError> for SeparableModelBuilder<ScalarType>
+impl<ScalarType> From<ModelBuildError> for SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
-    fn from(err: ModelError) -> Self {
+    fn from(err: ModelBuildError) -> Self {
         Self {
             model_result: Err(err),
         }
@@ -64,7 +64,7 @@ where
         } else {
             let model_result = Ok(SeparableModel {
                 parameter_names,
-                modelfunctions: Vec::default(),
+                basefunctions: Vec::default(),
             });
             Self { model_result }
         }
@@ -77,8 +77,8 @@ where
     {
         if let Ok(model) = self.model_result.as_mut() {
             model
-                .modelfunctions
-                .push(ModelFunction::parameter_independent(function));
+                .basefunctions
+                .push(BaseFunction::parameter_independent(function));
         }
         self
     }
@@ -98,7 +98,7 @@ where
     }
 
     //todo document
-    pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelError> {
+    pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
         self.model_result.and_then(check_validity)
     }
 }
@@ -112,12 +112,12 @@ where
 ///    parameter.
 fn check_validity<ScalarType>(
     model: SeparableModel<ScalarType>,
-) -> Result<SeparableModel<ScalarType>, ModelError>
+) -> Result<SeparableModel<ScalarType>, ModelBuildError>
 where
     ScalarType: Scalar,
 {
-    if model.modelfunctions.is_empty() {
-        Err(ModelError::EmptyModel)
+    if model.basefunctions.is_empty() {
+        Err(ModelBuildError::EmptyModel)
     } else {
         // now check that all model parameters are referenced in at least one parameter of one
         // of the given model functions. We do this by checking the indices of the derivatives
@@ -125,11 +125,11 @@ where
         // modelfunctions derivatives
         for (param_index, parameter_name) in model.parameter_names.iter().enumerate() {
             if !model
-                .modelfunctions
+                .basefunctions
                 .iter()
                 .any(|function| function.derivatives.contains_key(&param_index))
             {
-                return Err(ModelError::UnusedParameter {
+                return Err(ModelBuildError::UnusedParameter {
                     parameter: parameter_name.clone(),
                 });
             }
@@ -162,14 +162,14 @@ pub struct SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
 {
-    current_result: Result<ModelAndFunctionbuilderPair<ScalarType>, ModelError>,
+    current_result: Result<ModelAndFunctionbuilderPair<ScalarType>, ModelBuildError>,
 }
 
-impl<ScalarType> From<ModelError> for SeparableModelBuilderProxyWithDerivatives<ScalarType>
+impl<ScalarType> From<ModelBuildError> for SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
 {
-    fn from(err: ModelError) -> Self {
+    fn from(err: ModelBuildError) -> Self {
         Self {
             current_result: Err(err),
         }
@@ -182,7 +182,7 @@ where
 {
     //todo document
     fn new<F, StrCollection>(
-        model_result: Result<SeparableModel<ScalarType>, ModelError>,
+        model_result: Result<SeparableModel<ScalarType>, ModelBuildError>,
         function_parameters: StrCollection,
         function: F,
     ) -> Self
@@ -231,7 +231,7 @@ where
         match self.current_result {
             Ok(result) => {
                 let ModelAndFunctionbuilderPair { mut model, builder } = result;
-                if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
+                if let Err(err) = builder.build().map(|func| model.basefunctions.push(func)) {
                     SeparableModelBuilder::from(err)
                 } else {
                     SeparableModelBuilder::from(model).invariant_function(function)
@@ -255,7 +255,7 @@ where
         match self.current_result {
             Ok(result) => {
                 let ModelAndFunctionbuilderPair { mut model, builder } = result;
-                if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
+                if let Err(err) = builder.build().map(|func| model.basefunctions.push(func)) {
                     SeparableModelBuilderProxyWithDerivatives::from(err)
                 } else {
                     SeparableModelBuilderProxyWithDerivatives::new(
@@ -270,13 +270,13 @@ where
     }
 
     //todo document
-    pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelError> {
+    pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
         // this method converts the internal results into a separable model and uses its
         // facilities to check for completion and the like
         match self.current_result {
             Ok(result) => {
                 let ModelAndFunctionbuilderPair { mut model, builder } = result;
-                if let Err(err) = builder.build().map(|func| model.modelfunctions.push(func)) {
+                if let Err(err) = builder.build().map(|func| model.basefunctions.push(func)) {
                     SeparableModelBuilder::from(err).build()
                 } else {
                     SeparableModelBuilder::from(model).build()

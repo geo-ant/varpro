@@ -1,4 +1,5 @@
-use crate::model::modelfunction::ModelFunction;
+use crate::model::errors::ModelError;
+use crate::model::modelfunction::BaseFunction;
 use nalgebra::base::Scalar;
 use nalgebra::{DMatrix, DVector};
 use num_traits::Zero;
@@ -59,10 +60,10 @@ where
     /// The list of parameter contains a nonzero number of names and these names
     /// are unique.
     parameter_names: Vec<String>,
-    /// the set of model. This already contains the model
-    /// which are wrapped inside a lambda function so that they can take the
-    /// parameter space of the model function set as an argument
-    modelfunctions: Vec<ModelFunction<ScalarType>>,
+    /// the set of base functions for the model. This already contains the base functions
+    /// which are wrapped inside a lambda function so that they can take the whole
+    /// parameter space of the model as an argument
+    basefunctions: Vec<BaseFunction<ScalarType>>,
 }
 
 impl<ScalarType> SeparableModel<ScalarType>
@@ -80,8 +81,8 @@ where
     }
 
     /// Get the model functions that comprise the model
-    pub fn functions(&self) -> &[ModelFunction<ScalarType>] {
-        self.modelfunctions.as_slice()
+    pub fn functions(&self) -> &[BaseFunction<ScalarType>] {
+        self.basefunctions.as_slice()
     }
 }
 
@@ -90,33 +91,76 @@ impl<ScalarType> SeparableModel<ScalarType>
 where
     ScalarType: Scalar + Zero,
 {
+    /// TODO DOCUMENT
     pub fn eval(
         &self,
         location: &DVector<ScalarType>,
         parameters: &DVector<ScalarType>,
-    ) -> DMatrix<ScalarType> {
-        // helpful links:
-        //https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwi6-v2O1eLuAhVqDWMBHU-tBqMQFjAAegQIARAC&url=https%3A%2F%2Fdiscourse.nphysics.org%2Ft%2Fusing-nalgebra-in-generics%2F90&usg=AOvVaw1rBwzIclum71sfw-6Ejvlh
-        //https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwi6-v2O1eLuAhVqDWMBHU-tBqMQFjABegQIBBAC&url=https%3A%2F%2Fdiscourse.nphysics.org%2Ft%2Fhelp-understanding-trait-bounds-required-allocators%2F440&usg=AOvVaw2mbvY28cSFLzTzRnX9rWAN
-
-        //todo include panics or errors if functions don't produce correct length. Maybe better error!
-
+    ) -> Result<DMatrix<ScalarType>, ModelError> {
         let nrows = location.len();
-        let ncols = self.modelfunctions.len();
-        //todo: optimize this by using unsafe initialization (https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#method.new_uninitialized_generic)
-        // https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#generic-constructors
-        // phew, this was hard to understand how to make that work (so far)
+        let ncols = self.basefunctions.len();
         let mut function_value_matrix =
-            DMatrix::<ScalarType>::from_element(nrows, ncols, Zero::zero());
+            unsafe { DMatrix::<ScalarType>::new_uninitialized(nrows, ncols) };
 
         for (basefunc, mut column) in self
-            .modelfunctions
+            .basefunctions
             .iter()
             .zip(function_value_matrix.column_iter_mut())
         {
-            let function_value = (basefunc.function)(location, parameters);
+            let function_value = detail::evaluate(&basefunc.function, location, parameters)?;
             column.copy_from(&function_value);
         }
-        function_value_matrix
+        Ok(function_value_matrix)
+    }
+
+    /// TODO DOCUMENT
+    pub fn deriv<'a,'b,'c>(&self,location: &'a DVector<ScalarType>, parameters : &'b DVector<ScalarType>) -> DerivativeProxy<'c,ScalarType>
+    where 'c : 'a+'b{
+        todo!()
+    }
+}
+/// A helper proxy that is used in conjuntion with the method to evalue the derivative of a
+/// separable model. This structure serves no purpose other than making the function call to
+/// calculate the derivative a little more readable
+pub struct DerivativeProxy<'a,ScalarType: Scalar> {
+    basefunctions : &'a [BaseFunction<ScalarType>],
+    location : &'a DVector<ScalarType>,
+    parameters : &'a DVector<ScalarType>,
+    model_parameter_names : &'a[String],
+}
+
+impl<'a,ScalarType:Scalar+Zero> DerivativeProxy<'a,ScalarType> {
+    /// TODO DOCUMENT
+    pub fn eval_at_param_index(&self,index : usize) -> Result<DMatrix<ScalarType>,ModelError>{
+        if index >= self.model_parameter_names.len() {
+            return Err(ModelError::DerivativeIndexOutOfBounds {index});
+        }
+
+        let nrows = self.location.len();
+        let ncols = self.basefunctions.len();
+        let mut derivative_function_value_matrix = DMatrix::<ScalarType>::from_element(nrows, ncols,Zero::zero());
+
+        for (basefunc, mut column) in self
+            .basefunctions
+            .iter()
+            .zip(derivative_function_value_matrix.column_iter_mut())
+        {
+            if let Some(derivative) = basefunc.derivatives.get(&index) {
+                let deriv_value = detail::evaluate(derivative, self.location, self.parameters)?;
+                column.copy_from(&deriv_value);
+            }
+        }
+        Ok(derivative_function_value_matrix)
+    }
+
+    /// Convenience method that allows to calculate the derivative of the function value matrix
+    /// by giving the parameter name.
+    /// # Returns
+    /// If the parameter is in the model parameters, returns the same result as calculating
+    /// the derivative at the same parameter index. Otherwise returns an error indicating
+    /// the parameter is not in the model parameters.
+    pub fn eval_at_param_name<StrType: AsRef<str>>(&self,param_name : StrType) -> Result<DMatrix<ScalarType>,ModelError> {
+        let index = self.model_parameter_names.iter().position(|p|p==param_name.as_ref()).ok_or(ModelError::ParameterNotInModel {parameter:param_name.as_ref().into()})?;
+        self.eval_at_param_index(index)
     }
 }
