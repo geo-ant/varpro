@@ -48,14 +48,17 @@ where
         StrCollection: IntoIterator,
         StrCollection::Item: AsRef<str>,
     {
-        let function_parameters : Vec<String> = function_parameters.into_iter().map(|s|s.as_ref().to_string()).collect();
+        let function_parameters: Vec<String> = function_parameters
+            .into_iter()
+            .map(|s| s.as_ref().to_string())
+            .collect();
         // check that the function parameter list is valid, otherwise continue with an
         // internal error state
         if let Err(err) = check_parameter_names(&function_parameters) {
             return Self {
                 model_function_result: Err(err),
                 model_parameters,
-                function_parameters: function_parameters,
+                function_parameters,
             };
         }
 

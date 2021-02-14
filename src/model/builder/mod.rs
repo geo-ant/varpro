@@ -1,5 +1,3 @@
-use std::hash::Hash;
-
 use nalgebra::{DVector, Scalar};
 
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
@@ -64,10 +62,6 @@ where
                 model_result: Err(parameter_error),
             }
         } else {
-            let parameter_names = parameter_names
-                .iter()
-                .map(|name| name.clone().into())
-                .collect();
             let model_result = Ok(SeparableModel {
                 parameter_names,
                 modelfunctions: Vec::default(),
@@ -90,13 +84,15 @@ where
     }
 
     //todo document
-    pub fn function<F>(
+    pub fn function<F, StrCollection>(
         self,
-        function_params: &[String],
+        function_params: StrCollection,
         function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
     where
         F: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
+        StrCollection: IntoIterator,
+        StrCollection::Item: AsRef<str>,
     {
         SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
@@ -195,7 +191,6 @@ where
         StrCollection: IntoIterator,
         StrCollection::Item: AsRef<str>,
     {
-
         match model_result {
             Ok(model) => {
                 let model_parameters = model.parameters().clone();
@@ -247,13 +242,15 @@ where
     }
 
     //todo document
-    pub fn function<F>(
+    pub fn function<F, StrCollection>(
         self,
-        function_params: &[String],
+        function_params: StrCollection,
         function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
     where
         F: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
+        StrCollection: IntoIterator,
+        StrCollection::Item: AsRef<str>,
     {
         match self.current_result {
             Ok(result) => {
