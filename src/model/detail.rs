@@ -3,6 +3,7 @@ use nalgebra::{DVector, Scalar};
 use std::collections::HashSet;
 use std::hash::Hash;
 use crate::model::BaseFuncType;
+use crate::basis_function::BasisFunction;
 
 /// check that the parameter names obey the following rules
 /// * the set of parameters is not empty
@@ -99,6 +100,38 @@ where
         }
         let function_params = DVector::<ScalarType>::from_vec(parameter_for_function);
         (function)(x, &function_params)
+    };
+
+    Ok(Box::new(wrapped))
+}
+
+
+/// TODO document
+#[allow(clippy::type_complexity)]
+pub fn create_wrapped_basis_function<ScalarType, ArgList, F>(
+    model_parameters: &[String],
+    function_parameters: &[String],
+    function: F,
+) -> Result<
+    Box<dyn Fn(&DVector<ScalarType>, &[ScalarType]) -> DVector<ScalarType>>,
+    ModelBuildError,
+>
+    where
+        ScalarType: Scalar,
+        F: BasisFunction<ScalarType,ArgList> +  'static,
+{
+    check_parameter_names(&model_parameters)?;
+    check_parameter_names(&function_parameters)?;
+
+    let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
+
+    let wrapped = move |x: &DVector<ScalarType>, params: &[ScalarType]| {
+        //todo: refactor this, since this is unelegant and not parallelizable
+        let mut parameters_for_function = Vec::<ScalarType>::with_capacity(index_mapping.len());
+        for param_idx in index_mapping.iter() {
+            parameters_for_function.push(params[*param_idx].clone());
+        }
+        function.eval(x,parameters_for_function)
     };
 
     Ok(Box::new(wrapped))
@@ -243,6 +276,11 @@ mod test {
             x,
             "Wrapped function must pass the location argument unaltered"
         );
+    }
+
+    #[test]
+    fn creating_wrapped_base_function_dispatches_elements_correctly_to_underlying_function() {
+        todo!()
     }
 }
 
