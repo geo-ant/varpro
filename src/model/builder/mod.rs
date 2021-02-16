@@ -3,7 +3,7 @@ use nalgebra::{DVector, Scalar};
 use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
 use crate::model::detail::check_parameter_names;
 use crate::model::errors::ModelBuildError;
-use crate::model::modelfunction::BaseFunction;
+use crate::model::modelfunction::ModelBaseFunction;
 use crate::model::SeparableModel;
 
 mod modelfunction_builder;
@@ -78,7 +78,7 @@ where
         if let Ok(model) = self.model_result.as_mut() {
             model
                 .basefunctions
-                .push(BaseFunction::parameter_independent(function));
+                .push(ModelBaseFunction::parameter_independent(function));
         }
         self
     }

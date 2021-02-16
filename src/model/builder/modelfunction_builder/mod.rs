@@ -6,7 +6,7 @@ use nalgebra::DVector;
 
 use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapper_function};
 use crate::model::errors::ModelBuildError;
-use crate::model::modelfunction::BaseFunction;
+use crate::model::modelfunction::ModelBaseFunction;
 
 /// The modelfunction builder allows to create model functions that depend on
 /// a subset or the whole model parameters. Functions that depend on model parameters
@@ -20,7 +20,7 @@ where
     /// the parameters that the function depends on. Must be a subset of the model parameters
     function_parameters: Vec<String>,
     /// the current result of the building process of the model function
-    model_function_result: Result<BaseFunction<ScalarType>, ModelBuildError>,
+    model_function_result: Result<ModelBaseFunction<ScalarType>, ModelBuildError>,
 }
 
 impl<ScalarType> ModelFunctionBuilder<ScalarType>
@@ -64,7 +64,7 @@ where
 
         let model_function_result =
             create_wrapper_function(&model_parameters, &function_parameters, function).map(
-                |function| BaseFunction {
+                |function| ModelBaseFunction {
                     function,
                     derivatives: Default::default(),
                 },
@@ -136,7 +136,7 @@ where
     /// # Result
     /// A modelfunction containing the given function and derivatives or an error
     /// variant if an error occurred during the building process
-    pub fn build(self) -> Result<BaseFunction<ScalarType>, ModelBuildError> {
+    pub fn build(self) -> Result<ModelBaseFunction<ScalarType>, ModelBuildError> {
         self.check_completion()?;
         self.model_function_result
     }

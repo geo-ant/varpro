@@ -1,5 +1,5 @@
 use crate::model::errors::ModelError;
-use crate::model::modelfunction::BaseFunction;
+use crate::model::modelfunction::ModelBaseFunction;
 use nalgebra::base::Scalar;
 use nalgebra::{DMatrix, DVector};
 use num_traits::Zero;
@@ -63,7 +63,7 @@ where
     /// the set of base functions for the model. This already contains the base functions
     /// which are wrapped inside a lambda function so that they can take the whole
     /// parameter space of the model as an argument
-    basefunctions: Vec<BaseFunction<ScalarType>>,
+    basefunctions: Vec<ModelBaseFunction<ScalarType>>,
 }
 
 impl<ScalarType> SeparableModel<ScalarType>
@@ -81,7 +81,7 @@ where
     }
 
     /// Get the model functions that comprise the model
-    pub fn functions(&self) -> &[BaseFunction<ScalarType>] {
+    pub fn functions(&self) -> &[ModelBaseFunction<ScalarType>] {
         self.basefunctions.as_slice()
     }
 }
@@ -129,7 +129,7 @@ where
 /// separable model. This structure serves no purpose other than making the function call to
 /// calculate the derivative a little more readable
 pub struct DerivativeProxy<'a,ScalarType: Scalar> {
-    basefunctions : &'a [BaseFunction<ScalarType>],
+    basefunctions : &'a [ModelBaseFunction<ScalarType>],
     location : &'a DVector<ScalarType>,
     parameters : &'a DVector<ScalarType>,
     model_parameter_names : &'a[String],

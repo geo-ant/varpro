@@ -5,8 +5,9 @@ use crate::model::BaseFuncType;
 use nalgebra::DVector;
 use std::collections::HashMap;
 
-// todo comment
-pub struct BaseFunction<ScalarType>
+/// An internal type that is used to store basefunctions whose interface has been wrapped in
+/// such a way that they can accept the location and the complete model parameters as arguments
+pub struct ModelBaseFunction<ScalarType>
 where
     ScalarType: Scalar,
 {
@@ -18,7 +19,7 @@ where
 }
 
 // TODO document
-impl<ScalarType> BaseFunction<ScalarType>
+impl<ScalarType> ModelBaseFunction<ScalarType>
 where
     ScalarType: Scalar,
 {

@@ -10,5 +10,7 @@
 
 pub mod model;
 pub mod prelude;
+pub mod basis_function;
+
 #[cfg(test)]
 mod test_helpers;
