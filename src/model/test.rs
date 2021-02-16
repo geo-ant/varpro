@@ -1,3 +1,8 @@
+use crate::model::SeparableModel;
+
+fn get_test_model() -> SeparableModel<f64>{
+    todo!()
+}
 
 #[test]
 #[ignore]
