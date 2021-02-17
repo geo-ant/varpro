@@ -27,21 +27,21 @@ impl<ScalarType, Func> BasisFunction<ScalarType, ScalarType> for Func
         1
     }
 }
+
 // a helper macro set for counting
 // cribbed (and sligthly modified) from
 // https://danielkeep.github.io/tlborm/book/blk-counting.html
 // and here
 // https://stackoverflow.com/questions/43143327/how-to-allow-optional-trailing-commas-in-macros
-// it must be called with a trailing comma and counts number of elements between commas,
-// i.e. count_tts(1,2,3,) == 3usize, count_tts(a,b,)==2usize
-//TODO: this is ugly because of the trailing comma requirements, but I could not figure
-// out how to make that optional. Also dan keep (see above) has better syntax that requires
-// less recursion, but I couldn't get it to work either. So try improving this counting thing
+// the macro can be called with or without trailing comma
+// i.e. count_args(1,2,3)==count_args(1,2,3,) == 3usize, count_args(a,b)=count_args(a,b,)==2usize
+//TODO: see also daniel keep post (see above): recursion is not the most efficient way to implement this!
 macro_rules! count_args {
     () => {0usize};
-    ($_head:tt, $($tail:tt)*) => {1usize + count_args!($($tail)*)};
-    ($($all:tt)* ,) => {1usize + count_args!($(all)*)};
+    ($_head:tt, $($tail:tt),*) => {1usize + count_args!($($tail,)*)}; //these overloads are there to allow with and w/o trailing comma syntax
+    ($_head:tt, $($tail:tt,)*) => {1usize + count_args!($($tail,)*)};
 }
+
 
 // a macro to implement the BasisFunction trait on functions taking a number of arguments
 // without having to copy paste a lot of boilerplate.
