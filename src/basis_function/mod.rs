@@ -1,10 +1,9 @@
 #[cfg(test)]
 mod test;
 
-pub mod detail;
+mod detail;
 
 use nalgebra::{DVector, Scalar};
-use crate::model::errors::ModelBuildError;
 
 /// This trait allows us to pass vector valued functions `$f(\vec{x},\alpha_1,...\alpha_N$)` in a generic fashion.
 /// The functions must have at least one parameter argument besides the location, i.e. a function
@@ -33,19 +32,19 @@ pub trait BasisFunction<ScalarType, ArgList>
 where
     ScalarType: Scalar + Clone,
 {
-    /// A common calling interface to evaluate this function by passing a vector of scalar types
-    /// that is dispatched to the arguments in order. The dispatches vector must have the same
+    /// A common calling interface to evaluate this function by passing a slice of scalar types
+    /// that is dispatched to the arguments in order. The slice must have the same
     /// length as the parameter argument list.
     /// # Effect and Panics
-    /// If the vector has fewer elements than the parameter argument list. If the vector has more element,
+    /// If the slice has fewer elements than the parameter argument list. If the slice has more element,
     /// only the first `$N$` elements are used and dispatched to the parameters in order, i.e.
     /// `$\alpha_1$`=`param[0]`, ..., `$\alpha_N$`=`param[N-1]`. Calling eval will result in evaluating
     /// the implementing callable at the location and arguments given.
     ///
     /// **Attention** The library takes care that no panics can be caused by calls to `eval` from
-    /// within this library by making sure the parameter vector has the correct length. Therefore
+    /// within this library by making sure the parameter slice has the correct length. Therefore
     /// it is not recommended (and not necessary) to use this function in other code than inside this library.
-    fn eval(&self, location: &DVector<ScalarType>, params: Vec<ScalarType>) -> DVector<ScalarType>;
+    fn eval(&self, location: &DVector<ScalarType>, params : &[ScalarType]) -> DVector<ScalarType>;
 
     /// This gives the number of parameter arguments to the callable. So for a function `$f(\vec{x},\alpha_1,...\alpha_N)$`
     /// this will give `N`.

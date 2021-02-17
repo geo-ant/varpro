@@ -131,7 +131,7 @@ pub fn create_wrapped_basis_function<ScalarType, ArgList, F>(
         for param_idx in index_mapping.iter() {
             parameters_for_function.push(params[*param_idx].clone());
         }
-        function.eval(x,parameters_for_function)
+        function.eval(x,&parameters_for_function)
     };
 
     Ok(Box::new(wrapped))
