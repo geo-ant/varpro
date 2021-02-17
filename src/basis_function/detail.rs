@@ -3,12 +3,14 @@
 //! Fn(&DVector<T>,T,T)->DVector<T>
 //! Fn(&DVector<T>,T,T,T)->DVector<T>
 //! ...
-//! Fn(&DVector<T>,T,T,T,T,T,T,T,T,T,T)->DVector<T>
-//! where T : Scalar
+//! and so on up to a maximum number of parameters. T is of Scalar type.
+//! Currently the maximum number of scalar parameters is 10.
 
 use crate::basis_function::BasisFunction;
 use nalgebra::{Scalar, DVector};
 
+// this is just hand implemented so we can see the pattern from the first implementation.
+// After that we'll use a macro to get rid of some of the boilerplate
 impl<ScalarType, Func> BasisFunction<ScalarType, ScalarType> for Func
     where
         ScalarType: Scalar ,
@@ -25,26 +27,6 @@ impl<ScalarType, Func> BasisFunction<ScalarType, ScalarType> for Func
         1
     }
 }
-
-// this is just hand implemented so we can see the pattern from the first to the second implementation.
-// after that we'll use a macro to get rid of some of the boilerplate
-impl<ScalarType, Func> BasisFunction<ScalarType, (ScalarType, ScalarType)> for Func
-    where
-        ScalarType: Scalar,
-        Func: Fn(&DVector<ScalarType>, ScalarType, ScalarType) -> DVector<ScalarType>,
-{
-    fn eval(&self, location: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType> {
-        if params.len() != self.argument_count() {
-            panic!("Basisfunction expected {} arguments but the provided parameter slice has {} elements.",self.argument_count(),params.len());
-        }
-        (&self)(location, params[0].clone(),params[1].clone())
-    }
-
-    fn argument_count(&self) -> usize {
-        2
-    }
-}
-
 // a helper macro set for counting
 // cribbed (and sligthly modified) from
 // https://danielkeep.github.io/tlborm/book/blk-counting.html
@@ -90,6 +72,7 @@ macro_rules! basefunction_impl_helper ({$ScalarType:ident, $(($n:tt, $T:ident)),
 
 // this is the usage of the above macro to generate the required blanket implementations
 // The trait bound on T is T: Scalar
+basefunction_impl_helper!(T,(0,T),(1,T));
 basefunction_impl_helper!(T,(0,T),(1,T),(2,T));
 basefunction_impl_helper!(T,(0,T),(1,T),(2,T),(3,T));
 basefunction_impl_helper!(T,(0,T),(1,T),(2,T),(3,T),(4,T));
