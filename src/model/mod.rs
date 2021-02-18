@@ -1,8 +1,5 @@
-use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector};
-use num_traits::Zero;
 
 mod detail;
 pub mod errors;

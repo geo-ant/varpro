@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use nalgebra::base::Scalar;
 use nalgebra::DVector;
 
-use crate::model::errors::ModelError;
-
 /// Helper type that is a typedef for a function `$f(\vec{x},\vec{\alpha})$`, where
 /// the first argument is a location argument, and the second argument is the
 /// (nonlinear) parameters. This is the most low level representation of how our
@@ -45,22 +43,22 @@ where
     }
 }
 
-#[inline]
-/// Helper function to evaluate the given function with the location and parameters
-/// and make sure that the output vector size of the function has the same length as
-/// the location vector. Otherwise returns an error.
-pub fn evaluate_and_check<ScalarType: Scalar>(
-    func: &BaseFuncType<ScalarType>,
-    location: &DVector<ScalarType>,
-    parameters: &[ScalarType],
-) -> Result<DVector<ScalarType>, ModelError> {
-    let result = (func)(location, parameters);
-    if result.len() == location.len() {
-        Ok(result)
-    } else {
-        Err(ModelError::UnexpectedFunctionOutput {
-            expected_length: location.len(),
-            actual_length: result.len(),
-        })
-    }
-}
+// #[inline]
+// /// Helper function to evaluate the given function with the location and parameters
+// /// and make sure that the output vector size of the function has the same length as
+// /// the location vector. Otherwise returns an error.
+// pub fn evaluate_and_check<ScalarType: Scalar>(
+//     func: &BaseFuncType<ScalarType>,
+//     location: &DVector<ScalarType>,
+//     parameters: &[ScalarType],
+// ) -> Result<DVector<ScalarType>, ModelError> {
+//     let result = (func)(location, parameters);
+//     if result.len() == location.len() {
+//         Ok(result)
+//     } else {
+//         Err(ModelError::UnexpectedFunctionOutput {
+//             expected_length: location.len(),
+//             actual_length: result.len(),
+//         })
+//     }
+// }
