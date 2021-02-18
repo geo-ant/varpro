@@ -1,11 +1,11 @@
 use nalgebra::{DVector, Scalar};
 
+use crate::basis_function::BasisFunction;
 use crate::model::builder::modelfunction_builder::ModelBasisFunctionBuilder;
 use crate::model::detail::check_parameter_names;
 use crate::model::errors::ModelBuildError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use crate::model::SeparableModel;
-use crate::basis_function::BasisFunction;
 
 mod modelfunction_builder;
 
@@ -33,17 +33,15 @@ where
 }
 
 /// create a SeparableModelBuilder with the given result variant
-impl<ScalarType> From<Result<SeparableModel<ScalarType>,ModelBuildError>> for SeparableModelBuilder<ScalarType>
-    where
-        ScalarType: Scalar,
+impl<ScalarType> From<Result<SeparableModel<ScalarType>, ModelBuildError>>
+    for SeparableModelBuilder<ScalarType>
+where
+    ScalarType: Scalar,
 {
     fn from(model_result: Result<SeparableModel<ScalarType>, ModelBuildError>) -> Self {
-        Self {
-            model_result,
-        }
+        Self { model_result }
     }
 }
-
 
 impl<ScalarType> SeparableModelBuilder<ScalarType>
 where
@@ -87,13 +85,13 @@ where
     }
 
     //todo document
-    pub fn function<F, StrCollection,ArgList>(
+    pub fn function<F, StrCollection, ArgList>(
         self,
         function_params: StrCollection,
         function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
     where
-        F: BasisFunction<ScalarType,ArgList> + 'static,
+        F: BasisFunction<ScalarType, ArgList> + 'static,
         StrCollection: IntoIterator,
         StrCollection::Item: AsRef<str>,
     {
@@ -156,7 +154,10 @@ impl<ScalarType> ModelAndModelBasisFunctionBuilderPair<ScalarType>
 where
     ScalarType: Scalar,
 {
-    fn new(model: SeparableModel<ScalarType>, builder: ModelBasisFunctionBuilder<ScalarType>) -> Self {
+    fn new(
+        model: SeparableModel<ScalarType>,
+        builder: ModelBasisFunctionBuilder<ScalarType>,
+    ) -> Self {
         Self { model, builder }
     }
 }
@@ -184,13 +185,13 @@ where
     ScalarType: Scalar,
 {
     //todo document
-    fn new<F, StrCollection,ArgList>(
+    fn new<F, StrCollection, ArgList>(
         model_result: Result<SeparableModel<ScalarType>, ModelBuildError>,
         function_parameters: StrCollection,
         function: F,
     ) -> Self
     where
-        F: BasisFunction<ScalarType,ArgList> + 'static,
+        F: BasisFunction<ScalarType, ArgList> + 'static,
         StrCollection: IntoIterator,
         StrCollection::Item: AsRef<str>,
     {
@@ -200,7 +201,11 @@ where
                 Self {
                     current_result: Ok(ModelAndModelBasisFunctionBuilderPair::new(
                         model,
-                        ModelBasisFunctionBuilder::new(model_parameters, function_parameters, function),
+                        ModelBasisFunctionBuilder::new(
+                            model_parameters,
+                            function_parameters,
+                            function,
+                        ),
                     )),
                 }
             }
@@ -217,9 +222,13 @@ where
     //only vanish in the derivatives when the are linear, which I do not want to encourage anyways
     //TODO ALSO: document that partial derivative must take the arguments in the same order as
     //the base function for which they are the derivative
-    pub fn partial_deriv<StrType: AsRef<str>, F,ArgList>(self, parameter: StrType, derivative: F) -> Self
+    pub fn partial_deriv<StrType: AsRef<str>, F, ArgList>(
+        self,
+        parameter: StrType,
+        derivative: F,
+    ) -> Self
     where
-        F: BasisFunction<ScalarType,ArgList> + 'static,
+        F: BasisFunction<ScalarType, ArgList> + 'static,
     {
         match self.current_result {
             Ok(result) => Self {
@@ -242,7 +251,10 @@ where
     {
         match self.current_result {
             Ok(ModelAndModelBasisFunctionBuilderPair { mut model, builder }) => {
-                let intermediate_result = builder.build().map(|func| {model.basefunctions.push(func); model});
+                let intermediate_result = builder.build().map(|func| {
+                    model.basefunctions.push(func);
+                    model
+                });
                 SeparableModelBuilder::from(intermediate_result).invariant_function(function)
             }
             Err(err) => SeparableModelBuilder::from(err),
@@ -250,13 +262,13 @@ where
     }
 
     //todo document
-    pub fn function<F, StrCollection,ArgList>(
+    pub fn function<F, StrCollection, ArgList>(
         self,
         function_params: StrCollection,
         function: F,
     ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
     where
-        F: BasisFunction<ScalarType,ArgList> + 'static,
+        F: BasisFunction<ScalarType, ArgList> + 'static,
         StrCollection: IntoIterator,
         StrCollection::Item: AsRef<str>,
     {
@@ -284,7 +296,10 @@ where
         match self.current_result {
             Ok(result) => {
                 let ModelAndModelBasisFunctionBuilderPair { mut model, builder } = result;
-                let intermediate_result = builder.build().map(|func| {model.basefunctions.push(func);model});
+                let intermediate_result = builder.build().map(|func| {
+                    model.basefunctions.push(func);
+                    model
+                });
                 SeparableModelBuilder::from(intermediate_result).build()
             }
             Err(err) => SeparableModelBuilder::from(err).build(),

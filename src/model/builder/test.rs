@@ -41,8 +41,11 @@ fn builder_fails_when_not_all_model_parameters_are_depended_on_by_the_modelfunct
     let result =
         SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "c".to_string()])
             .invariant_function(|_| unimplemented!())
-            .function(&["a".to_string()], |_:&DVector<f64>, _:f64| unimplemented!())
-            .partial_deriv("a", |_:&DVector<f64>, _:f64| unimplemented!())
+            .function(
+                &["a".to_string()],
+                |_: &DVector<f64>, _: f64| unimplemented!(),
+            )
+            .partial_deriv("a", |_: &DVector<f64>, _: f64| unimplemented!())
             .build();
     assert!(
         matches! {result, Err(ModelBuildError::UnusedParameter {..})},
@@ -54,8 +57,11 @@ fn builder_fails_when_not_all_model_parameters_are_depended_on_by_the_modelfunct
 // test that the builder fails when not all required derivatives are given for a function
 fn builder_fails_when_not_all_required_partial_derivatives_are_given_for_function() {
     let result = SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string()])
-        .function(&["a".to_string(), "b".to_string()], |_:&DVector<f64>, _:f64,_:f64| unimplemented!())
-        .partial_deriv("a", |_:&DVector<f64>, _:f64,_:f64| unimplemented!())
+        .function(
+            &["a".to_string(), "b".to_string()],
+            |_: &DVector<f64>, _: f64, _: f64| unimplemented!(),
+        )
+        .partial_deriv("a", |_: &DVector<f64>, _: f64, _: f64| unimplemented!())
         .build();
     assert!(
         matches! {result, Err(ModelBuildError::MissingDerivative {..})},
@@ -78,21 +84,13 @@ fn builder_produces_correct_model_from_functions() {
         "omega2".to_string(),
     ])
     .invariant_function(|x| 2. * identity_function(x)) // double the x value
-    .function(&["t0".to_string(), "tau".to_string()],
-        exponential_decay
-    )
-    .partial_deriv("tau",
-        exponential_decay_dtau
-    )
-    .partial_deriv("t0",
-        exponential_decay_dt0
-    )
+    .function(&["t0".to_string(), "tau".to_string()], exponential_decay)
+    .partial_deriv("tau", exponential_decay_dtau)
+    .partial_deriv("t0", exponential_decay_dt0)
     .invariant_function(identity_function)
-    .function(&["omega1".to_string()],
-        sinusoid_omega)
+    .function(&["omega1".to_string()], sinusoid_omega)
     .partial_deriv("omega1", sinusoid_omega_domega)
-    .function(&["omega2".to_string()],
-        sinusoid_omega)
+    .function(&["omega2".to_string()], sinusoid_omega)
     .partial_deriv("omega2", sinusoid_omega_domega)
     .build()
     .expect("Valid builder calls should produce a valid model function.");

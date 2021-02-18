@@ -80,7 +80,17 @@ basefunction_impl_helper!(T, (0, T), (1, T), (2, T), (3, T));
 basefunction_impl_helper!(T, (0, T), (1, T), (2, T), (3, T), (4, T));
 basefunction_impl_helper!(T, (0, T), (1, T), (2, T), (3, T), (4, T), (5, T));
 basefunction_impl_helper!(T, (0, T), (1, T), (2, T), (3, T), (4, T), (5, T), (6, T));
-basefunction_impl_helper!(T, (0, T), (1, T), (2, T), (3, T), (4, T), (5, T), (6, T), (7, T));
+basefunction_impl_helper!(
+    T,
+    (0, T),
+    (1, T),
+    (2, T),
+    (3, T),
+    (4, T),
+    (5, T),
+    (6, T),
+    (7, T)
+);
 basefunction_impl_helper!(
     T,
     (0, T),
@@ -106,4 +116,4 @@ basefunction_impl_helper!(
     (8, T),
     (9, T)
 ); //10 parameter arguments
-//todo: if more are implemented, add tests as well
+   //todo: if more are implemented, add tests as well

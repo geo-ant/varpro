@@ -3,10 +3,12 @@ mod test;
 
 use nalgebra::base::Scalar;
 
-use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapped_basis_function};
+use crate::basis_function::BasisFunction;
+use crate::model::detail::{
+    check_parameter_names, create_index_mapping, create_wrapped_basis_function,
+};
 use crate::model::errors::ModelBuildError;
 use crate::model::model_basis_function::ModelBasisFunction;
-use crate::basis_function::BasisFunction;
 
 /// This is a library internal helper that allows us to construct basis functions with
 /// derivatives for a model. It makes sure that only valid model functions can be built.
@@ -17,7 +19,7 @@ use crate::basis_function::BasisFunction;
 /// (all other derivatives are zero, because the function does not depends on other params)
 ///
 #[doc(hidden)]
-pub (crate) struct ModelBasisFunctionBuilder<ScalarType>
+pub(crate) struct ModelBasisFunctionBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
@@ -44,13 +46,13 @@ where
     /// * `function`: the actual function.
     /// # Result
     /// A model builder that can be used to add derivatives.
-    pub fn new<FuncType, StrCollection,ArgList>(
+    pub fn new<FuncType, StrCollection, ArgList>(
         model_parameters: Vec<String>,
         function_parameters: StrCollection,
         function: FuncType,
     ) -> Self
     where
-        FuncType: BasisFunction<ScalarType,ArgList> + 'static,
+        FuncType: BasisFunction<ScalarType, ArgList> + 'static,
         StrCollection: IntoIterator,
         StrCollection::Item: AsRef<str>,
     {
@@ -89,9 +91,9 @@ where
     /// The parameter must be inside the set of model parameters. Furthermore the
     /// * `derivative`: the partial derivative of the function with which the
     /// builder was created.
-    pub fn partial_deriv<FuncType,ArgList>(mut self, parameter: &str, derivative: FuncType) -> Self
+    pub fn partial_deriv<FuncType, ArgList>(mut self, parameter: &str, derivative: FuncType) -> Self
     where
-        FuncType: BasisFunction<ScalarType,ArgList> + 'static,
+        FuncType: BasisFunction<ScalarType, ArgList> + 'static,
     {
         //this makes sure that the index of the derivative is calculated with respect to the
         //model parameter list while also making sure that the given derivative exists in the function
@@ -116,9 +118,10 @@ where
                             .insert(deriv_index_in_model, deriv)
                             .is_some()
                         {
-                            self.model_function_result = Err(ModelBuildError::DuplicateDerivative {
-                                parameter: parameter.into(),
-                            });
+                            self.model_function_result =
+                                Err(ModelBuildError::DuplicateDerivative {
+                                    parameter: parameter.into(),
+                                });
                         }
                     }
                     Err(error) => {

@@ -17,11 +17,10 @@ fn modelfunction_builder_creates_correct_modelfunction_with_valid_parameters() {
     let mf = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
         ["t0".to_string(), "tau".to_string()].as_ref(),
-        exponential_decay)
-    .partial_deriv("t0",
-        exponential_decay_dt0)
-    .partial_deriv("tau",
-        exponential_decay_dtau)
+        exponential_decay,
+    )
+    .partial_deriv("t0", exponential_decay_dt0)
+    .partial_deriv("tau", exponential_decay_dtau)
     .build()
     .expect("Modelfunction builder with valid parameters should not return an error");
 
@@ -62,7 +61,8 @@ fn modelfunction_builder_fails_with_invalid_model_parameters() {
     ];
     let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
-        ["t0".to_string(), "tau".to_string()].as_ref(), exponential_decay
+        ["t0".to_string(), "tau".to_string()].as_ref(),
+        exponential_decay,
     )
     .build();
 
@@ -74,7 +74,8 @@ fn modelfunction_builder_fails_with_invalid_model_parameters() {
 
     let result = ModelBasisFunctionBuilder::<f64>::new(
         Vec::<String>::default(),
-        ["t0".to_string(), "tau".to_string()].as_ref(),exponential_decay,
+        ["t0".to_string(), "tau".to_string()].as_ref(),
+        exponential_decay,
     )
     .build();
 
@@ -96,7 +97,8 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
     ];
     let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
-        ["tau".to_string(), "tau".to_string()].as_ref(), exponential_decay,
+        ["tau".to_string(), "tau".to_string()].as_ref(),
+        exponential_decay,
     )
     .build();
 
@@ -109,7 +111,7 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
     let result = ModelBasisFunctionBuilder::<f64>::new(
         Vec::<String>::default(),
         Vec::<String>::default(),
-exponential_decay,
+        exponential_decay,
     )
     .build();
 
@@ -132,7 +134,8 @@ fn modelfunction_builder_fails_when_invalid_derivatives_are_given() {
     ];
     let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters.clone(),
-        ["t0".to_string(), "tau".to_string()].as_ref(), exponential_decay,
+        ["t0".to_string(), "tau".to_string()].as_ref(),
+        exponential_decay,
     )
     .partial_deriv("bar", exponential_decay_dtau)
     .build();
@@ -145,10 +148,10 @@ fn modelfunction_builder_fails_when_invalid_derivatives_are_given() {
 
     let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
-        ["t0".to_string(), "tau".to_string()].as_ref(), exponential_decay,
+        ["t0".to_string(), "tau".to_string()].as_ref(),
+        exponential_decay,
     )
-    .partial_deriv("tau",
-        exponential_decay_dtau)
+    .partial_deriv("tau", exponential_decay_dtau)
     .build();
 
     assert!(
@@ -169,14 +172,10 @@ fn modelfunction_builder_fails_when_duplicate_derivatives_are_given() {
     let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
         ["t0".to_string(), "tau".to_string()].as_ref(),
-exponential_decay,
+        exponential_decay,
     )
-    .partial_deriv("tau",
-        exponential_decay_dtau
-    )
-    .partial_deriv("tau",
-        exponential_decay_dtau
-    )
+    .partial_deriv("tau", exponential_decay_dtau)
+    .partial_deriv("tau", exponential_decay_dtau)
     .build();
 
     assert!(

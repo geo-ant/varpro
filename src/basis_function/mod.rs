@@ -49,12 +49,10 @@ where
     /// **Attention** The library takes care that no panics can be caused by calls to `eval` (from
     /// within this library) by making sure the parameter slice has the correct length. Therefore
     /// it is not recommended (and not necessary) to use this function in other code than inside this library.
-    fn eval(&self, location: &DVector<ScalarType>, params : &[ScalarType]) -> DVector<ScalarType>;
+    fn eval(&self, location: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType>;
 
     /// This gives the number of parameter arguments to the callable. So for a function `$f(\vec{x},\alpha_1,...\alpha_N)$`
     /// this will give `N`. The value is compile time constant, but unfortunately `const fn` for
     /// traits is not yet stable.
     fn argument_count(&self) -> usize;
 }
-
-

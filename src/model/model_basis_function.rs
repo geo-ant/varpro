@@ -10,12 +10,11 @@ use crate::model::errors::ModelError;
 /// (nonlinear) parameters. This is the most low level representation of how our
 /// wrapped functions are actually stored inside the model functions
 type BaseFuncType<ScalarType> =
-Box<dyn Fn(&DVector<ScalarType>, &[ScalarType]) -> DVector<ScalarType>>;
-
+    Box<dyn Fn(&DVector<ScalarType>, &[ScalarType]) -> DVector<ScalarType>>;
 
 /// An internal type that is used to store basefunctions whose interface has been wrapped in
 /// such a way that they can accept the location and the *complete model parameters as arguments*.
-pub (crate) struct ModelBasisFunction<ScalarType>
+pub(crate) struct ModelBasisFunction<ScalarType>
 where
     ScalarType: Scalar,
 {
@@ -55,7 +54,7 @@ pub fn evaluate_and_check<ScalarType: Scalar>(
     location: &DVector<ScalarType>,
     parameters: &[ScalarType],
 ) -> Result<DVector<ScalarType>, ModelError> {
-    let result  = (func)(location,parameters);
+    let result = (func)(location, parameters);
     if result.len() == location.len() {
         Ok(result)
     } else {

@@ -8,9 +8,9 @@
 //! let's also try to link some other code [SeparableModelBuilder] but maybe I got to look
 //! at the rustdoc documentation again
 
+pub mod basis_function;
 pub mod model;
 pub mod prelude;
-pub mod basis_function;
 
 #[cfg(test)]
 mod test_helpers;
