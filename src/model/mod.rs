@@ -1,32 +1,26 @@
-use crate::model::modelfunction::ModelFunction;
+use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector};
-use num_traits::Zero;
 
 mod detail;
 pub mod errors;
 
 pub mod builder;
-pub mod modelfunction;
+mod model_basis_function;
 #[cfg(test)]
 mod test;
 
-//TODO Document
-//modelfunction f(x,alpha), where x is the independent variable, alpha: (potentially) nonlinear params
-pub type BaseFuncType<ScalarType> =
-    Box<dyn Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType>>;
-
-/// # A Separable Nonlinear Model
-/// TODO Document:
-/// A separable nonlinear model is a (nonlinear) function `$f(\vec{x},\vec{\alpha})$` which depends on
+/// This structure represents a separable nonlinear model.A separable nonlinear model is
+/// a (nonlinear) function `$f(\vec{x},\vec{\alpha})$` which depends on
 /// * the independent variable `$\vec{x}$`, e.g. a location, time, etc...
 /// * the actual model parameters `$\vec{\alpha}$`.
 ///
 /// *Separable* means that the nonlinear model function can be written as the
-/// linear combination of nonlinear base functions, i.e.
+/// linear combination of `$M$` nonlinear base functions, i.e.
 /// ```math
-/// f(\vec{x},\vec{\alpha}) = \sum_j f_j(\vec{x},\vec{\alpha})
+/// f(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot f_j(\vec{x},\vec{\alpha}),
 /// ```
+/// where `\vec{c}=(c_1,\dots,\c_M)` are the coefficients of the model basis functions.
+///
 /// The base functions `$f_j$` typically depend on individual subsets of the model parameters `$\vec{\alpha}$`.
 ///
 /// ## Base Functions
@@ -59,10 +53,10 @@ where
     /// The list of parameter contains a nonzero number of names and these names
     /// are unique.
     parameter_names: Vec<String>,
-    /// the set of model. This already contains the model
-    /// which are wrapped inside a lambda function so that they can take the
-    /// parameter space of the model function set as an argument
-    modelfunctions: Vec<ModelFunction<ScalarType>>,
+    /// the set of base functions for the model. This already contains the base functions
+    /// which are wrapped inside a lambda function so that they can take the whole
+    /// parameter space of the model as an argument
+    basefunctions: Vec<ModelBasisFunction<ScalarType>>,
 }
 
 impl<ScalarType> SeparableModel<ScalarType>
@@ -78,45 +72,114 @@ where
     pub fn parameter_count(&self) -> usize {
         self.parameter_names.len()
     }
-
-    /// Get the model functions that comprise the model
-    pub fn functions(&self) -> &[ModelFunction<ScalarType>] {
-        self.modelfunctions.as_slice()
-    }
 }
-
-//TODO: find out if this will really work!!!!!!
-impl<ScalarType> SeparableModel<ScalarType>
-where
-    ScalarType: Scalar + Zero,
-{
-    pub fn eval(
-        &self,
-        location: &DVector<ScalarType>,
-        parameters: &DVector<ScalarType>,
-    ) -> DMatrix<ScalarType> {
-        // helpful links:
-        //https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwi6-v2O1eLuAhVqDWMBHU-tBqMQFjAAegQIARAC&url=https%3A%2F%2Fdiscourse.nphysics.org%2Ft%2Fusing-nalgebra-in-generics%2F90&usg=AOvVaw1rBwzIclum71sfw-6Ejvlh
-        //https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwi6-v2O1eLuAhVqDWMBHU-tBqMQFjABegQIBBAC&url=https%3A%2F%2Fdiscourse.nphysics.org%2Ft%2Fhelp-understanding-trait-bounds-required-allocators%2F440&usg=AOvVaw2mbvY28cSFLzTzRnX9rWAN
-
-        //todo include panics or errors if functions don't produce correct length. Maybe better error!
-
-        let nrows = location.len();
-        let ncols = self.modelfunctions.len();
-        //todo: optimize this by using unsafe initialization (https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#method.new_uninitialized_generic)
-        // https://docs.rs/nalgebra/0.24.1/nalgebra/base/struct.Matrix.html#generic-constructors
-        // phew, this was hard to understand how to make that work (so far)
-        let mut function_value_matrix =
-            DMatrix::<ScalarType>::from_element(nrows, ncols, Zero::zero());
-
-        for (basefunc, mut column) in self
-            .modelfunctions
-            .iter()
-            .zip(function_value_matrix.column_iter_mut())
-        {
-            let function_value = (basefunc.function)(location, parameters);
-            column.copy_from(&function_value);
-        }
-        function_value_matrix
-    }
-}
+//
+// //TODO: find out if this will really work!!!!!!
+// impl<ScalarType> SeparableModel<ScalarType>
+// where
+//     ScalarType: Scalar + Zero,
+// {
+//     /// TODO DOCUMENT
+//     pub fn eval(
+//         &self,
+//         location: &DVector<ScalarType>,
+//         parameters: &[ScalarType],
+//     ) -> Result<DMatrix<ScalarType>, ModelError> {
+//         //todo: check that parameters.len() is indeed the expected length
+//         let nrows = location.len();
+//         let ncols = self.basefunctions.len();
+//         let mut function_value_matrix =
+//             unsafe { DMatrix::<ScalarType>::new_uninitialized(nrows, ncols) };
+//
+//         for (basefunc, mut column) in self
+//             .basefunctions
+//             .iter()
+//             .zip(function_value_matrix.column_iter_mut())
+//         {
+//             let function_value =
+//                 model_basis_function::evaluate_and_check(&basefunc.function, location, parameters)?;
+//             column.copy_from(&function_value);
+//         }
+//         Ok(function_value_matrix)
+//     }
+//
+//     /// TODO DOCUMENT
+//     pub fn deriv<'a, 'b, 'c, 'd>(
+//         &'a self,
+//         location: &'b DVector<ScalarType>,
+//         parameters: &'c [ScalarType],
+//     ) -> DerivativeProxy<'d, ScalarType>
+//     where
+//         'a: 'd,
+//         'b: 'd,
+//         'c: 'd,
+//     {
+//         DerivativeProxy {
+//             basefunctions: &self.basefunctions,
+//             location,
+//             parameters,
+//             model_parameter_names: &self.parameter_names,
+//         }
+//     }
+// }
+// /// A helper proxy that is used in conjuntion with the method to evalue the derivative of a
+// /// separable model. This structure serves no purpose other than making the function call to
+// /// calculate the derivative a little more readable
+// pub struct DerivativeProxy<'a, ScalarType: Scalar> {
+//     basefunctions: &'a [ModelBasisFunction<ScalarType>],
+//     location: &'a DVector<ScalarType>,
+//     parameters: &'a [ScalarType],
+//     model_parameter_names: &'a [String],
+// }
+//
+// impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
+//     /// TODO DOCUMENT
+//     #[inline]
+//     pub fn eval_at_param_index(&self, index: usize) -> Result<DMatrix<ScalarType>, ModelError> {
+//         if index >= self.model_parameter_names.len() {
+//             return Err(ModelError::DerivativeIndexOutOfBounds { index });
+//         }
+//
+//         let nrows = self.location.len();
+//         let ncols = self.basefunctions.len();
+//         let mut derivative_function_value_matrix =
+//             DMatrix::<ScalarType>::from_element(nrows, ncols, Zero::zero());
+//
+//         for (basefunc, mut column) in self
+//             .basefunctions
+//             .iter()
+//             .zip(derivative_function_value_matrix.column_iter_mut())
+//         {
+//             if let Some(derivative) = basefunc.derivatives.get(&index) {
+//                 let deriv_value = model_basis_function::evaluate_and_check(
+//                     derivative,
+//                     self.location,
+//                     self.parameters,
+//                 )?;
+//                 column.copy_from(&deriv_value);
+//             }
+//         }
+//         Ok(derivative_function_value_matrix)
+//     }
+//
+//     /// Convenience method that allows to calculate the derivative of the function value matrix
+//     /// by giving the parameter name.
+//     /// # Returns
+//     /// If the parameter is in the model parameters, returns the same result as calculating
+//     /// the derivative at the same parameter index. Otherwise returns an error indicating
+//     /// the parameter is not in the model parameters.
+//     #[inline]
+//     pub fn eval_at_param_name<StrType: AsRef<str>>(
+//         &self,
+//         param_name: StrType,
+//     ) -> Result<DMatrix<ScalarType>, ModelError> {
+//         let index = self
+//             .model_parameter_names
+//             .iter()
+//             .position(|p| p == param_name.as_ref())
+//             .ok_or(ModelError::ParameterNotInModel {
+//                 parameter: param_name.as_ref().into(),
+//             })?;
+//         self.eval_at_param_index(index)
+//     }
+// }

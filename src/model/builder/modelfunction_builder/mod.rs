@@ -2,16 +2,24 @@
 mod test;
 
 use nalgebra::base::Scalar;
-use nalgebra::DVector;
 
-use crate::model::detail::{check_parameter_names, create_index_mapping, create_wrapper_function};
-use crate::model::errors::ModelError;
-use crate::model::modelfunction::ModelFunction;
+use crate::basis_function::BasisFunction;
+use crate::model::detail::{
+    check_parameter_names, create_index_mapping, create_wrapped_basis_function,
+};
+use crate::model::errors::ModelBuildError;
+use crate::model::model_basis_function::ModelBasisFunction;
 
-/// The modelfunction builder allows to create model functions that depend on
-/// a subset or the whole model parameters. Functions that depend on model parameters
-/// need to have partial derivatives provided for each parameter they depend on.
-pub struct ModelFunctionBuilder<ScalarType>
+/// This is a library internal helper that allows us to construct basis functions with
+/// derivatives for a model. It makes sure that only valid model functions can be built.
+/// Such a model function is valid when
+/// * the model parameters are unique and non-empty
+/// * the function parameters are unique, non-empty and a subset of the model params
+/// * a derivative is provided for each parameter that the function depends on
+/// (all other derivatives are zero, because the function does not depends on other params)
+///
+#[doc(hidden)]
+pub(crate) struct ModelBasisFunctionBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
@@ -20,10 +28,10 @@ where
     /// the parameters that the function depends on. Must be a subset of the model parameters
     function_parameters: Vec<String>,
     /// the current result of the building process of the model function
-    model_function_result: Result<ModelFunction<ScalarType>, ModelError>,
+    model_function_result: Result<ModelBasisFunction<ScalarType>, ModelBuildError>,
 }
 
-impl<ScalarType> ModelFunctionBuilder<ScalarType>
+impl<ScalarType> ModelBasisFunctionBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
@@ -38,13 +46,13 @@ where
     /// * `function`: the actual function.
     /// # Result
     /// A model builder that can be used to add derivatives.
-    pub fn new<FuncType, StrCollection>(
+    pub fn new<FuncType, StrCollection, ArgList>(
         model_parameters: Vec<String>,
         function_parameters: StrCollection,
         function: FuncType,
     ) -> Self
     where
-        FuncType: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
+        FuncType: BasisFunction<ScalarType, ArgList> + 'static,
         StrCollection: IntoIterator,
         StrCollection::Item: AsRef<str>,
     {
@@ -63,8 +71,8 @@ where
         }
 
         let model_function_result =
-            create_wrapper_function(&model_parameters, &function_parameters, function).map(
-                |function| ModelFunction {
+            create_wrapped_basis_function(&model_parameters, &function_parameters, function).map(
+                |function| ModelBasisFunction {
                     function,
                     derivatives: Default::default(),
                 },
@@ -83,9 +91,9 @@ where
     /// The parameter must be inside the set of model parameters. Furthermore the
     /// * `derivative`: the partial derivative of the function with which the
     /// builder was created.
-    pub fn partial_deriv<FuncType>(mut self, parameter: &str, derivative: FuncType) -> Self
+    pub fn partial_deriv<FuncType, ArgList>(mut self, parameter: &str, derivative: FuncType) -> Self
     where
-        FuncType: Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType> + 'static,
+        FuncType: BasisFunction<ScalarType, ArgList> + 'static,
     {
         //this makes sure that the index of the derivative is calculated with respect to the
         //model parameter list while also making sure that the given derivative exists in the function
@@ -98,7 +106,7 @@ where
             .find(|(_idx, model_param)| model_param == &parameter)
         {
             if let Ok(model_function) = self.model_function_result.as_mut() {
-                match create_wrapper_function(
+                match create_wrapped_basis_function(
                     &self.model_parameters,
                     &self.function_parameters,
                     derivative,
@@ -110,9 +118,10 @@ where
                             .insert(deriv_index_in_model, deriv)
                             .is_some()
                         {
-                            self.model_function_result = Err(ModelError::DuplicateDerivative {
-                                parameter: parameter.into(),
-                            });
+                            self.model_function_result =
+                                Err(ModelBuildError::DuplicateDerivative {
+                                    parameter: parameter.into(),
+                                });
                         }
                     }
                     Err(error) => {
@@ -123,7 +132,7 @@ where
             self
         } else {
             Self {
-                model_function_result: Err(ModelError::InvalidDerivative {
+                model_function_result: Err(ModelBuildError::InvalidDerivative {
                     parameter: parameter.into(),
                     function_parameters: self.function_parameters.clone(),
                 }),
@@ -136,7 +145,7 @@ where
     /// # Result
     /// A modelfunction containing the given function and derivatives or an error
     /// variant if an error occurred during the building process
-    pub fn build(self) -> Result<ModelFunction<ScalarType>, ModelError> {
+    pub fn build(self) -> Result<ModelBasisFunction<ScalarType>, ModelBuildError> {
         self.check_completion()?;
         self.model_function_result
     }
@@ -146,7 +155,7 @@ where
     /// If it carries an ok variant, then this function checks that the modelfunction
     /// has all necessary derivatives provided and if so returns Ok(()), otherwise it returns
     /// an error indicating that there are missing derivatives.
-    fn check_completion(&self) -> Result<(), ModelError> {
+    fn check_completion(&self) -> Result<(), ModelBuildError> {
         match self.model_function_result.as_ref() {
             Ok(modelfunction) => {
                 // this should not go wrong, but to be safe
@@ -161,7 +170,7 @@ where
                 for (index, parameter) in index_mapping.iter().zip(self.function_parameters.iter())
                 {
                     if !modelfunction.derivatives.contains_key(index) {
-                        return Err(ModelError::MissingDerivative {
+                        return Err(ModelBuildError::MissingDerivative {
                             missing_parameter: parameter.clone(),
                             function_parameters: self.function_parameters.clone(),
                         });
@@ -170,9 +179,7 @@ where
                 // this is a sanity check. if this came this far, there should not be an error here
                 if index_mapping.len() != modelfunction.derivatives.len() {
                     // this also should never be the case and indicates a programming error in the library
-                    return Err(ModelError::Fatal {
-                        message: "Too many or too few derivatives in set!".to_string(),
-                    });
+                    panic!("Incorrect number of derivatives in set. This indicates a logic error in this library.");
                 }
                 // otherwise
                 Ok(())

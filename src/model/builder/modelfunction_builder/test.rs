@@ -1,7 +1,7 @@
 use nalgebra::DVector;
 
-use crate::model::builder::modelfunction_builder::ModelFunctionBuilder;
-use crate::model::errors::ModelError;
+use crate::model::builder::modelfunction_builder::ModelBasisFunctionBuilder;
+use crate::model::errors::ModelBuildError;
 use crate::test_helpers::{exponential_decay, exponential_decay_dt0, exponential_decay_dtau};
 
 #[test]
@@ -14,23 +14,19 @@ fn modelfunction_builder_creates_correct_modelfunction_with_valid_parameters() {
         "bar".to_string(),
         "tau".to_string(),
     ];
-    let mf = ModelFunctionBuilder::<f64>::new(
+    let mf = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
         ["t0".to_string(), "tau".to_string()].as_ref(),
-        |t, params| exponential_decay(t, params[0], params[1]),
+        exponential_decay,
     )
-    .partial_deriv("t0", |t, params| {
-        exponential_decay_dt0(t, params[0], params[1])
-    })
-    .partial_deriv("tau", |t, params| {
-        exponential_decay_dtau(t, params[0], params[1])
-    })
+    .partial_deriv("t0", exponential_decay_dt0)
+    .partial_deriv("tau", exponential_decay_dtau)
     .build()
     .expect("Modelfunction builder with valid parameters should not return an error");
 
     let t0 = 2.;
     let tau = 1.5;
-    let model_params = DVector::<f64>::from(vec![-2., t0, -1., tau]);
+    let model_params = vec![-2., t0, -1., tau];
     let t = DVector::<f64>::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     assert_eq!(
         (mf.function)(&t, &model_params),
@@ -63,28 +59,28 @@ fn modelfunction_builder_fails_with_invalid_model_parameters() {
         "foo".to_string(),
         "tau".to_string(),
     ];
-    let result = ModelFunctionBuilder::<f64>::new(
+    let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
         ["t0".to_string(), "tau".to_string()].as_ref(),
-        |t, params| exponential_decay(t, params[0], params[1]),
+        exponential_decay,
     )
     .build();
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
-        matches!(result, Err(ModelError::DuplicateParameterNames { .. })),
+        matches!(result, Err(ModelBuildError::DuplicateParameterNames { .. })),
         "Modelfunction builder must indicate duplicate parameters!"
     );
 
-    let result = ModelFunctionBuilder::<f64>::new(
+    let result = ModelBasisFunctionBuilder::<f64>::new(
         Vec::<String>::default(),
         ["t0".to_string(), "tau".to_string()].as_ref(),
-        |t, params| exponential_decay(t, params[0], params[1]),
+        exponential_decay,
     )
     .build();
 
     assert!(
-        matches!(result, Err(ModelError::EmptyParameters)),
+        matches!(result, Err(ModelBuildError::EmptyParameters)),
         "Builder must indicate error when model parameters are emtpy"
     );
 }
@@ -99,28 +95,28 @@ fn modelfunction_builder_fails_with_invalid_function_parameters() {
         "bar".to_string(),
         "tau".to_string(),
     ];
-    let result = ModelFunctionBuilder::<f64>::new(
+    let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
         ["tau".to_string(), "tau".to_string()].as_ref(),
-        |t, params| exponential_decay(t, params[0], params[1]),
+        exponential_decay,
     )
     .build();
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
-        matches!(result, Err(ModelError::DuplicateParameterNames { .. })),
+        matches!(result, Err(ModelBuildError::DuplicateParameterNames { .. })),
         "Modelfunction builder must indicate duplicate parameters!"
     );
 
-    let result = ModelFunctionBuilder::<f64>::new(
+    let result = ModelBasisFunctionBuilder::<f64>::new(
         Vec::<String>::default(),
         Vec::<String>::default(),
-        |t, params| exponential_decay(t, params[0], params[1]),
+        exponential_decay,
     )
     .build();
 
     assert!(
-        matches!(result, Err(ModelError::EmptyParameters)),
+        matches!(result, Err(ModelBuildError::EmptyParameters)),
         "Builder must indicate error when function parameters are emtpy"
     );
 }
@@ -136,34 +132,30 @@ fn modelfunction_builder_fails_when_invalid_derivatives_are_given() {
         "bar".to_string(),
         "tau".to_string(),
     ];
-    let result = ModelFunctionBuilder::<f64>::new(
+    let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters.clone(),
         ["t0".to_string(), "tau".to_string()].as_ref(),
-        |t, params| exponential_decay(t, params[0], params[1]),
+        exponential_decay,
     )
-    .partial_deriv("bar", |t, params| {
-        exponential_decay_dtau(t, params[0], params[1])
-    })
+    .partial_deriv("bar", exponential_decay_dtau)
     .build();
 
     // the derivatives are also incomplete, but this should be the first recorded error
     assert!(
-        matches!(result, Err(ModelError::InvalidDerivative { .. })),
+        matches!(result, Err(ModelBuildError::InvalidDerivative { .. })),
         "Modelfunction builder must when non-existing derivative is given for function!"
     );
 
-    let result = ModelFunctionBuilder::<f64>::new(
+    let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
         ["t0".to_string(), "tau".to_string()].as_ref(),
-        |t, params| exponential_decay(t, params[0], params[1]),
+        exponential_decay,
     )
-    .partial_deriv("tau", |t, params| {
-        exponential_decay_dtau(t, params[0], params[1])
-    })
+    .partial_deriv("tau", exponential_decay_dtau)
     .build();
 
     assert!(
-        matches!(result, Err(ModelError::MissingDerivative { .. })),
+        matches!(result, Err(ModelBuildError::MissingDerivative { .. })),
         "Builder must indicate that one derivative is missing"
     );
 }
@@ -177,21 +169,17 @@ fn modelfunction_builder_fails_when_duplicate_derivatives_are_given() {
         "bar".to_string(),
         "tau".to_string(),
     ];
-    let result = ModelFunctionBuilder::<f64>::new(
+    let result = ModelBasisFunctionBuilder::<f64>::new(
         model_parameters,
         ["t0".to_string(), "tau".to_string()].as_ref(),
-        |t, params| exponential_decay(t, params[0], params[1]),
+        exponential_decay,
     )
-    .partial_deriv("tau", |t, params| {
-        exponential_decay_dtau(t, params[0], params[1])
-    })
-    .partial_deriv("tau", |t, params| {
-        exponential_decay_dtau(t, params[0], params[1])
-    })
+    .partial_deriv("tau", exponential_decay_dtau)
+    .partial_deriv("tau", exponential_decay_dtau)
     .build();
 
     assert!(
-        matches!(result, Err(ModelError::DuplicateDerivative { .. })),
+        matches!(result, Err(ModelBuildError::DuplicateDerivative { .. })),
         "Builder must indicate that one derivative is missing"
     );
 }
