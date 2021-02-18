@@ -35,8 +35,6 @@ fn callable_evaluation_using_the_generic_interface() {
     assert_eq!(eval_callable(|x:&DVector<f64>,a,b,c,d,e,f,g,h|{a*b*c*d*e*f*g*h*x.clone()},&x,&[2.,3.,4.,5.,6.,7.,8.,9.]),2.*3.*4.*5.*6.*7.*8.*9.*x.clone());
     assert_eq!(eval_callable(|x:&DVector<f64>,a,b,c,d,e,f,g,h,i|{a*b*c*d*e*f*g*h*i*x.clone()},&x,&[2.,3.,4.,5.,6.,7.,8.,9.,10.]),2.*3.*4.*5.*6.*7.*8.*9.*10.*x.clone());
     assert_eq!(eval_callable(|x:&DVector<f64>,a,b,c,d,e,f,g,h,i,j|{a*b*c*d*e*f*g*h*i*j*x.clone()},&x,&[2.,3.,4.,5.,6.,7.,8.,9.,10.,11.]),2.*3.*4.*5.*6.*7.*8.*9.*10.*11.*x.clone());
-
-    //todo: implement other traits here as well
 }
 
 #[test]
@@ -53,7 +51,6 @@ fn callable_argument_length_is_correct() {
     assert_eq!((|x:&DVector<f32>,a,b,c,d,e,f,g,h|{x.clone()}).argument_count(),8);
     assert_eq!((|x:&DVector<f32>,a,b,c,d,e,f,g,h,i|{x.clone()}).argument_count(),9);
     assert_eq!((|x:&DVector<f32>,a,b,c,d,e,f,g,h,i,j|{x.clone()}).argument_count(),10);
-
 }
 
 #[test]

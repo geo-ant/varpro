@@ -1,5 +1,5 @@
 use crate::model::errors::ModelError;
-use crate::model::modelfunction::ModelBaseFunction;
+use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
 use nalgebra::{DMatrix, DVector};
 use num_traits::Zero;
@@ -8,26 +8,23 @@ mod detail;
 pub mod errors;
 
 pub mod builder;
-pub mod modelfunction;
+mod model_basis_function;
 #[cfg(test)]
 mod test;
 
-//TODO Document
-//modelfunction f(x,alpha), where x is the independent variable, alpha: (potentially) nonlinear params
-pub type BaseFuncType<ScalarType> =
-    Box<dyn Fn(&DVector<ScalarType>, &DVector<ScalarType>) -> DVector<ScalarType>>;
 
-/// # A Separable Nonlinear Model
-/// TODO Document:
-/// A separable nonlinear model is a (nonlinear) function `$f(\vec{x},\vec{\alpha})$` which depends on
+/// This structure represents a separable nonlinear model.A separable nonlinear model is
+/// a (nonlinear) function `$f(\vec{x},\vec{\alpha})$` which depends on
 /// * the independent variable `$\vec{x}$`, e.g. a location, time, etc...
 /// * the actual model parameters `$\vec{\alpha}$`.
 ///
 /// *Separable* means that the nonlinear model function can be written as the
-/// linear combination of nonlinear base functions, i.e.
+/// linear combination of `$M$` nonlinear base functions, i.e.
 /// ```math
-/// f(\vec{x},\vec{\alpha}) = \sum_j f_j(\vec{x},\vec{\alpha})
+/// f(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot f_j(\vec{x},\vec{\alpha}),
 /// ```
+/// where `\vec{c}=(c_1,\dots,\c_M)` are the coefficients of the model basis functions.
+///
 /// The base functions `$f_j$` typically depend on individual subsets of the model parameters `$\vec{\alpha}$`.
 ///
 /// ## Base Functions
@@ -63,7 +60,7 @@ where
     /// the set of base functions for the model. This already contains the base functions
     /// which are wrapped inside a lambda function so that they can take the whole
     /// parameter space of the model as an argument
-    basefunctions: Vec<ModelBaseFunction<ScalarType>>,
+    basefunctions: Vec<ModelBasisFunction<ScalarType>>,
 }
 
 impl<ScalarType> SeparableModel<ScalarType>
@@ -79,11 +76,6 @@ where
     pub fn parameter_count(&self) -> usize {
         self.parameter_names.len()
     }
-
-    /// Get the model functions that comprise the model
-    pub fn functions(&self) -> &[ModelBaseFunction<ScalarType>] {
-        self.basefunctions.as_slice()
-    }
 }
 
 //TODO: find out if this will really work!!!!!!
@@ -95,8 +87,9 @@ where
     pub fn eval(
         &self,
         location: &DVector<ScalarType>,
-        parameters: &DVector<ScalarType>,
+        parameters: &[ScalarType],
     ) -> Result<DMatrix<ScalarType>, ModelError> {
+        //todo: check that parameters.len() is indeed the expected length
         let nrows = location.len();
         let ncols = self.basefunctions.len();
         let mut function_value_matrix =
@@ -107,14 +100,14 @@ where
             .iter()
             .zip(function_value_matrix.column_iter_mut())
         {
-            let function_value = detail::evaluate(&basefunc.function, location, parameters)?;
+            let function_value = model_basis_function::evaluate_and_check(&basefunc.function, location, parameters)?;
             column.copy_from(&function_value);
         }
         Ok(function_value_matrix)
     }
 
     /// TODO DOCUMENT
-    pub fn deriv<'a,'b,'c,'d>(&'a self,location: &'b DVector<ScalarType>, parameters : &'c DVector<ScalarType>) -> DerivativeProxy<'d,ScalarType>
+    pub fn deriv<'a,'b,'c,'d>(&'a self,location: &'b DVector<ScalarType>, parameters : &'c  [ScalarType]) -> DerivativeProxy<'d,ScalarType>
     where 'a : 'd, 'b : 'd, 'c:'d
     {
         DerivativeProxy {
@@ -129,9 +122,9 @@ where
 /// separable model. This structure serves no purpose other than making the function call to
 /// calculate the derivative a little more readable
 pub struct DerivativeProxy<'a,ScalarType: Scalar> {
-    basefunctions : &'a [ModelBaseFunction<ScalarType>],
+    basefunctions : &'a [ModelBasisFunction<ScalarType>],
     location : &'a DVector<ScalarType>,
-    parameters : &'a DVector<ScalarType>,
+    parameters : &'a [ScalarType],
     model_parameter_names : &'a[String],
 }
 
@@ -153,7 +146,7 @@ impl<'a,ScalarType:Scalar+Zero> DerivativeProxy<'a,ScalarType> {
             .zip(derivative_function_value_matrix.column_iter_mut())
         {
             if let Some(derivative) = basefunc.derivatives.get(&index) {
-                let deriv_value = detail::evaluate(derivative, self.location, self.parameters)?;
+                let deriv_value = model_basis_function::evaluate_and_check(derivative, self.location, self.parameters)?;
                 column.copy_from(&deriv_value);
             }
         }

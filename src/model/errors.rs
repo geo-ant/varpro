@@ -60,14 +60,25 @@ pub enum ModelBuildError {
     #[snafu(display("Model depends on parameter '{}', but none of its functions use it. Each model parameter must occur in at least one function.",parameter))]
     UnusedParameter { parameter: String },
 
-    /// An error occurred that should not have occurred. This indicates a programming error inside this library.
+    /// This error indicates that the more or fewer string parameters where provided as function
+    /// parameters than the actual variadic function takes. This might accidentally happen when giving
+    /// a derivative that does not depend on a certain parameter, whereas the base function does.
+    /// However, the library requires that the derivatives take all the parameters its base function
+    /// takes in the same order.
     #[snafu(display(
-        "Fatal error: '{}'. This indicates a programming error in the library",
-        message
+        "Incorrect parameter count: Given function parameters '{:?}' have length {}, but the provided function takes {} parameter arguments.",
+        params,
+        string_params_count,
+        function_argument_count,
     ))]
-    Fatal { message: String },
+    IncorrectParameterCount {
+        params: Vec<String>,
+        string_params_count: usize,
+        function_argument_count: usize,
+    },
 }
 
+/// Errors pertaining to use errors of the [SeparableModel].
 #[derive(Debug, Clone, Snafu, PartialEq)]
 #[snafu(visibility = "pub")]
 pub enum ModelError {
@@ -83,13 +94,11 @@ pub enum ModelError {
         actual_length: usize,
     },
 
+    /// Indicates an evaluation for a parameter was requested that is not part of the model parameters
     #[snafu(display("Parameter '{}' is not in model", parameter))]
-    ParameterNotInModel {
-        parameter: String,
-    },
+    ParameterNotInModel { parameter: String },
 
+    /// Indicates that the given derivative index is out of bounds.
     #[snafu(display("Index {} for derivative is out of bounds", index))]
-    DerivativeIndexOutOfBounds {
-        index : usize,
-    },
+    DerivativeIndexOutOfBounds { index: usize },
 }
