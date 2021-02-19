@@ -2,7 +2,9 @@
 
 use nalgebra::DVector;
 
-/// a function that calculates exp( (t-t0)/tau)) for every location t
+/// a function that calculates exp( -(t-t0)/tau)) for every location t
+/// **ATTENTION** for this kind of exponential function the shift will
+/// just be a linear multiplier exp(t0/tau), so it might not a good idea to include it in the fitting
 pub fn exponential_decay(tvec: &DVector<f64>, t0: f64, tau: f64) -> DVector<f64> {
     assert!(tau > 0f64, "Parameter tau must be greater than zero");
     tvec.map(|t| (-(t - t0) / tau).exp())
