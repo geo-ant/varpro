@@ -1,6 +1,7 @@
 //use crate::model::SeparableModel;
 
 use crate::model::builder::SeparableModelBuilder;
+use crate::model::errors::ModelError;
 use crate::model::SeparableModel;
 use nalgebra::{DVector, Scalar};
 use num_traits::Float;
@@ -17,7 +18,7 @@ fn exp_decay<ScalarType: Float + Scalar>(
 /// f(x,tau1,tau2) = c1*exp(-x/tau1)+c2*exp(-x/tau2)+c3
 fn get_double_exponential_model_with_constant_offset() -> SeparableModel<f64> {
     let exp_decay_dtau = |t: &DVector<_>, tau| t / (tau * tau) * exp_decay(t, tau);
-    let ones = |t:&DVector<_>| DVector::from_element(t.len(), 1.);
+    let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
     SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
         .function(&["tau2"], exp_decay)
@@ -43,14 +44,55 @@ fn model_function_eval_produces_correct_result() {
         .eval(&tvec, params)
         .expect("Model evaluation should not fail");
 
-    assert_eq!(DVector::from(eval_matrix.column(0)), exp_decay(&tvec, tau2), "first column must correspond to first model function: exp(-t/tau2)");
-    assert_eq!(DVector::from(eval_matrix.column(1)), exp_decay(&tvec, tau1), "second column must correspond to second model function: exp(-t/tau1)");
-    assert_eq!(DVector::from(eval_matrix.column(2)), DVector::from_element(tvec.len(),1.),"third column must be vector of ones");
+    assert_eq!(
+        DVector::from(eval_matrix.column(0)),
+        exp_decay(&tvec, tau2),
+        "first column must correspond to first model function: exp(-t/tau2)"
+    );
+    assert_eq!(
+        DVector::from(eval_matrix.column(1)),
+        exp_decay(&tvec, tau1),
+        "second column must correspond to second model function: exp(-t/tau1)"
+    );
+    assert_eq!(
+        DVector::from(eval_matrix.column(2)),
+        DVector::from_element(tvec.len(), 1.),
+        "third column must be vector of ones"
+    );
 }
 
 #[test]
 #[ignore]
 // test that when a base function does not return the same length result as its location argument,
 // then the eval method fails
+fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function() {
+    let exp_decay_dtau = |t: &DVector<_>, tau| t / (tau * tau) * exp_decay(t, tau);
+
+    let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
+        .function(&["tau2"], exp_decay)
+        .partial_deriv("tau2", exp_decay_dtau)
+        .function(&["tau1"], |t: &DVector<_>, tau| {
+            DVector::from(vec![1., 3., 3., 7.])
+        })
+        .partial_deriv("tau1", exp_decay_dtau)
+        .build()
+        .expect("Model function creation should not fail, although function is bad");
+
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
+
+    assert!(matches!(model_with_bad_function.eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:3,..})),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
+}
+
 // TODO: it's fine to check that model above, but we also need some model where more derivatives are nonzero for the same param
-fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function() {}
+#[test]
+#[ignore]
+// test that when a base function does not return the same length result as its location argument,
+// then the eval method fails
+fn model_derivative_evaluation_produces_correct_result() {}
+
+// TODO: it's fine to check that model above, but we also need some model where more derivatives are nonzero for the same param
+#[test]
+#[ignore]
+// test that when a base function does not return the same length result as its location argument,
+// then the eval method fails
+fn model_derivative_evaluation_fails_for_invalid_length_of_return_value_in_base_function() {}
