@@ -4,11 +4,13 @@ use std::hash::Hash;
 use nalgebra::{DVector, Scalar};
 
 use crate::basis_function::BasisFunction;
+use crate::model::builder::error::ModelBuildError;
 use crate::model::errors::*;
 
 /// check that the parameter names obey the following rules
 /// * the set of parameters is not empty
 /// * the set of parameters contains only unique elements
+/// * any of the parameter names contains a comma. This indicates most likely a typo when giving the parameter list
 /// # Returns
 /// Ok if the conditions hold, otherwise an error variant.
 pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelBuildError>
@@ -17,6 +19,11 @@ where
 {
     if param_names.is_empty() {
         return Err(ModelBuildError::EmptyParameters);
+    }
+
+    /// todo: this is inefficient. Refactor the interface of this method
+    if let Some(param_name) = param_names.iter().find(|&p|p.clone().into().contains(',')) {
+        return Err(ModelBuildError::CommaInParameterNameNotAllowed {param_name : param_name.clone().into()});
     }
 
     if !has_only_unique_elements(param_names.iter()) {
@@ -161,6 +168,7 @@ mod test {
         assert!(check_parameter_names(&["a"]).is_ok());
         assert!(check_parameter_names(&["a", "b", "c"]).is_ok());
         assert!(check_parameter_names(&["a", "b", "b"]).is_err());
+        assert!(matches!(check_parameter_names(&["a,b","c"]),Err(ModelBuildError::CommaInParameterNameNotAllowed {..})));
     }
 
     #[test]

@@ -4,6 +4,7 @@ use crate::model::builder::SeparableModelBuilder;
 use crate::model::errors::ModelError;
 use crate::model::SeparableModel;
 use nalgebra::{DVector, Scalar};
+use num_traits::real::Real;
 use num_traits::Float;
 
 /// exponential decay f(t,tau) = exp(-t/tau)
@@ -14,10 +15,32 @@ fn exp_decay<ScalarType: Float + Scalar>(
     tvec.map(|t| (-t / tau).exp())
 }
 
+/// derivative of exp decay with respect to tau
+fn exp_decay_dtau<ScalarType: Scalar + Float>(
+    tvec: &DVector<ScalarType>,
+    tau: ScalarType,
+) -> DVector<ScalarType> {
+    tvec.map(|t| (-t / tau).exp() * t / (tau * tau))
+}
+
+/// function sin (omega*t+phi)
+fn sin_ometa_t_plus_phi<ScalarType:Scalar+Float>(tvec : &DVector<ScalarType>, omega: ScalarType, phi:ScalarType) -> DVector<ScalarType> {
+    tvec.map(|t| (omega*t+phi).sin())
+}
+
+/// derivative d/d(omega) sin (omega*t+phi)
+fn sin_ometa_t_plus_phi_domega<ScalarType:Scalar+Float>(tvec : &DVector<ScalarType>, omega: ScalarType, phi:ScalarType) -> DVector<ScalarType> {
+    tvec.map(|t| t*(omega*t+phi).cos())
+}
+
+/// derivative d/d(phi) sin (omega*t+phi)
+fn sin_ometa_t_plus_phi_dphi<ScalarType:Scalar+Float>(tvec : &DVector<ScalarType>, omega: ScalarType, phi:ScalarType) -> DVector<ScalarType> {
+    tvec.map(|t| (omega*t+phi).cos())
+}
+
 /// A helper function that returns a double exponential decay model
 /// f(x,tau1,tau2) = c1*exp(-x/tau1)+c2*exp(-x/tau2)+c3
 fn get_double_exponential_model_with_constant_offset() -> SeparableModel<f64> {
-    let exp_decay_dtau = |t: &DVector<_>, tau| t / (tau * tau) * exp_decay(t, tau);
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
     SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
@@ -66,8 +89,6 @@ fn model_function_eval_produces_correct_result() {
 // test that when a base function does not return the same length result as its location argument,
 // then the eval method fails
 fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function() {
-    let exp_decay_dtau = |t: &DVector<_>, tau| t / (tau * tau) * exp_decay(t, tau);
-
     let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
         .function(&["tau2"], exp_decay)
         .partial_deriv("tau2", exp_decay_dtau)
@@ -85,14 +106,114 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 
 // TODO: it's fine to check that model above, but we also need some model where more derivatives are nonzero for the same param
 #[test]
-#[ignore]
 // test that when a base function does not return the same length result as its location argument,
 // then the eval method fails
-fn model_derivative_evaluation_produces_correct_result() {}
+fn model_derivative_evaluation_produces_correct_result() {
+    let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
-// TODO: it's fine to check that model above, but we also need some model where more derivatives are nonzero for the same param
+    let model = SeparableModelBuilder::<f64>::new(&["tau","omega"])
+        .function(&["tau"],exp_decay)
+        .partial_deriv("tau",exp_decay_dtau)
+         .function(&["omega","tau"],sin_ometa_t_plus_phi) // so we make phi=tau of the model. Bit silly, but to produce a function that contributes to all derivs
+         .partial_deriv("tau",sin_ometa_t_plus_phi_domega)
+         .partial_deriv("omega",sin_ometa_t_plus_phi_domega)
+         .invariant_function(ones)
+        .build()
+        .expect("Valid model creation should not fail");
+
+    todo!("implement to finish")
+}
+
 #[test]
-#[ignore]
-// test that when a base function does not return the same length result as its location argument,
-// then the eval method fails
-fn model_derivative_evaluation_fails_for_invalid_length_of_return_value_in_base_function() {}
+fn requesting_derivative_by_name_and_index_produces_same_results() {
+    let model = get_double_exponential_model_with_constant_offset();
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
+    let params = &[2., 4.];
+
+    assert_eq!(
+        model.deriv(&tvec, params).eval_at(0).unwrap(),
+        model
+            .deriv(&tvec, params)
+            .eval_at_param_name("tau1")
+            .unwrap(),
+        "Evaluating derivative by name or index must produce same result"
+    );
+
+    assert_eq!(
+        model.deriv(&tvec, params).eval_at(1).unwrap(),
+        model
+            .deriv(&tvec, params)
+            .eval_at_param_name("tau2")
+            .unwrap(),
+        "Evaluating derivative by name or index must produce same result"
+    );
+}
+
+#[test]
+// check that the following error cases are covered and return the appropriate errors
+// * derivative is evaluated and includes a function that does not give the same length vector
+// back as the location (x) argument
+// * a derivative for a parameter that is not in the model is requested (by index or by name)
+// * the derivative is requested for a wrong number of parameter arguments
+fn model_derivative_evaluation_error_cases() {
+    let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
+        .function(&["tau2"], exp_decay)
+        .partial_deriv("tau2", exp_decay_dtau)
+        .function(&["tau1"], exp_decay)
+        .partial_deriv("tau1", |_t: &DVector<_>, _tau| {
+            DVector::from(vec![1., 3., 3., 7.])
+        })
+        .build()
+        .expect("Model function creation should not fail, although function is bad");
+
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
+
+    // deriv index 0 is tau1: this derivative is bad and should fail
+    assert!(
+        matches!(
+            model_with_bad_function.deriv(&tvec, &[2., 4.]).eval_at(0),
+            Err(ModelError::UnexpectedFunctionOutput { .. })
+        ),
+        "Derivative for invalid function must fail with correct error"
+    );
+
+    // deriv index 0 is tau1: this derivative is good and should return an ok result
+    assert!(
+        model_with_bad_function
+            .deriv(&tvec, &[2., 4.])
+            .eval_at(1)
+            .is_ok(),
+        "Derivative eval for valid function should return Ok result"
+    );
+
+    // check that if an incorrect amount of parameters is provided, then the evaluation fails
+    assert!(
+        matches!(
+            model_with_bad_function
+                .deriv(&tvec, &[2., 4., 2., 2.])
+                .eval_at(1),
+            Err(ModelError::IncorrectParameterCount { .. })
+        ),
+        "Derivative for invalid function must fail with correct error"
+    );
+
+    // check an out of bounds index for the derivative
+    assert!(
+        matches!(
+            model_with_bad_function.deriv(&tvec, &[2., 4.]).eval_at(100),
+            Err(ModelError::DerivativeIndexOutOfBounds { .. })
+        ),
+        "Derivative for invalid function must fail with correct error"
+    );
+
+    // check that if a nonexistent parameter is requested by name, then the derivative evaluation fails
+    assert!(
+        matches!(
+            model_with_bad_function
+                .deriv(&tvec, &[2., 4.])
+                .eval_at_param_name("frankenstein"),
+            Err(ModelError::ParameterNotInModel { .. })
+        ),
+        "Derivative for invalid function must fail with correct error"
+    );
+}

@@ -1,8 +1,8 @@
+use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DVector, DMatrix};
+use nalgebra::{DMatrix, DVector};
 use num_traits::Zero;
-use crate::model::errors::ModelError;
 
 mod detail;
 pub mod errors;
@@ -88,7 +88,14 @@ where
         location: &DVector<ScalarType>,
         parameters: &[ScalarType],
     ) -> Result<DMatrix<ScalarType>, ModelError> {
-        //todo: check that parameters.len() is indeed the expected length
+
+        if parameters.len() != self.parameter_count() {
+            return Err(ModelError::IncorrectParameterCount {
+                required: self.parameter_count(),
+                actual: parameters.len(),
+            });
+        }
+
         let nrows = location.len();
         let ncols = self.basefunctions.len();
         let mut function_value_matrix =
@@ -117,12 +124,12 @@ where
         'b: 'd,
         'c: 'd,
     {
-        DerivativeProxy {
-            basefunctions: &self.basefunctions,
-            location,
-            parameters,
-            model_parameter_names: &self.parameter_names,
-        }
+            DerivativeProxy {
+                basefunctions: &self.basefunctions,
+                location,
+                parameters,
+                model_parameter_names: &self.parameter_names,
+            }
     }
 }
 /// A helper proxy that is used in conjuntion with the method to evalue the derivative of a
@@ -138,9 +145,16 @@ pub struct DerivativeProxy<'a, ScalarType: Scalar> {
 impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
     /// TODO DOCUMENT
     #[inline]
-    pub fn eval_at_param_index(&self, index: usize) -> Result<DMatrix<ScalarType>, ModelError> {
-        if index >= self.model_parameter_names.len() {
-            return Err(ModelError::DerivativeIndexOutOfBounds { index });
+    pub fn eval_at(&self, param_index: usize) -> Result<DMatrix<ScalarType>, ModelError> {
+        if self.parameters.len() != self.model_parameter_names.len() {
+            return Err(ModelError::IncorrectParameterCount {
+                required: self.model_parameter_names.len(),
+                actual: self.parameters.len(),
+            });
+        }
+
+        if param_index >= self.model_parameter_names.len() {
+            return Err(ModelError::DerivativeIndexOutOfBounds { index: param_index });
         }
 
         let nrows = self.location.len();
@@ -153,7 +167,7 @@ impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
             .iter()
             .zip(derivative_function_value_matrix.column_iter_mut())
         {
-            if let Some(derivative) = basefunc.derivatives.get(&index) {
+            if let Some(derivative) = basefunc.derivatives.get(&param_index) {
                 let deriv_value = model_basis_function::evaluate_and_check(
                     derivative,
                     self.location,
@@ -183,6 +197,6 @@ impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
             .ok_or(ModelError::ParameterNotInModel {
                 parameter: param_name.as_ref().into(),
             })?;
-        self.eval_at_param_index(index)
+        self.eval_at(index)
     }
 }
