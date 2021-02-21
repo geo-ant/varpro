@@ -67,7 +67,7 @@ where
     ScalarType: Scalar,
 {
     /// Get the parameters of the model
-    pub fn parameters(&self) -> &Vec<String> {
+    pub fn parameters(&self) -> &[String] {
         &self.parameter_names
     }
 

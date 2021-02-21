@@ -65,6 +65,14 @@ fn get_double_exponential_model_with_constant_offset() -> SeparableModel<f64> {
 }
 
 #[test]
+fn model_gets_initialized_with_correct_parameter_names_and_count() {
+    let model = get_double_exponential_model_with_constant_offset();
+    assert_eq!(model.parameter_count(),2,"Double exponential model has 2 parameters");
+    assert_eq!(model.parameters(),&["tau1","tau2"],"Double exponential model has 2 parameters");
+
+}
+
+#[test]
 // test that the eval method produces correct results and gives a matrix that is ordered correctly
 fn model_function_eval_produces_correct_result() {
     let model = get_double_exponential_model_with_constant_offset();
