@@ -115,6 +115,17 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 }
 
 #[test]
+fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
+    let model = get_double_exponential_model_with_constant_offset();
+
+    assert_eq!(model.parameter_count(),2, "double exponential model should have 2 params");
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
+    // now deliberately provide a wrong number of params to eval
+    let params = &[1.,2.,3.,4.,5.];
+    assert!(matches!(model.eval(&tvec,params),Err(ModelError::IncorrectParameterCount {..})));
+}
+
+#[test]
 // test that the correct derivative matrices are produced for a valid model
 fn model_derivative_evaluation_produces_correct_result() {
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
