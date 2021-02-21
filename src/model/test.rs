@@ -116,10 +116,8 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
     assert!(matches!(model_with_bad_function.eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:3,..})),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
 }
 
-// TODO: it's fine to check that model above, but we also need some model where more derivatives are nonzero for the same param
 #[test]
-// test that when a base function does not return the same length result as its location argument,
-// then the eval method fails
+// test that the correct derivative matrices are produced for a valid model
 fn model_derivative_evaluation_produces_correct_result() {
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
@@ -127,7 +125,7 @@ fn model_derivative_evaluation_produces_correct_result() {
         .function(&["tau"], exp_decay)
         .partial_deriv("tau", exp_decay_dtau)
         .invariant_function(ones)
-        .function(&["omega", "tau"], sin_ometa_t_plus_phi) // so we make phi=tau of the model. Bit silly, but to produce a function that contributes to all derivs
+        .function(&["omega", "tau"], sin_ometa_t_plus_phi) // so we make phi=tau of the model. Bit silly, but to produce a function that contributes to all partial derivs
         .partial_deriv("tau", sin_ometa_t_plus_phi_dphi)
         .partial_deriv("omega", sin_ometa_t_plus_phi_domega)
         .build()
@@ -158,7 +156,7 @@ fn model_derivative_evaluation_produces_correct_result() {
     // d/d(omega) exp(-t/tau) = 0
     assert_eq!(DVector::from(deriv_omega.column(0)),DVector::from_element(tvec.len(),0.));
     // d/d(omega) constant function = 0
-    assert_eq!(DVector::from(deriv_omega.column(0)),DVector::from_element(tvec.len(),0.));
+    assert_eq!(DVector::from(deriv_omega.column(1)),DVector::from_element(tvec.len(),0.));
     // d/d(omega) sin(omega*t+tau)
     assert_eq!(DVector::from(deriv_omega.column(2)),sin_ometa_t_plus_phi_domega(&tvec,omega,tau));
 }

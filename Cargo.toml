@@ -17,8 +17,6 @@ keywords = ["nonlinear","least","squares","fitting","regression"]
 snafu = "0.6"
 levenberg-marquardt = "0.7"
 nalgebra = "0.24"
-typenum = "1.12"
-generic-array = "0.14"
 num-traits = "0.2"
 
 [package.metadata.docs.rs]

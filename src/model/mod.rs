@@ -77,7 +77,6 @@ where
     }
 }
 
-//TODO: find out if this will really work!!!!!!
 impl<ScalarType> SeparableModel<ScalarType>
 where
     ScalarType: Scalar + Zero,
