@@ -106,7 +106,8 @@ where
 
     //check that the parameter count in the string parameter list is equal to the
     //parameter count in the argument of the function
-    if function_parameters.len() != function.argument_count() {
+    //todo: refactor into it's own function
+    if function_parameters.len() != F::ARGUMENT_COUNT {
         return Err(ModelBuildError::IncorrectParameterCount {
             params: function_parameters
                 .iter()
@@ -114,7 +115,7 @@ where
                 .map(|p| p.into())
                 .collect(),
             string_params_count: function_parameters.len(),
-            function_argument_count: function.argument_count(),
+            function_argument_count: F::ARGUMENT_COUNT,
         });
     }
 
@@ -164,10 +165,10 @@ mod test {
     // make sure the check parameter names function behaves as intended
     #[test]
     fn test_check_parameter_names() {
-        assert!(check_parameter_names(&Vec::<String>::default()).is_err());
+        assert!(matches!(check_parameter_names(&Vec::<String>::default()),Err(ModelBuildError::EmptyParameters)));
         assert!(check_parameter_names(&["a"]).is_ok());
         assert!(check_parameter_names(&["a", "b", "c"]).is_ok());
-        assert!(check_parameter_names(&["a", "b", "b"]).is_err());
+        assert!(matches!(check_parameter_names(&["a", "b", "b"]),Err(ModelBuildError::DuplicateParameterNames {..})));
         assert!(matches!(check_parameter_names(&["a,b","c"]),Err(ModelBuildError::CommaInParameterNameNotAllowed {..})));
     }
 

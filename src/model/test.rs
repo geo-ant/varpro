@@ -24,18 +24,30 @@ fn exp_decay_dtau<ScalarType: Scalar + Float>(
 }
 
 /// function sin (omega*t+phi)
-fn sin_ometa_t_plus_phi<ScalarType:Scalar+Float>(tvec : &DVector<ScalarType>, omega: ScalarType, phi:ScalarType) -> DVector<ScalarType> {
-    tvec.map(|t| (omega*t+phi).sin())
+fn sin_ometa_t_plus_phi<ScalarType: Scalar + Float>(
+    tvec: &DVector<ScalarType>,
+    omega: ScalarType,
+    phi: ScalarType,
+) -> DVector<ScalarType> {
+    tvec.map(|t| (omega * t + phi).sin())
 }
 
 /// derivative d/d(omega) sin (omega*t+phi)
-fn sin_ometa_t_plus_phi_domega<ScalarType:Scalar+Float>(tvec : &DVector<ScalarType>, omega: ScalarType, phi:ScalarType) -> DVector<ScalarType> {
-    tvec.map(|t| t*(omega*t+phi).cos())
+fn sin_ometa_t_plus_phi_domega<ScalarType: Scalar + Float>(
+    tvec: &DVector<ScalarType>,
+    omega: ScalarType,
+    phi: ScalarType,
+) -> DVector<ScalarType> {
+    tvec.map(|t| t * (omega * t + phi).cos())
 }
 
 /// derivative d/d(phi) sin (omega*t+phi)
-fn sin_ometa_t_plus_phi_dphi<ScalarType:Scalar+Float>(tvec : &DVector<ScalarType>, omega: ScalarType, phi:ScalarType) -> DVector<ScalarType> {
-    tvec.map(|t| (omega*t+phi).cos())
+fn sin_ometa_t_plus_phi_dphi<ScalarType: Scalar + Float>(
+    tvec: &DVector<ScalarType>,
+    omega: ScalarType,
+    phi: ScalarType,
+) -> DVector<ScalarType> {
+    tvec.map(|t| (omega * t + phi).cos())
 }
 
 /// A helper function that returns a double exponential decay model
@@ -111,17 +123,44 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 fn model_derivative_evaluation_produces_correct_result() {
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
-    let model = SeparableModelBuilder::<f64>::new(&["tau","omega"])
-        .function(&["tau"],exp_decay)
-        .partial_deriv("tau",exp_decay_dtau)
-         .function(&["omega","tau"],sin_ometa_t_plus_phi) // so we make phi=tau of the model. Bit silly, but to produce a function that contributes to all derivs
-         .partial_deriv("tau",sin_ometa_t_plus_phi_domega)
-         .partial_deriv("omega",sin_ometa_t_plus_phi_domega)
-         .invariant_function(ones)
+    let model = SeparableModelBuilder::<f64>::new(&["tau", "omega"])
+        .function(&["tau"], exp_decay)
+        .partial_deriv("tau", exp_decay_dtau)
+        .invariant_function(ones)
+        .function(&["omega", "tau"], sin_ometa_t_plus_phi) // so we make phi=tau of the model. Bit silly, but to produce a function that contributes to all derivs
+        .partial_deriv("tau", sin_ometa_t_plus_phi_dphi)
+        .partial_deriv("omega", sin_ometa_t_plus_phi_domega)
         .build()
         .expect("Valid model creation should not fail");
 
-    todo!("implement to finish")
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
+    let tau = 3.;
+    let omega = 1.5;
+    let params = &[tau,omega];
+
+
+    let deriv_tau = model.deriv(&tvec,params).eval_at_param_name("tau").expect("Derivative eval must not fail");
+    let deriv_omega = model.deriv(&tvec,params).eval_at_param_name("omega").expect("Derivative eval must not fail");
+
+    // DERIVATIVE WITH RESPECT TO TAU
+    // assert that the matrix has the correct dimenstions
+    assert!(deriv_tau.ncols() ==3 && deriv_tau.nrows() == tvec.len(), "Deriv tau matrix does not have correct dimensions");
+    // now check the columns of the deriv with respect to tau
+    // d/d(tau) exp(-t/tau)
+    assert_eq!(DVector::from(deriv_tau.column(0)),exp_decay_dtau(&tvec,tau));
+    // d/d(tau) constant function = 0
+    assert_eq!(DVector::from(deriv_tau.column(1)),DVector::from_element(tvec.len(),0.));
+    // d/d(tau) sin(omega*t+tau)
+    assert_eq!(DVector::from(deriv_tau.column(2)),sin_ometa_t_plus_phi_dphi(&tvec,omega,tau));
+
+    // DERIVATIVE WITH RESPECT TO OMEGA
+    assert!(deriv_omega.ncols() ==3 && deriv_omega.nrows() == tvec.len(), "Deriv omega matrix does not have correct dimensions");
+    // d/d(omega) exp(-t/tau) = 0
+    assert_eq!(DVector::from(deriv_omega.column(0)),DVector::from_element(tvec.len(),0.));
+    // d/d(omega) constant function = 0
+    assert_eq!(DVector::from(deriv_omega.column(0)),DVector::from_element(tvec.len(),0.));
+    // d/d(omega) sin(omega*t+tau)
+    assert_eq!(DVector::from(deriv_omega.column(2)),sin_ometa_t_plus_phi_domega(&tvec,omega,tau));
 }
 
 #[test]
