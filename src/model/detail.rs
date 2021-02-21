@@ -5,7 +5,7 @@ use nalgebra::{DVector, Scalar};
 
 use crate::basis_function::BasisFunction;
 use crate::model::builder::error::ModelBuildError;
-use crate::model::errors::*;
+
 
 /// check that the parameter names obey the following rules
 /// * the set of parameters is not empty
@@ -21,7 +21,7 @@ where
         return Err(ModelBuildError::EmptyParameters);
     }
 
-    /// todo: this is inefficient. Refactor the interface of this method
+    // todo: this is inefficient. Refactor the interface of this method
     if let Some(param_name) = param_names.iter().find(|&p|p.clone().into().contains(',')) {
         return Err(ModelBuildError::CommaInParameterNameNotAllowed {param_name : param_name.clone().into()});
     }

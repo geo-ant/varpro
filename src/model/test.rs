@@ -4,7 +4,6 @@ use crate::model::builder::SeparableModelBuilder;
 use crate::model::errors::ModelError;
 use crate::model::SeparableModel;
 use nalgebra::{DVector, Scalar};
-use num_traits::real::Real;
 use num_traits::Float;
 
 /// exponential decay f(t,tau) = exp(-t/tau)
@@ -76,7 +75,7 @@ fn model_function_eval_produces_correct_result() {
 
     let params = &[tau1, tau2];
     let eval_matrix = model
-        .eval(&tvec, params)
+        .matrix_eval(&tvec, params)
         .expect("Model evaluation should not fail");
 
     assert_eq!(
@@ -104,7 +103,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
     let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
         .function(&["tau2"], exp_decay)
         .partial_deriv("tau2", exp_decay_dtau)
-        .function(&["tau1"], |t: &DVector<_>, tau| {
+        .function(&["tau1"], |_t: &DVector<_>, _tau| {
             DVector::from(vec![1., 3., 3., 7.])
         })
         .partial_deriv("tau1", exp_decay_dtau)
@@ -113,7 +112,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
 
-    assert!(matches!(model_with_bad_function.eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:3,..})),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
+    assert!(matches!(model_with_bad_function.matrix_eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:3,..})),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
 }
 
 #[test]
@@ -137,8 +136,8 @@ fn model_derivative_evaluation_produces_correct_result() {
     let params = &[tau,omega];
 
 
-    let deriv_tau = model.deriv(&tvec,params).eval_at_param_name("tau").expect("Derivative eval must not fail");
-    let deriv_omega = model.deriv(&tvec,params).eval_at_param_name("omega").expect("Derivative eval must not fail");
+    let deriv_tau = model.matrix_deriv(&tvec,params).eval_at_param_name("tau").expect("Derivative eval must not fail");
+    let deriv_omega = model.matrix_deriv(&tvec,params).eval_at_param_name("omega").expect("Derivative eval must not fail");
 
     // DERIVATIVE WITH RESPECT TO TAU
     // assert that the matrix has the correct dimenstions
@@ -168,18 +167,18 @@ fn requesting_derivative_by_name_and_index_produces_same_results() {
     let params = &[2., 4.];
 
     assert_eq!(
-        model.deriv(&tvec, params).eval_at(0).unwrap(),
+        model.matrix_deriv(&tvec, params).eval_at(0).unwrap(),
         model
-            .deriv(&tvec, params)
+            .matrix_deriv(&tvec, params)
             .eval_at_param_name("tau1")
             .unwrap(),
         "Evaluating derivative by name or index must produce same result"
     );
 
     assert_eq!(
-        model.deriv(&tvec, params).eval_at(1).unwrap(),
+        model.matrix_deriv(&tvec, params).eval_at(1).unwrap(),
         model
-            .deriv(&tvec, params)
+            .matrix_deriv(&tvec, params)
             .eval_at_param_name("tau2")
             .unwrap(),
         "Evaluating derivative by name or index must produce same result"
@@ -208,7 +207,7 @@ fn model_derivative_evaluation_error_cases() {
     // deriv index 0 is tau1: this derivative is bad and should fail
     assert!(
         matches!(
-            model_with_bad_function.deriv(&tvec, &[2., 4.]).eval_at(0),
+            model_with_bad_function.matrix_deriv(&tvec, &[2., 4.]).eval_at(0),
             Err(ModelError::UnexpectedFunctionOutput { .. })
         ),
         "Derivative for invalid function must fail with correct error"
@@ -217,7 +216,7 @@ fn model_derivative_evaluation_error_cases() {
     // deriv index 0 is tau1: this derivative is good and should return an ok result
     assert!(
         model_with_bad_function
-            .deriv(&tvec, &[2., 4.])
+            .matrix_deriv(&tvec, &[2., 4.])
             .eval_at(1)
             .is_ok(),
         "Derivative eval for valid function should return Ok result"
@@ -227,7 +226,7 @@ fn model_derivative_evaluation_error_cases() {
     assert!(
         matches!(
             model_with_bad_function
-                .deriv(&tvec, &[2., 4., 2., 2.])
+                .matrix_deriv(&tvec, &[2., 4., 2., 2.])
                 .eval_at(1),
             Err(ModelError::IncorrectParameterCount { .. })
         ),
@@ -237,7 +236,7 @@ fn model_derivative_evaluation_error_cases() {
     // check an out of bounds index for the derivative
     assert!(
         matches!(
-            model_with_bad_function.deriv(&tvec, &[2., 4.]).eval_at(100),
+            model_with_bad_function.matrix_deriv(&tvec, &[2., 4.]).eval_at(100),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
         ),
         "Derivative for invalid function must fail with correct error"
@@ -247,7 +246,7 @@ fn model_derivative_evaluation_error_cases() {
     assert!(
         matches!(
             model_with_bad_function
-                .deriv(&tvec, &[2., 4.])
+                .matrix_deriv(&tvec, &[2., 4.])
                 .eval_at_param_name("frankenstein"),
             Err(ModelError::ParameterNotInModel { .. })
         ),

@@ -81,8 +81,32 @@ impl<ScalarType> SeparableModel<ScalarType>
 where
     ScalarType: Scalar + Zero,
 {
-    /// TODO DOCUMENT
-    pub fn eval(
+    /// # Arguments
+    /// * `location`: the value of the independent location parameter `$\vec{x}$`
+    /// * `parameters`: the parameter vector `$\vec{\alpha}$`
+    /// # Result
+    /// Evaluates the model in matrix from for the given nonlinear parameters. This produces
+    /// a matrix where the columns of the matrix are given by the basis function, evaluated in
+    /// the order that they were added to the model. Assume the model consists of `$f_1(\vec{x},\vec{\alpha})$`,
+    /// `$f_2(\vec{x},\vec{\alpha})$`, and `$f_3(\vec{x},\vec{\alpha})$` in this particular order. Then
+    /// the matrix is given as
+    /// ```math
+    ///   \mathbf{\Phi}(\vec{x},\vec{\alpha}) \coloneqq
+    ///   \begin{pmatrix}
+    ///   \vert & \vert & \vert \\
+    ///   f_1(\vec{x},\vec{\alpha}) & f_2(\vec{x},\vec{\alpha}) & f_3(\vec{x},\vec{\alpha}) \\
+    ///   \vert & \vert & \vert \\
+    ///   \end{pmatrix},
+    /// ```
+    /// where, again, the function `$f_j$` gives the column values for colum `$j$` of `$\mathbf{\Phi}(\vec{x},\vec{\alpha})$`.
+    /// Since model function is a linear combination of the functions `$f_j$`, the value of the modelfunction
+    /// at these parameters can be obtained as the matrix vector product `$\mathbf{\Phi}(\vec{x},\vec{\alpha}) \, \vec{c}$`,
+    /// where `$\vec{c}$` is a vector of the linear coefficients.
+    /// ## Errors
+    /// An error result is returned when
+    /// * the parameters do not have the same length as the model parameters given when building the model
+    /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
+    pub fn matrix_eval(
         &self,
         location: &DVector<ScalarType>,
         parameters: &[ScalarType],
@@ -113,7 +137,7 @@ where
     }
 
     /// TODO DOCUMENT
-    pub fn deriv<'a, 'b, 'c, 'd>(
+    pub fn matrix_deriv<'a, 'b, 'c, 'd>(
         &'a self,
         location: &'b DVector<ScalarType>,
         parameters: &'c [ScalarType],
