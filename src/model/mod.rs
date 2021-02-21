@@ -75,6 +75,11 @@ where
     pub fn parameter_count(&self) -> usize {
         self.parameter_names.len()
     }
+
+    /// Get the number of basis functions of the model
+    pub fn basis_function_count(&self) -> usize {
+        self.basefunctions.len()
+    }
 }
 
 impl<ScalarType> SeparableModel<ScalarType>
@@ -120,7 +125,7 @@ where
         }
 
         let nrows = location.len();
-        let ncols = self.basefunctions.len();
+        let ncols = self.basis_function_count();
         let mut function_value_matrix =
             unsafe { DMatrix::<ScalarType>::new_uninitialized(nrows, ncols) };
 
