@@ -88,7 +88,8 @@ where
     /// Evaluates the model in matrix from for the given nonlinear parameters. This produces
     /// a matrix where the columns of the matrix are given by the basis function, evaluated in
     /// the order that they were added to the model. Assume the model consists of `$f_1(\vec{x},\vec{\alpha})$`,
-    /// `$f_2(\vec{x},\vec{\alpha})$`, and `$f_3(\vec{x},\vec{\alpha})$` in this particular order. Then
+    /// `$f_2(\vec{x},\vec{\alpha})$`, and `$f_3(\vec{x},\vec{\alpha})$` and the functions where
+    /// added to the model builder in this particular order. Then
     /// the matrix is given as
     /// ```math
     ///   \mathbf{\Phi}(\vec{x},\vec{\alpha}) \coloneqq
@@ -106,7 +107,7 @@ where
     /// An error result is returned when
     /// * the parameters do not have the same length as the model parameters given when building the model
     /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
-    pub fn matrix_eval(
+    pub fn eval(
         &self,
         location: &DVector<ScalarType>,
         parameters: &[ScalarType],
@@ -139,32 +140,46 @@ where
     /// # Arguments
     /// * `location`: the value of the independent location parameter `$\vec{x}$`
     /// * `parameters`: the parameter vector `$\vec{\alpha}$`
+    /// # Usage
+    /// This function returns a proxy for syntactic sugar, so that we can call this piece of code as:
+    /// ```no_run
+    /// use nalgebra::DVector;
+    /// use varpro::model::SeparableModel;
+    /// let model : SeparableModel<_> = /* A SeparableModel instance*/;
+    /// let x :DVector<_>= /*some vector for independent variable*/;
+    /// let parameters = &[/*model parameter value*/];
+    /// let D = model.eval_deriv(&x,parameters).at(0);
+    /// //or (if "tau" is the name of the first model parameter!) equivalently
+    /// let D = model.eval_deriv(&x,parameters).at_param_name("tau");
+    /// ```
+    /// **NOTE**: In code, the derivatives are indexed with index 0. The index is given by the order that the model
+    /// parameters where given when building a model. Say our model was given model parameters
+    /// `&["tau","omega"]`, then parameter `"tau"` corresponds to index `0` and parameter `"omega"`
+    /// to index `1`. This means that the derivative `$\partial/\partial\tau$` has index `0` and
+    /// `$\partial/\partial\omega$` has index 1.
     /// # Result
-    /// Returns a proxy that can be used to evaluate the partial derivatives of the model in matrix form.
-    /// The proxy itself is just
-    /// the model in matrix from for the given nonlinear parameters. This produces
-    /// a matrix where the columns of the matrix are given by the basis function, evaluated in
-    /// the order that they were added to the model. Assume the model consists of `$f_1(\vec{x},\vec{\alpha})$`,
-    /// `$f_2(\vec{x},\vec{\alpha})$`, and `$f_3(\vec{x},\vec{\alpha})$` in this particular order. Then
-    /// the matrix is given as
+    /// The function returns a matrix where the derivatives of the model functions are
+    /// forming the columns of the matrix. Assume the model consists of `$f_1(\vec{x},\vec{\alpha})$`,
+    /// `$f_2(\vec{x},\vec{\alpha})$`, and `$f_3(\vec{x},\vec{\alpha})$` and the functions where
+    /// added to the model builder in this particular order. Let the model parameters be denoted by
+    /// `$\vec{\alpha}=(\alpha_1,\alpha_2,...,\alpha_N)$`, then this function returns the matrix
     /// ```math
-    ///   \mathbf{\Phi}(\vec{x},\vec{\alpha}) \coloneqq
+    ///   \mathbf{D}_j(\vec{x},\vec{\alpha}) \coloneqq
     ///   \begin{pmatrix}
     ///   \vert & \vert & \vert \\
-    ///   f_1(\vec{x},\vec{\alpha}) & f_2(\vec{x},\vec{\alpha}) & f_3(\vec{x},\vec{\alpha}) \\
+    ///   \frac{\partial f_1(\vec{x},\vec{\alpha})}{\partial \alpha_j} & \frac{\partial f_2(\vec{x},\vec{\alpha})}{\partial \alpha_j} & \frac{\partial f_3(\vec{x},\vec{\alpha})}{\partial \alpha_j} \\
     ///   \vert & \vert & \vert \\
     ///   \end{pmatrix},
     /// ```
-    /// where, again, the function `$f_j$` gives the column values for colum `$j$` of `$\mathbf{\Phi}(\vec{x},\vec{\alpha})$`.
-    /// Since model function is a linear combination of the functions `$f_j$`, the value of the modelfunction
-    /// at these parameters can be obtained as the matrix vector product `$\mathbf{\Phi}(\vec{x},\vec{\alpha}) \, \vec{c}$`,
-    /// where `$\vec{c}$` is a vector of the linear coefficients.
+    /// where in the code the index `j` of the derivative begins with `0` and goes to `N-1`.
     /// ## Errors
     /// An error result is returned when
     /// * the parameters do not have the same length as the model parameters given when building the model
     /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
+    /// * the given parameter index is out of bounds
+    /// * the given parameter name is not a parameter of the model.
 
-    pub fn matrix_deriv<'a, 'b, 'c, 'd>(
+    pub fn eval_deriv<'a, 'b, 'c, 'd>(
         &'a self,
         location: &'b DVector<ScalarType>,
         parameters: &'c [ScalarType],
@@ -182,6 +197,7 @@ where
             }
     }
 }
+
 /// A helper proxy that is used in conjuntion with the method to evalue the derivative of a
 /// separable model. This structure serves no purpose other than making the function call to
 /// calculate the derivative a little more readable
@@ -194,9 +210,10 @@ pub struct DerivativeProxy<'a, ScalarType: Scalar> {
 }
 
 impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
-    /// TODO DOCUMENT
+    /// This function is used in conjunction with evaluating the derivative matrix of the
+    /// separable model. It is documented as part of the [SeparableModel] interface.
     #[inline]
-    pub fn eval_at(&self, param_index: usize) -> Result<DMatrix<ScalarType>, ModelError> {
+    pub fn at(&self, param_index: usize) -> Result<DMatrix<ScalarType>, ModelError> {
         if self.parameters.len() != self.model_parameter_names.len() {
             return Err(ModelError::IncorrectParameterCount {
                 required: self.model_parameter_names.len(),
@@ -230,14 +247,15 @@ impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
         Ok(derivative_function_value_matrix)
     }
 
-    /// Convenience method that allows to calculate the derivative of the function value matrix
-    /// by giving the parameter name.
+    /// This function is used in conjunction with evaluating the derivative matrix of the
+    /// separable model. It is documented as part of the [SeparableModel] interface.
+    /// Allows to access the derivative by parameter name instead of index.
     /// # Returns
     /// If the parameter is in the model parameters, returns the same result as calculating
     /// the derivative at the same parameter index. Otherwise returns an error indicating
     /// the parameter is not in the model parameters.
     #[inline]
-    pub fn eval_at_param_name<StrType: AsRef<str>>(
+    pub fn at_param_name<StrType: AsRef<str>>(
         &self,
         param_name: StrType,
     ) -> Result<DMatrix<ScalarType>, ModelError> {
@@ -248,6 +266,6 @@ impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
             .ok_or(ModelError::ParameterNotInModel {
                 parameter: param_name.as_ref().into(),
             })?;
-        self.eval_at(index)
+        self.at(index)
     }
 }
