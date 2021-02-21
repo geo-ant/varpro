@@ -1,9 +1,7 @@
 
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{Scalar, Dynamic, ComplexField, Vector, Matrix, U3, Vector3, VecStorage, U1, DefaultAllocator, U2, Matrix2, Vector2, VectorN, DVector};
 use nalgebra::storage::Owned;
-use std::sync::Arc;
-use nalgebra::allocator::Allocator;
+use nalgebra::{Dynamic, Scalar, ComplexField, Vector, DVector, Matrix};
 
 pub struct LevMarSolver<ScalarType>
 where ScalarType : Scalar{
