@@ -10,15 +10,13 @@ pub struct LevMarSolver<'a,ScalarType>
     location : DVector<ScalarType>,
     /// the data vector to which to fit the model `$\vec{y}$`
     data : DVector<ScalarType>,
-
     /// current parameters that the optimizer is operating on
     current_parameters : Vec<ScalarType>,
     /// The current residual of model function values belonging to the current parameters
     current_residuals: DVector<ScalarType>,
-    /// the current matrix U of the SVD (
+    /// Singular value decomposition of the current function value matrix
     current_svd : SVD<ScalarType,Dynamic,Dynamic>,
-
-    /// the linear coefficients providing the current best fit
+    /// the linear coefficients `$\vec{c}$` providing the current best fit
     current_linear_coeffs : DVector<ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
     model : &'a SeparableModel<ScalarType>,
