@@ -98,42 +98,51 @@ fn callable_evaluation_using_the_generic_interface() {
     );
 }
 
+// helper function to access the argument count of a basis function type
+// unfortunately, as of now I cannot make this function `const` because
+// "trait bounds other than `Sized` on const fn parameters are unstable"
+// see https://github.com/rust-lang/rust/issues/57563
+fn argument_count<ScalarType, ArgList, F>(_f: F) -> usize
+where
+    F: BasisFunction<ScalarType, ArgList>,
+    ScalarType: Scalar,
+{
+    F::ARGUMENT_COUNT
+}
+
 #[test]
 #[allow(unused_variables)]
 fn callable_argument_length_is_correct() {
     let x = DVector::from_element(10, 1.);
-    assert_eq!(callable1.argument_count(), 1);
-    assert_eq!(callable2.argument_count(), 2);
+    assert_eq!(argument_count(callable1), 1);
+    assert_eq!(argument_count(callable2), 2);
+    assert_eq!(argument_count(|x: &DVector<f64>, a, b, c| { x.clone() }), 3);
     assert_eq!(
-        (|x: &DVector<f64>, a, b, c| { x.clone() }).argument_count(),
-        3
-    );
-    assert_eq!(
-        (|x: &DVector<f64>, a, b, c, d| { x.clone() }).argument_count(),
+        argument_count(|x: &DVector<f64>, a, b, c, d| { x.clone() }),
         4
     );
     assert_eq!(
-        (|x: &DVector<f32>, a, b, c, d, e| { x.clone() }).argument_count(),
+        argument_count(|x: &DVector<f32>, a, b, c, d, e| { x.clone() }),
         5
     );
     assert_eq!(
-        (|x: &DVector<f32>, a, b, c, d, e, f| { x.clone() }).argument_count(),
+        argument_count(|x: &DVector<f32>, a, b, c, d, e, f| { x.clone() }),
         6
     );
     assert_eq!(
-        (|x: &DVector<f32>, a, b, c, d, e, f, g| { x.clone() }).argument_count(),
+        argument_count(|x: &DVector<f32>, a, b, c, d, e, f, g| { x.clone() }),
         7
     );
     assert_eq!(
-        (|x: &DVector<f32>, a, b, c, d, e, f, g, h| { x.clone() }).argument_count(),
+        argument_count(|x: &DVector<f32>, a, b, c, d, e, f, g, h| { x.clone() }),
         8
     );
     assert_eq!(
-        (|x: &DVector<f32>, a, b, c, d, e, f, g, h, i| { x.clone() }).argument_count(),
+        argument_count(|x: &DVector<f32>, a, b, c, d, e, f, g, h, i| { x.clone() }),
         9
     );
     assert_eq!(
-        (|x: &DVector<f32>, a, b, c, d, e, f, g, h, i, j| { x.clone() }).argument_count(),
+        argument_count(|x: &DVector<f32>, a, b, c, d, e, f, g, h, i, j| { x.clone() }),
         10
     );
 }

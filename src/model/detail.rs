@@ -4,11 +4,12 @@ use std::hash::Hash;
 use nalgebra::{DVector, Scalar};
 
 use crate::basis_function::BasisFunction;
-use crate::model::errors::*;
+use crate::model::builder::error::ModelBuildError;
 
 /// check that the parameter names obey the following rules
 /// * the set of parameters is not empty
 /// * the set of parameters contains only unique elements
+/// * any of the parameter names contains a comma. This indicates most likely a typo when giving the parameter list
 /// # Returns
 /// Ok if the conditions hold, otherwise an error variant.
 pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelBuildError>
@@ -17,6 +18,13 @@ where
 {
     if param_names.is_empty() {
         return Err(ModelBuildError::EmptyParameters);
+    }
+
+    // todo: this is inefficient. Refactor the interface of this method
+    if let Some(param_name) = param_names.iter().find(|&p| p.clone().into().contains(',')) {
+        return Err(ModelBuildError::CommaInParameterNameNotAllowed {
+            param_name: param_name.clone().into(),
+        });
     }
 
     if !has_only_unique_elements(param_names.iter()) {
@@ -99,7 +107,8 @@ where
 
     //check that the parameter count in the string parameter list is equal to the
     //parameter count in the argument of the function
-    if function_parameters.len() != function.argument_count() {
+    //todo: refactor into it's own function
+    if function_parameters.len() != F::ARGUMENT_COUNT {
         return Err(ModelBuildError::IncorrectParameterCount {
             params: function_parameters
                 .iter()
@@ -107,7 +116,7 @@ where
                 .map(|p| p.into())
                 .collect(),
             string_params_count: function_parameters.len(),
-            function_argument_count: function.argument_count(),
+            function_argument_count: F::ARGUMENT_COUNT,
         });
     }
 
@@ -157,10 +166,20 @@ mod test {
     // make sure the check parameter names function behaves as intended
     #[test]
     fn test_check_parameter_names() {
-        assert!(check_parameter_names(&Vec::<String>::default()).is_err());
+        assert!(matches!(
+            check_parameter_names(&Vec::<String>::default()),
+            Err(ModelBuildError::EmptyParameters)
+        ));
         assert!(check_parameter_names(&["a"]).is_ok());
         assert!(check_parameter_names(&["a", "b", "c"]).is_ok());
-        assert!(check_parameter_names(&["a", "b", "b"]).is_err());
+        assert!(matches!(
+            check_parameter_names(&["a", "b", "b"]),
+            Err(ModelBuildError::DuplicateParameterNames { .. })
+        ));
+        assert!(matches!(
+            check_parameter_names(&["a,b", "c"]),
+            Err(ModelBuildError::CommaInParameterNameNotAllowed { .. })
+        ));
     }
 
     #[test]

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::model::errors::ModelError;
 use nalgebra::base::Scalar;
 use nalgebra::DVector;
 
@@ -43,22 +44,22 @@ where
     }
 }
 
-// #[inline]
-// /// Helper function to evaluate the given function with the location and parameters
-// /// and make sure that the output vector size of the function has the same length as
-// /// the location vector. Otherwise returns an error.
-// pub fn evaluate_and_check<ScalarType: Scalar>(
-//     func: &BaseFuncType<ScalarType>,
-//     location: &DVector<ScalarType>,
-//     parameters: &[ScalarType],
-// ) -> Result<DVector<ScalarType>, ModelError> {
-//     let result = (func)(location, parameters);
-//     if result.len() == location.len() {
-//         Ok(result)
-//     } else {
-//         Err(ModelError::UnexpectedFunctionOutput {
-//             expected_length: location.len(),
-//             actual_length: result.len(),
-//         })
-//     }
-// }
+#[inline]
+/// Helper function to evaluate the given function with the location and parameters
+/// and make sure that the output vector size of the function has the same length as
+/// the location vector. Otherwise returns an error.
+pub fn evaluate_and_check<ScalarType: Scalar>(
+    func: &BaseFuncType<ScalarType>,
+    location: &DVector<ScalarType>,
+    parameters: &[ScalarType],
+) -> Result<DVector<ScalarType>, ModelError> {
+    let result = (func)(location, parameters);
+    if result.len() == location.len() {
+        Ok(result)
+    } else {
+        Err(ModelError::UnexpectedFunctionOutput {
+            expected_length: location.len(),
+            actual_length: result.len(),
+        })
+    }
+}
