@@ -4,10 +4,10 @@ mod test;
 use nalgebra::base::Scalar;
 
 use crate::basis_function::BasisFunction;
+use crate::model::builder::error::ModelBuildError;
 use crate::model::detail::{
     check_parameter_names, create_index_mapping, create_wrapped_basis_function,
 };
-use crate::model::builder::error::ModelBuildError;
 use crate::model::model_basis_function::ModelBasisFunction;
 
 /// This is a library internal helper that allows us to construct basis functions with

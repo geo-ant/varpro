@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
+use crate::model::errors::ModelError;
 use nalgebra::base::Scalar;
 use nalgebra::DVector;
-use crate::model::errors::ModelError;
 
 /// Helper type that is a typedef for a function `$f(\vec{x},\vec{\alpha})$`, where
 /// the first argument is a location argument, and the second argument is the

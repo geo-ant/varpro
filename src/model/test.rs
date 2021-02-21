@@ -96,7 +96,6 @@ fn model_function_eval_produces_correct_result() {
 }
 
 #[test]
-#[ignore]
 // test that when a base function does not return the same length result as its location argument,
 // then the eval method fails
 fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function() {
@@ -112,7 +111,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
 
-    assert!(matches!(model_with_bad_function.eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:3,..})),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
+    assert!(matches!(model_with_bad_function.eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:4,..})),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
 }
 
 #[test]
@@ -133,31 +132,60 @@ fn model_derivative_evaluation_produces_correct_result() {
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let tau = 3.;
     let omega = 1.5;
-    let params = &[tau,omega];
+    let params = &[tau, omega];
 
-
-    let deriv_tau = model.eval_deriv(&tvec,params).at_param_name("tau").expect("Derivative eval must not fail");
-    let deriv_omega = model.eval_deriv(&tvec,params).at_param_name("omega").expect("Derivative eval must not fail");
+    let deriv_tau = model
+        .eval_deriv(&tvec, params)
+        .at_param_name("tau")
+        .expect("Derivative eval must not fail");
+    let deriv_omega = model
+        .eval_deriv(&tvec, params)
+        .at_param_name("omega")
+        .expect("Derivative eval must not fail");
 
     // DERIVATIVE WITH RESPECT TO TAU
     // assert that the matrix has the correct dimenstions
-    assert!(deriv_tau.ncols() ==3 && deriv_tau.nrows() == tvec.len(), "Deriv tau matrix does not have correct dimensions");
+    assert!(
+        deriv_tau.ncols() == 3 && deriv_tau.nrows() == tvec.len(),
+        "Deriv tau matrix does not have correct dimensions"
+    );
     // now check the columns of the deriv with respect to tau
     // d/d(tau) exp(-t/tau)
-    assert_eq!(DVector::from(deriv_tau.column(0)),exp_decay_dtau(&tvec,tau));
+    assert_eq!(
+        DVector::from(deriv_tau.column(0)),
+        exp_decay_dtau(&tvec, tau)
+    );
     // d/d(tau) constant function = 0
-    assert_eq!(DVector::from(deriv_tau.column(1)),DVector::from_element(tvec.len(),0.));
+    assert_eq!(
+        DVector::from(deriv_tau.column(1)),
+        DVector::from_element(tvec.len(), 0.)
+    );
     // d/d(tau) sin(omega*t+tau)
-    assert_eq!(DVector::from(deriv_tau.column(2)),sin_ometa_t_plus_phi_dphi(&tvec,omega,tau));
+    assert_eq!(
+        DVector::from(deriv_tau.column(2)),
+        sin_ometa_t_plus_phi_dphi(&tvec, omega, tau)
+    );
 
     // DERIVATIVE WITH RESPECT TO OMEGA
-    assert!(deriv_omega.ncols() ==3 && deriv_omega.nrows() == tvec.len(), "Deriv omega matrix does not have correct dimensions");
+    assert!(
+        deriv_omega.ncols() == 3 && deriv_omega.nrows() == tvec.len(),
+        "Deriv omega matrix does not have correct dimensions"
+    );
     // d/d(omega) exp(-t/tau) = 0
-    assert_eq!(DVector::from(deriv_omega.column(0)),DVector::from_element(tvec.len(),0.));
+    assert_eq!(
+        DVector::from(deriv_omega.column(0)),
+        DVector::from_element(tvec.len(), 0.)
+    );
     // d/d(omega) constant function = 0
-    assert_eq!(DVector::from(deriv_omega.column(1)),DVector::from_element(tvec.len(),0.));
+    assert_eq!(
+        DVector::from(deriv_omega.column(1)),
+        DVector::from_element(tvec.len(), 0.)
+    );
     // d/d(omega) sin(omega*t+tau)
-    assert_eq!(DVector::from(deriv_omega.column(2)),sin_ometa_t_plus_phi_domega(&tvec,omega,tau));
+    assert_eq!(
+        DVector::from(deriv_omega.column(2)),
+        sin_ometa_t_plus_phi_domega(&tvec, omega, tau)
+    );
 }
 
 #[test]

@@ -112,7 +112,6 @@ where
         location: &DVector<ScalarType>,
         parameters: &[ScalarType],
     ) -> Result<DMatrix<ScalarType>, ModelError> {
-
         if parameters.len() != self.parameter_count() {
             return Err(ModelError::IncorrectParameterCount {
                 required: self.parameter_count(),
@@ -141,17 +140,11 @@ where
     /// * `location`: the value of the independent location parameter `$\vec{x}$`
     /// * `parameters`: the parameter vector `$\vec{\alpha}$`
     /// # Usage
-    /// This function returns a proxy for syntactic sugar, so that we can call this piece of code as:
-    /// ```no_run
-    /// use nalgebra::DVector;
-    /// use varpro::model::SeparableModel;
-    /// let model : SeparableModel<_> = /* A SeparableModel instance*/;
-    /// let x :DVector<_>= /*some vector for independent variable*/;
-    /// let parameters = &[/*model parameter value*/];
-    /// let D = model.eval_deriv(&x,parameters).at(0);
-    /// //or (if "tau" is the name of the first model parameter!) equivalently
-    /// let D = model.eval_deriv(&x,parameters).at_param_name("tau");
-    /// ```
+    /// This function returns a proxy for syntactic sugar. Use it directly to call get the derivative
+    /// matrix of model as `model.eval_deriv(&x,parameters).at(0)`. We can also access the derivative
+    /// by name for convenience as `model.eval_deriv(&x,parameters).at_param_name("tau")`, which will
+    /// produce the same result of the index based call if `"tau"` is the name of the first model
+    /// parameter.
     /// **NOTE**: In code, the derivatives are indexed with index 0. The index is given by the order that the model
     /// parameters where given when building a model. Say our model was given model parameters
     /// `&["tau","omega"]`, then parameter `"tau"` corresponds to index `0` and parameter `"omega"`
@@ -189,12 +182,12 @@ where
         'b: 'd,
         'c: 'd,
     {
-            DerivativeProxy {
-                basefunctions: &self.basefunctions,
-                location,
-                parameters,
-                model_parameter_names: &self.parameter_names,
-            }
+        DerivativeProxy {
+            basefunctions: &self.basefunctions,
+            location,
+            parameters,
+            model_parameter_names: &self.parameter_names,
+        }
     }
 }
 

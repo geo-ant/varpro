@@ -53,5 +53,5 @@ where
 
     /// This gives the number of parameter arguments to the callable. So for a function `$f(\vec{x},\alpha_1,...\alpha_N)$`
     /// this is give `N`.
-    const ARGUMENT_COUNT : usize;
+    const ARGUMENT_COUNT: usize;
 }

@@ -102,8 +102,11 @@ fn callable_evaluation_using_the_generic_interface() {
 // unfortunately, as of now I cannot make this function `const` because
 // "trait bounds other than `Sized` on const fn parameters are unstable"
 // see https://github.com/rust-lang/rust/issues/57563
-fn argument_count<ScalarType,ArgList, F>(_f : F) -> usize
-where F: BasisFunction<ScalarType,ArgList>, ScalarType: Scalar {
+fn argument_count<ScalarType, ArgList, F>(_f: F) -> usize
+where
+    F: BasisFunction<ScalarType, ArgList>,
+    ScalarType: Scalar,
+{
     F::ARGUMENT_COUNT
 }
 
@@ -113,10 +116,7 @@ fn callable_argument_length_is_correct() {
     let x = DVector::from_element(10, 1.);
     assert_eq!(argument_count(callable1), 1);
     assert_eq!(argument_count(callable2), 2);
-    assert_eq!(
-        argument_count(|x: &DVector<f64>, a, b, c| { x.clone() }),
-        3
-    );
+    assert_eq!(argument_count(|x: &DVector<f64>, a, b, c| { x.clone() }), 3);
     assert_eq!(
         argument_count(|x: &DVector<f64>, a, b, c, d| { x.clone() }),
         4

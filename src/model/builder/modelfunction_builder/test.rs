@@ -2,7 +2,9 @@ use nalgebra::DVector;
 
 use crate::model::builder::error::ModelBuildError;
 use crate::model::builder::modelfunction_builder::ModelBasisFunctionBuilder;
-use crate::model::builder::test::{exponential_decay, exponential_decay_dt0, exponential_decay_dtau};
+use crate::model::builder::test::{
+    exponential_decay, exponential_decay_dt0, exponential_decay_dtau,
+};
 
 #[test]
 // check that the modelfunction builder assigns the function and derivatives correctly

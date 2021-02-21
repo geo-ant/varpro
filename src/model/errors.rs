@@ -26,8 +26,5 @@ pub enum ModelError {
 
     /// It was tried to evaluate a model with an incorrect number of parameters
     #[snafu(display("Model takes {} parameters, but {} were provide.", required, actual))]
-    IncorrectParameterCount {
-        required : usize,
-        actual : usize,
-    }
+    IncorrectParameterCount { required: usize, actual: usize },
 }

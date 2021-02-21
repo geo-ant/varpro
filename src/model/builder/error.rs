@@ -81,7 +81,5 @@ pub enum ModelBuildError {
     /// `["tau,phi"]`, instead of actually `["tau","phi"]`. So this is forbidden in order to help spotting these
     /// hard to find errors.
     #[snafu(display("Parameter names may not contain comma separator: '{}'. Did you want to give two parameters?",param_name))]
-    CommaInParameterNameNotAllowed {
-        param_name : String
-    }
+    CommaInParameterNameNotAllowed { param_name: String },
 }

@@ -6,7 +6,6 @@ use nalgebra::{DVector, Scalar};
 use crate::basis_function::BasisFunction;
 use crate::model::builder::error::ModelBuildError;
 
-
 /// check that the parameter names obey the following rules
 /// * the set of parameters is not empty
 /// * the set of parameters contains only unique elements
@@ -22,8 +21,10 @@ where
     }
 
     // todo: this is inefficient. Refactor the interface of this method
-    if let Some(param_name) = param_names.iter().find(|&p|p.clone().into().contains(',')) {
-        return Err(ModelBuildError::CommaInParameterNameNotAllowed {param_name : param_name.clone().into()});
+    if let Some(param_name) = param_names.iter().find(|&p| p.clone().into().contains(',')) {
+        return Err(ModelBuildError::CommaInParameterNameNotAllowed {
+            param_name: param_name.clone().into(),
+        });
     }
 
     if !has_only_unique_elements(param_names.iter()) {
@@ -165,11 +166,20 @@ mod test {
     // make sure the check parameter names function behaves as intended
     #[test]
     fn test_check_parameter_names() {
-        assert!(matches!(check_parameter_names(&Vec::<String>::default()),Err(ModelBuildError::EmptyParameters)));
+        assert!(matches!(
+            check_parameter_names(&Vec::<String>::default()),
+            Err(ModelBuildError::EmptyParameters)
+        ));
         assert!(check_parameter_names(&["a"]).is_ok());
         assert!(check_parameter_names(&["a", "b", "c"]).is_ok());
-        assert!(matches!(check_parameter_names(&["a", "b", "b"]),Err(ModelBuildError::DuplicateParameterNames {..})));
-        assert!(matches!(check_parameter_names(&["a,b","c"]),Err(ModelBuildError::CommaInParameterNameNotAllowed {..})));
+        assert!(matches!(
+            check_parameter_names(&["a", "b", "b"]),
+            Err(ModelBuildError::DuplicateParameterNames { .. })
+        ));
+        assert!(matches!(
+            check_parameter_names(&["a,b", "c"]),
+            Err(ModelBuildError::CommaInParameterNameNotAllowed { .. })
+        ));
     }
 
     #[test]
