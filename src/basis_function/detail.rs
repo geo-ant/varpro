@@ -17,15 +17,13 @@ where
     Func: Fn(&DVector<ScalarType>, ScalarType) -> DVector<ScalarType>,
 {
     fn eval(&self, location: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType> {
-        if params.len() != self.argument_count() {
-            panic!("Basisfunction expected {} arguments but the provided parameter slice has {} elements.",self.argument_count(),params.len());
+        if params.len() != Self::ARGUMENT_COUNT {
+            panic!("Basisfunction expected {} arguments but the provided parameter slice has {} elements.",Self::ARGUMENT_COUNT,params.len());
         }
         (&self)(location, params[0].clone())
     }
 
-    fn argument_count(&self) -> usize {
-        1
-    }
+    const ARGUMENT_COUNT: usize = 1;
 }
 
 // a helper macro set for counting
@@ -54,18 +52,15 @@ macro_rules! basefunction_impl_helper ({$ScalarType:ident, $(($n:tt, $T:ident)),
     $ScalarType : Scalar
     {
         fn eval(&self, x : &DVector<$ScalarType>,params : &[$ScalarType]) -> DVector<$ScalarType> {
-            if params.len() != self.argument_count() {
-                panic!("Basisfunction expected {} arguments but the provided parameter slice has {} elements.",self.argument_count(),params.len());
+            if params.len() != Self::ARGUMENT_COUNT {
+                panic!("Basisfunction expected {} arguments but the provided parameter slice has {} elements.",Self::ARGUMENT_COUNT,params.len());
             }
             (&self)(
             x,
             $(params[$n].clone(),)+)
         }
 
-        fn argument_count(&self) -> usize {
-            const COUNT :usize = count_args!($($T,)+);
-            COUNT
-        }
+        const ARGUMENT_COUNT :usize = count_args!($($T,)+);
 
     }
 });
