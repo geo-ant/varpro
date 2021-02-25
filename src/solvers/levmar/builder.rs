@@ -45,7 +45,7 @@ pub enum LeastSquaresProblemBuilderError {
     },
 }
 
-pub struct LeastSquaresProblemBuilder<'a, ScalarType>
+pub struct LevMarLeastSquaresProblemBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField ,
     ScalarType::RealField : Float
@@ -65,7 +65,18 @@ where
     epsilon: Option<ScalarType::RealField>,
 }
 
-impl<'a, ScalarType> LeastSquaresProblemBuilder<'a, ScalarType>
+/// Same as `Self::new()`.
+impl<'a,ScalarType> Default for LevMarLeastSquaresProblemBuilder<'a,ScalarType>
+    where
+        ScalarType: Scalar + ComplexField + Zero,
+        ScalarType::RealField : Float
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a, ScalarType> LevMarLeastSquaresProblemBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField + Zero,
 ScalarType::RealField : Float
@@ -81,37 +92,67 @@ ScalarType::RealField : Float
         }
     }
 
-    /// *Mandatory*: Set the value of the independent variable `$\vec{x}$` of the problem
+    /// **Mandatory**: Set the value of the independent variable `$\vec{x}$` of the problem
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn x(&mut self, xvec: DVector<ScalarType>) {
-        self.x = Some(xvec);
+    pub fn x(self, xvec: DVector<ScalarType>) -> Self {
+        Self {
+            x: Some(xvec),
+            ..self
+        }
     }
 
-    /// *Mandatory*: Set the data to fit with `$\vec{y}=\vec{y}(\vec{x})$` of the problem
+    /// **Mandatory**: Set the data to fit with `$\vec{y}=\vec{y}(\vec{x})$` of the problem
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn y(&mut self, yvec: DVector<ScalarType>) {
-        self.y = Some(yvec);
+    pub fn y(self, yvec: DVector<ScalarType>) ->Self  {
+        Self {
+            y: Some(yvec),
+            ..self
+        }
     }
 
-    /// *Mandatory*: Set the initial guesses of the model parameters
+    /// **Mandatory**: Set the initial guesses of the model parameters
     /// The parameter must have the same length as the model parameters
-    pub fn model<'b>(&'b mut self, model: &'a SeparableModel<ScalarType>)
-    where
-        'b: 'a,
+    pub fn model(self, model: &'a SeparableModel<ScalarType>) -> Self
     {
-        self.model = Some(model);
+        Self {
+            model: Some(model),
+            ..self
+        }
+
     }
 
-    /// *Optional* set epsilon below which two singular values are considered zero
+    /// **Mandatory**: provide initial guess for the parameters
+    /// they must have the same number of elements as the model parameters
+    pub fn initial_guess(self, params : Vec<ScalarType>) -> Self{
+        Self {
+            parameter_initial_guess: Some(params),
+            ..self
+        }
+    }
+
+    /// **Optional** set epsilon below which two singular values are considered zero
     /// If this value is not given, it will be set to machine epsilon. The epsilon is
     /// automatically converted to a non-negative number. This value
     /// can be used to mitigate the effects of basis functions becoming linearly dependent
     /// when model parameters align in an unfortunate way. Then set it to some small factor
     /// times the machine precision.
-    pub fn epsilon(&mut self, eps: ScalarType::RealField) {
-        self.epsilon = Some(<ScalarType::RealField as Float>::abs(eps));
+    pub fn epsilon(self, eps: ScalarType::RealField) -> Self {
+        Self {
+            epsilon: Some(<ScalarType::RealField as Float>::abs(eps)),
+            ..self
+        }
     }
 
+
+    /// build the least squares problem from the builder.
+    /// # Prerequisites
+    /// * All mandatory parameters have been set (see individual builder methods for details)
+    /// * `$\vec{x}$` and `$\vec{y}$` have the same number of elements
+    /// * `$\vec{x}$` and `$\vec{y}$` have a nonzero number of elements
+    /// * the length of the initial guesses vector is the same as the number of model parameters
+    /// # Returns
+    /// If all prerequisites are fullfilled, returns a [LevMarLeastSquaresProblem] with the given
+    /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     pub fn build(self) -> Result<LevMarLeastSquaresProblem<'a, ScalarType>, LeastSquaresProblemBuilderError> {
         let finalized_builder = self.finalize()?;
 
@@ -155,7 +196,7 @@ struct FinalizedBuilder<'a,ScalarType>
 }
 
 // private implementations
-impl<'a, ScalarType> LeastSquaresProblemBuilder<'a, ScalarType>
+impl<'a, ScalarType> LevMarLeastSquaresProblemBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField ,
     ScalarType::RealField : Float
@@ -165,7 +206,7 @@ where
     fn finalize(self) -> Result<FinalizedBuilder<'a,ScalarType>, LeastSquaresProblemBuilderError> {
         match self {
             // in this case all required fields are set to something
-            LeastSquaresProblemBuilder {
+            LevMarLeastSquaresProblemBuilder {
                 x: Some(x),
                 y: Some(y),
                 model: Some(model),
@@ -195,7 +236,7 @@ where
                 }
             }
             // not all required fields are set, report missing parameters
-            LeastSquaresProblemBuilder {
+            LevMarLeastSquaresProblemBuilder {
                 x,
                 y,
                 model,
@@ -218,3 +259,12 @@ where
     }
 }
 
+#[cfg(test)]
+mod test {
+    use crate::solvers::levmar::LevMarLeastSquaresProblemBuilder;
+    #[test]
+    fn todo_add_tests_for_builder() {
+        let builder = LevMarLeastSquaresProblemBuilder::<f64>::new();
+        todo!();
+    }
+}

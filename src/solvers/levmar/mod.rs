@@ -7,19 +7,11 @@ use crate::model::SeparableModel;
 mod test;
 mod builder;
 
-pub use builder::LeastSquaresProblemBuilder;
-use num_traits::Float;
+pub use builder::LevMarLeastSquaresProblemBuilder;
 
-
-struct CachedCalulations<ScalarType>
-where ScalarType : Scalar + ComplexField {
-    pub residuals : DVector<ScalarType>,
-    pub svd : SVD<ScalarType,Dynamic,Dynamic>,
-    pub linear_coefficients : DVector<ScalarType>,
-
-}
 
 /// TODO add weight matrix
+/// TODO Document
 pub struct LevMarLeastSquaresProblem<'a,ScalarType>
     where ScalarType : Scalar + ComplexField{
     /// the independent variable `\vec{x}` (location parameter)
@@ -66,7 +58,7 @@ impl<'a,ScalarType> LevenbergMarquardtLeastSquaresProblem<ScalarType, Dynamic, D
     #[allow(non_snake_case)]
     fn jacobian(&self) -> Option<Matrix<ScalarType, Dynamic, Dynamic, Self::JacobianStorage>> {
         //todo: make this more efficient by parallelizing
-        let mut jacobian_matrix = unsafe {DMatrix::<ScalarType>::new_uninitialized(self.data.len(), self.model.basis_function_count())};
+        let mut jacobian_matrix = unsafe {DMatrix::<ScalarType>::new_uninitialized(self.data.len(), self.model.parameter_count())};
 
         let U = self.current_svd.u.as_ref().expect("Did not calculate U of SVD");
         // U transposed

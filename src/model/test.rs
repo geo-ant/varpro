@@ -1,72 +1,16 @@
 //use crate::model::SeparableModel;
 
-use crate::model::builder::SeparableModelBuilder;
-use crate::model::errors::ModelError;
-use crate::model::SeparableModel;
 use nalgebra::{DVector, Scalar};
 use num_traits::Float;
 
-/// exponential decay f(t,tau) = exp(-t/tau)
-fn exp_decay<ScalarType: Float + Scalar>(
-    tvec: &DVector<ScalarType>,
-    tau: ScalarType,
-) -> DVector<ScalarType> {
-    tvec.map(|t| (-t / tau).exp())
-}
-
-/// derivative of exp decay with respect to tau
-fn exp_decay_dtau<ScalarType: Scalar + Float>(
-    tvec: &DVector<ScalarType>,
-    tau: ScalarType,
-) -> DVector<ScalarType> {
-    tvec.map(|t| (-t / tau).exp() * t / (tau * tau))
-}
-
-/// function sin (omega*t+phi)
-fn sin_ometa_t_plus_phi<ScalarType: Scalar + Float>(
-    tvec: &DVector<ScalarType>,
-    omega: ScalarType,
-    phi: ScalarType,
-) -> DVector<ScalarType> {
-    tvec.map(|t| (omega * t + phi).sin())
-}
-
-/// derivative d/d(omega) sin (omega*t+phi)
-fn sin_ometa_t_plus_phi_domega<ScalarType: Scalar + Float>(
-    tvec: &DVector<ScalarType>,
-    omega: ScalarType,
-    phi: ScalarType,
-) -> DVector<ScalarType> {
-    tvec.map(|t| t * (omega * t + phi).cos())
-}
-
-/// derivative d/d(phi) sin (omega*t+phi)
-fn sin_ometa_t_plus_phi_dphi<ScalarType: Scalar + Float>(
-    tvec: &DVector<ScalarType>,
-    omega: ScalarType,
-    phi: ScalarType,
-) -> DVector<ScalarType> {
-    tvec.map(|t| (omega * t + phi).cos())
-}
-
-/// A helper function that returns a double exponential decay model
-/// f(x,tau1,tau2) = c1*exp(-x/tau1)+c2*exp(-x/tau2)+c3
-fn get_double_exponential_model_with_constant_offset() -> SeparableModel<f64> {
-    let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
-
-    SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
-        .function(&["tau2"], exp_decay)
-        .partial_deriv("tau2", exp_decay_dtau)
-        .function(&["tau1"], exp_decay)
-        .partial_deriv("tau1", exp_decay_dtau)
-        .invariant_function(ones)
-        .build()
-        .expect("double exponential model builder should produce a valid model")
-}
+use crate::model::builder::SeparableModelBuilder;
+use crate::model::errors::ModelError;
+use crate::model::SeparableModel;
+use crate::test_helpers;
 
 #[test]
 fn model_gets_initialized_with_correct_parameter_names_and_count() {
-    let model = get_double_exponential_model_with_constant_offset();
+    let model = test_helpers::get_double_exponential_model_with_constant_offset();
     assert_eq!(model.parameter_count(),2,"Double exponential model has 2 parameters");
     assert_eq!(model.parameters(),&["tau1","tau2"],"Double exponential model has 2 parameters");
 
@@ -75,7 +19,7 @@ fn model_gets_initialized_with_correct_parameter_names_and_count() {
 #[test]
 // test that the eval method produces correct results and gives a matrix that is ordered correctly
 fn model_function_eval_produces_correct_result() {
-    let model = get_double_exponential_model_with_constant_offset();
+    let model = test_helpers::get_double_exponential_model_with_constant_offset();
 
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let tau1 = 1.;
@@ -88,12 +32,12 @@ fn model_function_eval_produces_correct_result() {
 
     assert_eq!(
         DVector::from(eval_matrix.column(0)),
-        exp_decay(&tvec, tau2),
+        test_helpers::exp_decay(&tvec, tau2),
         "first column must correspond to first model function: exp(-t/tau2)"
     );
     assert_eq!(
         DVector::from(eval_matrix.column(1)),
-        exp_decay(&tvec, tau1),
+        test_helpers::exp_decay(&tvec, tau1),
         "second column must correspond to second model function: exp(-t/tau1)"
     );
     assert_eq!(
@@ -108,12 +52,12 @@ fn model_function_eval_produces_correct_result() {
 // then the eval method fails
 fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function() {
     let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
-        .function(&["tau2"], exp_decay)
-        .partial_deriv("tau2", exp_decay_dtau)
+        .function(&["tau2"], test_helpers::exp_decay)
+        .partial_deriv("tau2", test_helpers::exp_decay_dtau)
         .function(&["tau1"], |_t: &DVector<_>, _tau| {
             DVector::from(vec![1., 3., 3., 7.])
         })
-        .partial_deriv("tau1", exp_decay_dtau)
+        .partial_deriv("tau1", test_helpers::exp_decay_dtau)
         .build()
         .expect("Model function creation should not fail, although function is bad");
 
@@ -124,7 +68,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 
 #[test]
 fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
-    let model = get_double_exponential_model_with_constant_offset();
+    let model = test_helpers::get_double_exponential_model_with_constant_offset();
 
     assert_eq!(model.parameter_count(),2, "double exponential model should have 2 params");
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
@@ -139,12 +83,12 @@ fn model_derivative_evaluation_produces_correct_result() {
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
     let model = SeparableModelBuilder::<f64>::new(&["tau", "omega"])
-        .function(&["tau"], exp_decay)
-        .partial_deriv("tau", exp_decay_dtau)
+        .function(&["tau"], test_helpers::exp_decay)
+        .partial_deriv("tau", test_helpers::exp_decay_dtau)
         .invariant_function(ones)
-        .function(&["omega", "tau"], sin_ometa_t_plus_phi) // so we make phi=tau of the model. Bit silly, but to produce a function that contributes to all partial derivs
-        .partial_deriv("tau", sin_ometa_t_plus_phi_dphi)
-        .partial_deriv("omega", sin_ometa_t_plus_phi_domega)
+        .function(&["omega", "tau"], test_helpers::sin_ometa_t_plus_phi) // so we make phi=tau of the model. Bit silly, but to produce a function that contributes to all partial derivs
+        .partial_deriv("tau", test_helpers::sin_ometa_t_plus_phi_dphi)
+        .partial_deriv("omega", test_helpers::sin_ometa_t_plus_phi_domega)
         .build()
         .expect("Valid model creation should not fail");
 
@@ -172,7 +116,7 @@ fn model_derivative_evaluation_produces_correct_result() {
     // d/d(tau) exp(-t/tau)
     assert_eq!(
         DVector::from(deriv_tau.column(0)),
-        exp_decay_dtau(&tvec, tau)
+        test_helpers::exp_decay_dtau(&tvec, tau)
     );
     // d/d(tau) constant function = 0
     assert_eq!(
@@ -182,7 +126,7 @@ fn model_derivative_evaluation_produces_correct_result() {
     // d/d(tau) sin(omega*t+tau)
     assert_eq!(
         DVector::from(deriv_tau.column(2)),
-        sin_ometa_t_plus_phi_dphi(&tvec, omega, tau)
+        test_helpers::sin_ometa_t_plus_phi_dphi(&tvec, omega, tau)
     );
 
     // DERIVATIVE WITH RESPECT TO OMEGA
@@ -203,13 +147,13 @@ fn model_derivative_evaluation_produces_correct_result() {
     // d/d(omega) sin(omega*t+tau)
     assert_eq!(
         DVector::from(deriv_omega.column(2)),
-        sin_ometa_t_plus_phi_domega(&tvec, omega, tau)
+        test_helpers::sin_ometa_t_plus_phi_domega(&tvec, omega, tau)
     );
 }
 
 #[test]
 fn requesting_derivative_by_name_and_index_produces_same_results() {
-    let model = get_double_exponential_model_with_constant_offset();
+    let model = test_helpers::get_double_exponential_model_with_constant_offset();
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let params = &[2., 4.];
 
@@ -240,9 +184,9 @@ fn requesting_derivative_by_name_and_index_produces_same_results() {
 // * the derivative is requested for a wrong number of parameter arguments
 fn model_derivative_evaluation_error_cases() {
     let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
-        .function(&["tau2"], exp_decay)
-        .partial_deriv("tau2", exp_decay_dtau)
-        .function(&["tau1"], exp_decay)
+        .function(&["tau2"], test_helpers::exp_decay)
+        .partial_deriv("tau2", test_helpers::exp_decay_dtau)
+        .function(&["tau1"], test_helpers::exp_decay)
         .partial_deriv("tau1", |_t: &DVector<_>, _tau| {
             DVector::from(vec![1., 3., 3., 7.])
         })
