@@ -21,7 +21,6 @@ Func : FnMut(ScalarType)->ScalarType {
     let three = ScalarType::from(3).expect("Cannot convert scalar from integer");
     let sixty = ScalarType::from(60).expect("Cannot convert scalar from integer");
 
-
     (-f(p0-three*h)+nine*f(p0-two*h)-forty_five*f(p0-h)+forty_five*f(p0+h)-nine*f(p0+two*h)+f(p0+three*h))/(h*sixty)
 }
 

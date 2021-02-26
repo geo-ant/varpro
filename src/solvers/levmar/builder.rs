@@ -1,5 +1,5 @@
 use crate::model::SeparableModel;
-use crate::solvers::levmar::LevMarLeastSquaresProblem;
+use crate::solvers::levmar::LevMarProblem;
 use nalgebra::{ComplexField, DVector, Dynamic, Scalar, SVD, RealField};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
@@ -153,28 +153,28 @@ ScalarType::RealField : Float
     /// # Returns
     /// If all prerequisites are fullfilled, returns a [LevMarLeastSquaresProblem] with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
-    pub fn build(self) -> Result<LevMarLeastSquaresProblem<'a, ScalarType>, LeastSquaresProblemBuilderError> {
+    pub fn build(self) -> Result<LevMarProblem<'a, ScalarType>, LeastSquaresProblemBuilderError> {
         let finalized_builder = self.finalize()?;
 
         let param_count = finalized_builder.model.parameter_count();
         let data_length = finalized_builder.y.len();
 
-        let mut problem = LevMarLeastSquaresProblem {
+        let mut problem = LevMarProblem {
             // these parameters all come from the builder
-            location: finalized_builder.x,
-            data: finalized_builder.y,
+            x: finalized_builder.x,
+            y: finalized_builder.y,
             model: finalized_builder.model,
             svd_epsilon: finalized_builder.epsilon,
             // these parameters are bs, but they will be overwritten immediately
             // by the call to set_params
-            parameters: Vec::new(),
+            model_parameters: Vec::new(),
             current_residuals: DVector::from_element(data_length,Zero::zero()),
             current_svd: SVD {
                 u: None,
                 v_t: None,
                 singular_values: DVector::from_element(data_length,Float::epsilon()),
             },
-            current_linear_coeffs: DVector::from_element(param_count,Zero::zero()),
+            linear_coefficients: DVector::from_element(param_count,Zero::zero()),
         };
         problem.set_params(&DVector::from(finalized_builder.parameter_initial_guess));
         Ok(problem)
