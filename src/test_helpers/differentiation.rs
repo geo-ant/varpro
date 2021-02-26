@@ -1,4 +1,4 @@
-use num_traits::{Float, Pow};
+use num_traits::{Float};
 
 use approx::assert_relative_eq;
 

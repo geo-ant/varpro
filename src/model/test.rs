@@ -1,11 +1,11 @@
 //use crate::model::SeparableModel;
 
-use nalgebra::{DVector, Scalar};
-use num_traits::Float;
+use nalgebra::{DVector};
+
 
 use crate::model::builder::SeparableModelBuilder;
 use crate::model::errors::ModelError;
-use crate::model::SeparableModel;
+
 use crate::test_helpers;
 
 #[test]

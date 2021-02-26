@@ -1,9 +1,10 @@
 use crate::model::SeparableModel;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DVector, Dynamic, RealField, Scalar, SVD};
+use nalgebra::{ComplexField, DVector, Scalar, SVD};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
+use std::ops::Mul;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, Snafu, PartialEq)]
@@ -48,8 +49,8 @@ pub enum LeastSquaresProblemBuilderError {
 #[derive(Clone)]
 pub struct LevMarBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + RealField,
-    ScalarType::RealField: Float,
+    ScalarType: Scalar + ComplexField,
+    ScalarType::RealField: Float + Mul<ScalarType,Output=ScalarType>,
 {
     /// Required: the independent variable `$\vec{x}$
     x: Option<DVector<ScalarType>>,
@@ -69,8 +70,8 @@ where
 /// Same as `Self::new()`.
 impl<'a, ScalarType> Default for LevMarBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + RealField + Zero,
-    ScalarType::RealField: Float,
+    ScalarType: Scalar + ComplexField + Zero,
+    ScalarType::RealField: Float + Mul<ScalarType,Output=ScalarType>,
 {
     fn default() -> Self {
         Self::new()
@@ -79,8 +80,8 @@ where
 
 impl<'a, ScalarType> LevMarBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + RealField + Zero,
-    ScalarType::RealField: Float,
+    ScalarType: Scalar + ComplexField + Zero,
+    ScalarType::RealField: Float + Mul<ScalarType,Output=ScalarType>,
 {
     /// Create a new builder with empty fields
     pub fn new() -> Self {
@@ -183,7 +184,7 @@ where
 /// but none of them are optional
 struct FinalizedBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + RealField,
+    ScalarType: Scalar + ComplexField,
     ScalarType::RealField: Float,
 {
     x: DVector<ScalarType>,
@@ -196,8 +197,8 @@ where
 // private implementations
 impl<'a, ScalarType> LevMarBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + RealField + Float,
-    ScalarType::RealField: Float,
+    ScalarType: Scalar + ComplexField ,
+    ScalarType::RealField: Float + Mul<ScalarType,Output=ScalarType>,
 {
     /// helper function to check if all required fields have been set and pass the checks
     /// if so, this returns a destructured result of self
@@ -216,7 +217,7 @@ where
                         x_length: x.len(),
                         y_length: y.len(),
                     })
-                } else if x.len() == 0 || y.len() == 0 {
+                } else if x.is_empty() || y.is_empty() {
                     Err(LeastSquaresProblemBuilderError::InvalidZeroLength)
                 } else if model.parameter_count() != parameter_initial_guess.len() {
                     Err(LeastSquaresProblemBuilderError::InvalidParameterCount {
@@ -229,7 +230,7 @@ where
                         y,
                         model,
                         parameter_initial_guess,
-                        epsilon: epsilon.unwrap_or(Float::epsilon()),
+                        epsilon: epsilon.unwrap_or_else(Float::epsilon),
                     })
                 }
             }
@@ -239,7 +240,7 @@ where
                 y,
                 separable_model: model,
                 parameter_initial_guess,
-                epsilon,
+                epsilon: _,
             } => {
                 if x.is_none() {
                     Err(LeastSquaresProblemBuilderError::XDataMissing)
@@ -281,6 +282,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
     fn builder_assigns_fields_correctly() {
         let model = get_double_exponential_model_with_constant_offset();
         // octate x = linspace(0,10,11);
@@ -302,7 +304,6 @@ mod test {
         assert_eq!(problem.y,y);
         assert_eq!(problem.model_parameters, initial_guess);
         //assert!(problem.model.as_ref().as_ptr()== model.as_ptr()); // this don't work, boss
-        #[allow(clippy::float_cmp)]
         assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
         
 
