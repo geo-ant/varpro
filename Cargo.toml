@@ -16,8 +16,11 @@ keywords = ["nonlinear","least","squares","fitting","regression"]
 [dependencies]
 snafu = "0.6"
 levenberg-marquardt = "0.7"
-nalgebra = "0.24"
+nalgebra = "0.23"
 num-traits = "0.2"
+
+[dev-dependencies]
+approx = "0.4"
 
 [package.metadata.docs.rs]
 # To build locally use

@@ -11,3 +11,7 @@
 pub mod basis_function;
 pub mod model;
 pub mod prelude;
+pub mod solvers;
+
+#[cfg(test)]
+mod test_helpers;

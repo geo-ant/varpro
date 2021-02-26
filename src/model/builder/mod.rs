@@ -199,7 +199,7 @@ where
     {
         match model_result {
             Ok(model) => {
-                let model_parameters = model.parameters().clone();
+                let model_parameters = model.parameters().to_vec();
                 Self {
                     current_result: Ok(ModelAndModelBasisFunctionBuilderPair::new(
                         model,

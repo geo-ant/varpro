@@ -67,13 +67,18 @@ where
     ScalarType: Scalar,
 {
     /// Get the parameters of the model
-    pub fn parameters(&self) -> &Vec<String> {
+    pub fn parameters(&self) -> &[String] {
         &self.parameter_names
     }
 
     /// Get the number of nonlinear parameters of the model
     pub fn parameter_count(&self) -> usize {
         self.parameter_names.len()
+    }
+
+    /// Get the number of basis functions of the model
+    pub fn basis_function_count(&self) -> usize {
+        self.basefunctions.len()
     }
 }
 
@@ -120,7 +125,7 @@ where
         }
 
         let nrows = location.len();
-        let ncols = self.basefunctions.len();
+        let ncols = self.basis_function_count();
         let mut function_value_matrix =
             unsafe { DMatrix::<ScalarType>::new_uninitialized(nrows, ncols) };
 
