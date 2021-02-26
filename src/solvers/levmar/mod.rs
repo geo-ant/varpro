@@ -1,6 +1,6 @@
 use levenberg_marquardt::LeastSquaresProblem as LevenbergMarquardtLeastSquaresProblem;
 use nalgebra::storage::Owned;
-use nalgebra::{Dynamic, Scalar, ComplexField, Vector, DVector, Matrix, DMatrix, SVD};
+use nalgebra::{Dynamic, Scalar, ComplexField, Vector, DVector, Matrix, DMatrix, SVD, RealField};
 use crate::model::SeparableModel;
 
 #[cfg(test)]
@@ -8,12 +8,14 @@ mod test;
 mod builder;
 
 pub use builder::LevMarLeastSquaresProblemBuilder;
+use num_traits::Float;
+use std::ops::Mul;
 
 
 /// TODO add weight matrix
 /// TODO Document
 pub struct LevMarLeastSquaresProblem<'a,ScalarType>
-    where ScalarType : Scalar + ComplexField{
+    where ScalarType : Scalar + RealField{
     /// the independent variable `\vec{x}` (location parameter)
     location : DVector<ScalarType>,
     /// the data vector to which to fit the model `$\vec{y}$`
@@ -35,7 +37,8 @@ pub struct LevMarLeastSquaresProblem<'a,ScalarType>
 
 /// TODO document and document panics!
 impl<'a,ScalarType> LevenbergMarquardtLeastSquaresProblem<ScalarType, Dynamic, Dynamic> for LevMarLeastSquaresProblem<'a,ScalarType>
-    where ScalarType : Scalar+ComplexField{
+    where ScalarType : Scalar+RealField,
+          ScalarType::RealField : Mul<ScalarType>{
     type ResidualStorage = Owned<ScalarType, Dynamic>;
     type JacobianStorage = Owned<ScalarType, Dynamic, Dynamic>;
     type ParameterStorage = Owned<ScalarType, Dynamic>;
@@ -60,15 +63,21 @@ impl<'a,ScalarType> LevenbergMarquardtLeastSquaresProblem<ScalarType, Dynamic, D
         //todo: make this more efficient by parallelizing
         let mut jacobian_matrix = unsafe {DMatrix::<ScalarType>::new_uninitialized(self.data.len(), self.model.parameter_count())};
 
-        let U = self.current_svd.u.as_ref().expect("Did not calculate U of SVD");
+        let U = self.current_svd.u.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
         // U transposed
         let U_t = U.transpose();
+
+        let Sigma_inverse : DMatrix<ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
+
+        let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
         for (k, mut jacobian_col) in jacobian_matrix.column_iter_mut().enumerate() {
             let Dk = self.model.eval_deriv(&self.location,self.parameters.as_slice()).at(k).expect("Error evaluating model derivatives.");
             let Dk_c = &Dk * &self.current_linear_coeffs;
             let minus_ak : DVector<ScalarType> = U *(&U_t *(&Dk_c))- Dk_c;
-            jacobian_col.copy_from(&minus_ak);
+            let Dk_t_rw : DVector<ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
+            let minus_bk : DVector<ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
+            jacobian_col.copy_from(&(minus_ak));
         }
         Some(jacobian_matrix)
     }

@@ -1,3 +1,5 @@
+pub mod differentiation;
+
 use nalgebra::{DVector, Scalar};
 use num_traits::Float;
 

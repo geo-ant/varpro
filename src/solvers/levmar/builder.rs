@@ -1,6 +1,6 @@
 use crate::model::SeparableModel;
 use crate::solvers::levmar::LevMarLeastSquaresProblem;
-use nalgebra::{ComplexField, DVector, Dynamic, Scalar, SVD};
+use nalgebra::{ComplexField, DVector, Dynamic, Scalar, SVD, RealField};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
 use levenberg_marquardt::LeastSquaresProblem;
@@ -47,7 +47,7 @@ pub enum LeastSquaresProblemBuilderError {
 
 pub struct LevMarLeastSquaresProblemBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField ,
+    ScalarType: Scalar + RealField ,
     ScalarType::RealField : Float
 {
     /// Required: the independent variable `$\vec{x}$
@@ -68,7 +68,7 @@ where
 /// Same as `Self::new()`.
 impl<'a,ScalarType> Default for LevMarLeastSquaresProblemBuilder<'a,ScalarType>
     where
-        ScalarType: Scalar + ComplexField + Zero,
+        ScalarType: Scalar + RealField + Zero,
         ScalarType::RealField : Float
 {
     fn default() -> Self {
@@ -78,7 +78,7 @@ impl<'a,ScalarType> Default for LevMarLeastSquaresProblemBuilder<'a,ScalarType>
 
 impl<'a, ScalarType> LevMarLeastSquaresProblemBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField + Zero,
+    ScalarType: Scalar + RealField  + Zero,
 ScalarType::RealField : Float
 {
     /// Create a new builder with empty fields
@@ -185,7 +185,7 @@ ScalarType::RealField : Float
 /// but none of them are optional
 struct FinalizedBuilder<'a,ScalarType>
     where
-        ScalarType: Scalar + ComplexField ,
+        ScalarType: Scalar + RealField  ,
         ScalarType::RealField : Float
 {
     x: DVector<ScalarType>,
@@ -198,7 +198,7 @@ struct FinalizedBuilder<'a,ScalarType>
 // private implementations
 impl<'a, ScalarType> LevMarLeastSquaresProblemBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField ,
+    ScalarType: Scalar + RealField + Float ,
     ScalarType::RealField : Float
 {
     /// helper function to check if all required fields have been set and pass the checks
@@ -263,6 +263,7 @@ where
 mod test {
     use crate::solvers::levmar::LevMarLeastSquaresProblemBuilder;
     #[test]
+    #[ignore]
     fn todo_add_tests_for_builder() {
         let builder = LevMarLeastSquaresProblemBuilder::<f64>::new();
         todo!();
