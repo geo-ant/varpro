@@ -7,12 +7,13 @@ use crate::model::SeparableModel;
 mod test;
 mod builder;
 
-pub use builder::LevMarLeastSquaresProblemBuilder;
+pub use builder::LevMarBuilder;
 use std::ops::Mul;
 
 
 /// TODO add weight matrix
 /// TODO Document
+#[derive(Clone)]
 pub struct LevMarProblem<'a,ScalarType>
     where ScalarType : Scalar + RealField{
     /// the independent variable `\vec{x}` (location parameter)

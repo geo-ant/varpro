@@ -1,9 +1,9 @@
 use crate::model::SeparableModel;
 use crate::solvers::levmar::LevMarProblem;
-use nalgebra::{ComplexField, DVector, Dynamic, Scalar, SVD, RealField};
+use levenberg_marquardt::LeastSquaresProblem;
+use nalgebra::{ComplexField, DVector, Dynamic, RealField, Scalar, SVD};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
-use levenberg_marquardt::LeastSquaresProblem;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, Snafu, PartialEq)]
@@ -45,17 +45,18 @@ pub enum LeastSquaresProblemBuilderError {
     },
 }
 
-pub struct LevMarLeastSquaresProblemBuilder<'a, ScalarType>
+#[derive(Clone)]
+pub struct LevMarBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + RealField ,
-    ScalarType::RealField : Float
+    ScalarType: Scalar + RealField,
+    ScalarType::RealField: Float,
 {
     /// Required: the independent variable `$\vec{x}$
     x: Option<DVector<ScalarType>>,
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
     y: Option<DVector<ScalarType>>,
     /// Required: the model to be fitted to the data
-    model: Option<&'a SeparableModel<ScalarType>>,
+    separable_model: Option<&'a SeparableModel<ScalarType>>,
     /// Required: the initial guess for the model parameters
     parameter_initial_guess: Option<Vec<ScalarType>>,
     /// Optional: set epsilon below which two singular values
@@ -66,27 +67,27 @@ where
 }
 
 /// Same as `Self::new()`.
-impl<'a,ScalarType> Default for LevMarLeastSquaresProblemBuilder<'a,ScalarType>
-    where
-        ScalarType: Scalar + RealField + Zero,
-        ScalarType::RealField : Float
+impl<'a, ScalarType> Default for LevMarBuilder<'a, ScalarType>
+where
+    ScalarType: Scalar + RealField + Zero,
+    ScalarType::RealField: Float,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, ScalarType> LevMarLeastSquaresProblemBuilder<'a, ScalarType>
+impl<'a, ScalarType> LevMarBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + RealField  + Zero,
-ScalarType::RealField : Float
+    ScalarType: Scalar + RealField + Zero,
+    ScalarType::RealField: Float,
 {
     /// Create a new builder with empty fields
     pub fn new() -> Self {
         Self {
             x: None,
             y: None,
-            model: None,
+            separable_model: None,
             parameter_initial_guess: None,
             epsilon: None,
         }
@@ -103,7 +104,7 @@ ScalarType::RealField : Float
 
     /// **Mandatory**: Set the data to fit with `$\vec{y}=\vec{y}(\vec{x})$` of the problem
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn y(self, yvec: DVector<ScalarType>) ->Self  {
+    pub fn y(self, yvec: DVector<ScalarType>) -> Self {
         Self {
             y: Some(yvec),
             ..self
@@ -112,20 +113,18 @@ ScalarType::RealField : Float
 
     /// **Mandatory**: Set the initial guesses of the model parameters
     /// The parameter must have the same length as the model parameters
-    pub fn model(self, model: &'a SeparableModel<ScalarType>) -> Self
-    {
+    pub fn model(self, model: &'a SeparableModel<ScalarType>) -> Self {
         Self {
-            model: Some(model),
+            separable_model: Some(model),
             ..self
         }
-
     }
 
     /// **Mandatory**: provide initial guess for the parameters
     /// they must have the same number of elements as the model parameters
-    pub fn initial_guess(self, params : Vec<ScalarType>) -> Self{
+    pub fn initial_guess(self, params: &[ScalarType]) -> Self {
         Self {
-            parameter_initial_guess: Some(params),
+            parameter_initial_guess: Some(params.to_vec()),
             ..self
         }
     }
@@ -142,7 +141,6 @@ ScalarType::RealField : Float
             ..self
         }
     }
-
 
     /// build the least squares problem from the builder.
     /// # Prerequisites
@@ -168,13 +166,13 @@ ScalarType::RealField : Float
             // these parameters are bs, but they will be overwritten immediately
             // by the call to set_params
             model_parameters: Vec::new(),
-            current_residuals: DVector::from_element(data_length,Zero::zero()),
+            current_residuals: DVector::from_element(data_length, Zero::zero()),
             current_svd: SVD {
                 u: None,
                 v_t: None,
-                singular_values: DVector::from_element(data_length,Float::epsilon()),
+                singular_values: DVector::from_element(data_length, Float::epsilon()),
             },
-            linear_coefficients: DVector::from_element(param_count,Zero::zero()),
+            linear_coefficients: DVector::from_element(param_count, Zero::zero()),
         };
         problem.set_params(&DVector::from(finalized_builder.parameter_initial_guess));
         Ok(problem)
@@ -183,10 +181,10 @@ ScalarType::RealField : Float
 
 /// helper structure that has the same fields as the builder
 /// but none of them are optional
-struct FinalizedBuilder<'a,ScalarType>
-    where
-        ScalarType: Scalar + RealField  ,
-        ScalarType::RealField : Float
+struct FinalizedBuilder<'a, ScalarType>
+where
+    ScalarType: Scalar + RealField,
+    ScalarType::RealField: Float,
 {
     x: DVector<ScalarType>,
     y: DVector<ScalarType>,
@@ -196,20 +194,20 @@ struct FinalizedBuilder<'a,ScalarType>
 }
 
 // private implementations
-impl<'a, ScalarType> LevMarLeastSquaresProblemBuilder<'a, ScalarType>
+impl<'a, ScalarType> LevMarBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + RealField + Float ,
-    ScalarType::RealField : Float
+    ScalarType: Scalar + RealField + Float,
+    ScalarType::RealField: Float,
 {
     /// helper function to check if all required fields have been set and pass the checks
     /// if so, this returns a destructured result of self
-    fn finalize(self) -> Result<FinalizedBuilder<'a,ScalarType>, LeastSquaresProblemBuilderError> {
+    fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType>, LeastSquaresProblemBuilderError> {
         match self {
             // in this case all required fields are set to something
-            LevMarLeastSquaresProblemBuilder {
+            LevMarBuilder {
                 x: Some(x),
                 y: Some(y),
-                model: Some(model),
+                separable_model: Some(model),
                 parameter_initial_guess: Some(parameter_initial_guess),
                 epsilon,
             } => {
@@ -226,7 +224,7 @@ where
                         provided_count: parameter_initial_guess.len(),
                     })
                 } else {
-                    Ok( FinalizedBuilder {
+                    Ok(FinalizedBuilder {
                         x,
                         y,
                         model,
@@ -236,10 +234,10 @@ where
                 }
             }
             // not all required fields are set, report missing parameters
-            LevMarLeastSquaresProblemBuilder {
+            LevMarBuilder {
                 x,
                 y,
-                model,
+                separable_model: model,
                 parameter_initial_guess,
                 epsilon,
             } => {
@@ -261,11 +259,52 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::solvers::levmar::LevMarLeastSquaresProblemBuilder;
+    use crate::solvers::levmar::LevMarBuilder;
+    use crate::test_helpers::get_double_exponential_model_with_constant_offset;
+    use nalgebra::DVector;
+
     #[test]
-    #[ignore]
-    fn todo_add_tests_for_builder() {
-        let builder = LevMarLeastSquaresProblemBuilder::<f64>::new();
-        todo!();
+    fn new_builder_starts_with_empty_fields() {
+        let builder = LevMarBuilder::<f64>::new();
+        let LevMarBuilder {
+            x,
+            y,
+            separable_model: model,
+            parameter_initial_guess,
+            epsilon,
+        } = builder;
+        assert!(x.is_none());
+        assert!(y.is_none());
+        assert!(model.is_none());
+        assert!(parameter_initial_guess.is_none());
+        assert!(epsilon.is_none());
+    }
+
+    #[test]
+    fn builder_assigns_fields_correctly() {
+        let model = get_double_exponential_model_with_constant_offset();
+        // octate x = linspace(0,10,11);
+        let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
+        //octave y = 2*exp(-t/2)+exp(-t/4)+1;
+        let y = DVector::from(vec![
+            4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
+        ]);
+        let initial_guess = vec![1., 2.];
+
+        // problem with default epsilon
+        let problem = LevMarBuilder::new()
+            .x(x.clone())
+            .y(y.clone())
+            .initial_guess(initial_guess.as_slice())
+            .model(&model).build().expect("Valid builder should not fail build");
+
+        assert_eq!(problem.x,x);
+        assert_eq!(problem.y,y);
+        assert_eq!(problem.model_parameters, initial_guess);
+        //assert!(problem.model.as_ref().as_ptr()== model.as_ptr()); // this don't work, boss
+        #[allow(clippy::float_cmp)]
+        assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
+        
+
     }
 }
