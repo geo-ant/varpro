@@ -9,7 +9,7 @@ use std::ops::Mul;
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, Snafu, PartialEq)]
 #[snafu(visibility = "pub")]
-pub enum LeastSquaresProblemBuilderError {
+pub enum LevMarBuilderError {
     /// the data for the independent variable was not given to the builder
     #[snafu(display("Data for vector x not provided."))]
     XDataMissing,
@@ -36,7 +36,7 @@ pub enum LeastSquaresProblemBuilderError {
 
     /// the provided x and y vectors must not have zero elements
     #[snafu(display("x or y must have nonzero number of elements."))]
-    InvalidZeroLength,
+    ZeroLengthVector,
 
     /// the model has a different number of parameters than the provided initial guesses
     #[snafu(display("Initial guess vector must have same length as parameters. Model has {} parameters and {} initial guesses were provided.",model_count, provided_count))]
@@ -50,7 +50,7 @@ pub enum LeastSquaresProblemBuilderError {
 pub struct LevMarBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField,
-    ScalarType::RealField: Float + Mul<ScalarType,Output=ScalarType>,
+    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     /// Required: the independent variable `$\vec{x}$
     x: Option<DVector<ScalarType>>,
@@ -71,7 +71,7 @@ where
 impl<'a, ScalarType> Default for LevMarBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField + Zero,
-    ScalarType::RealField: Float + Mul<ScalarType,Output=ScalarType>,
+    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     fn default() -> Self {
         Self::new()
@@ -81,7 +81,7 @@ where
 impl<'a, ScalarType> LevMarBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField + Zero,
-    ScalarType::RealField: Float + Mul<ScalarType,Output=ScalarType>,
+    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     /// Create a new builder with empty fields
     pub fn new() -> Self {
@@ -152,7 +152,7 @@ where
     /// # Returns
     /// If all prerequisites are fullfilled, returns a [LevMarLeastSquaresProblem] with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
-    pub fn build(self) -> Result<LevMarProblem<'a, ScalarType>, LeastSquaresProblemBuilderError> {
+    pub fn build(self) -> Result<LevMarProblem<'a, ScalarType>, LevMarBuilderError> {
         let finalized_builder = self.finalize()?;
 
         let param_count = finalized_builder.model.parameter_count();
@@ -197,12 +197,12 @@ where
 // private implementations
 impl<'a, ScalarType> LevMarBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField ,
-    ScalarType::RealField: Float + Mul<ScalarType,Output=ScalarType>,
+    ScalarType: Scalar + ComplexField,
+    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     /// helper function to check if all required fields have been set and pass the checks
     /// if so, this returns a destructured result of self
-    fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType>, LeastSquaresProblemBuilderError> {
+    fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType>, LevMarBuilderError> {
         match self {
             // in this case all required fields are set to something
             LevMarBuilder {
@@ -213,14 +213,14 @@ where
                 epsilon,
             } => {
                 if x.len() != y.len() {
-                    Err(LeastSquaresProblemBuilderError::InvalidLengthOfData {
+                    Err(LevMarBuilderError::InvalidLengthOfData {
                         x_length: x.len(),
                         y_length: y.len(),
                     })
                 } else if x.is_empty() || y.is_empty() {
-                    Err(LeastSquaresProblemBuilderError::InvalidZeroLength)
+                    Err(LevMarBuilderError::ZeroLengthVector)
                 } else if model.parameter_count() != parameter_initial_guess.len() {
-                    Err(LeastSquaresProblemBuilderError::InvalidParameterCount {
+                    Err(LevMarBuilderError::InvalidParameterCount {
                         model_count: model.parameter_count(),
                         provided_count: parameter_initial_guess.len(),
                     })
@@ -243,13 +243,13 @@ where
                 epsilon: _,
             } => {
                 if x.is_none() {
-                    Err(LeastSquaresProblemBuilderError::XDataMissing)
+                    Err(LevMarBuilderError::XDataMissing)
                 } else if y.is_none() {
-                    Err(LeastSquaresProblemBuilderError::YDataMissing)
+                    Err(LevMarBuilderError::YDataMissing)
                 } else if model.is_none() {
-                    Err(LeastSquaresProblemBuilderError::ModelMissing)
+                    Err(LevMarBuilderError::ModelMissing)
                 } else if parameter_initial_guess.is_none() {
-                    Err(LeastSquaresProblemBuilderError::InitialGuessMissing)
+                    Err(LevMarBuilderError::InitialGuessMissing)
                 } else {
                     unreachable!()
                 }
@@ -260,6 +260,8 @@ where
 
 #[cfg(test)]
 mod test {
+    use crate::model::builder::error::ModelBuildError;
+    use crate::solvers::levmar::builder::LevMarBuilderError;
     use crate::solvers::levmar::LevMarBuilder;
     use crate::test_helpers::get_double_exponential_model_with_constant_offset;
     use nalgebra::DVector;
@@ -285,7 +287,7 @@ mod test {
     #[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
     fn builder_assigns_fields_correctly() {
         let model = get_double_exponential_model_with_constant_offset();
-        // octate x = linspace(0,10,11);
+        // octave x = linspace(0,10,11);
         let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
         //octave y = 2*exp(-t/2)+exp(-t/4)+1;
         let y = DVector::from(vec![
@@ -293,19 +295,129 @@ mod test {
         ]);
         let initial_guess = vec![1., 2.];
 
-        // problem with default epsilon
-        let problem = LevMarBuilder::new()
+        // build a problem with default epsilon
+        let builder = LevMarBuilder::new()
             .x(x.clone())
             .y(y.clone())
             .initial_guess(initial_guess.as_slice())
-            .model(&model).build().expect("Valid builder should not fail build");
+            .model(&model);
+        let problem = builder
+            .clone()
+            .build()
+            .expect("Valid builder should not fail build");
 
-        assert_eq!(problem.x,x);
-        assert_eq!(problem.y,y);
+        assert_eq!(problem.x, x);
+        assert_eq!(problem.y, y);
         assert_eq!(problem.model_parameters, initial_guess);
         //assert!(problem.model.as_ref().as_ptr()== model.as_ptr()); // this don't work, boss
         assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
-        
+        assert!(
+            problem.current_svd.u.is_some(),
+            "SVD U must have been calculated on initialization"
+        );
+        assert!(
+            problem.current_svd.v_t.is_some(),
+            "SVD V^T must have been calculated on initialization"
+        );
 
+        // now check that a given epsilon is also passed through to the model
+        let problem = builder
+            .epsilon(-1.0) // check that negative values are converted to absolutes
+            .build()
+            .expect("Valid builder should not fail");
+        assert_eq!(problem.svd_epsilon, 1.0);
+    }
+
+    #[test]
+    fn builder_gives_errors_for_missing_mandatory_parameters() {
+        let model = get_double_exponential_model_with_constant_offset();
+        // octave x = linspace(0,10,11);
+        let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
+        //octave y = 2*exp(-t/2)+exp(-t/4)+1;
+        let y = DVector::from(vec![
+            4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
+        ]);
+        let initial_guess = vec![1., 2.];
+
+        let builder = LevMarBuilder::new()
+            .x(x.clone())
+            .y(y.clone())
+            .initial_guess(initial_guess.as_slice())
+            .model(&model);
+
+        assert!(matches!(
+            LevMarBuilder::new()
+                .y(y.clone())
+                .initial_guess(initial_guess.as_slice())
+                .model(&model)
+                .build(),
+            Err(LevMarBuilderError::XDataMissing)
+        ));
+        assert!(matches!(
+            LevMarBuilder::new()
+                .x(x.clone())
+                .initial_guess(initial_guess.as_slice())
+                .model(&model)
+                .build(),
+            Err(LevMarBuilderError::YDataMissing)
+        ));
+        assert!(matches!(
+            LevMarBuilder::new()
+                .x(x.clone())
+                .y(y.clone())
+                .model(&model)
+                .build(),
+            Err(LevMarBuilderError::InitialGuessMissing)
+        ));
+        assert!(matches!(
+            LevMarBuilder::new()
+                .x(x)
+                .y(y)
+                .initial_guess(initial_guess.as_slice())
+                .build(),
+            Err(LevMarBuilderError::ModelMissing)
+        ));
+    }
+
+    #[test]
+    fn builder_gives_errors_for_semantically_wrong_parameters() {
+        let model = get_double_exponential_model_with_constant_offset();
+        // octave x = linspace(0,10,11);
+        let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
+        //octave y = 2*exp(-t/2)+exp(-t/4)+1;
+        let y = DVector::from(vec![
+            4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
+        ]);
+        let initial_guess = vec![1., 2.];
+
+        assert!(matches!(
+            LevMarBuilder::new()
+                .x(x.clone())
+                .y(y.clone())
+                .initial_guess(&[1.])
+                .model(&model)
+                .build(),
+            Err(LevMarBuilderError::InvalidParameterCount { .. })
+        ), "invalid parameter count must produce correct error");
+
+        assert!(matches!(
+            LevMarBuilder::new()
+                .x(DVector::from(vec!{1.,2.,3.}))
+                .y(y.clone())
+                .initial_guess(&[1.])
+                .model(&model)
+                .build(),
+            Err(LevMarBuilderError::InvalidLengthOfData { .. })
+        ), "invalid parameter count must produce correct error");
+
+        assert!(matches!(
+            LevMarBuilder::new()
+                .x(DVector::from(Vec::<f64>::new()))
+                .y(DVector::from(Vec::<f64>::new()))
+                .initial_guess(&[1.])
+                .model(&model)
+                .build(),
+            Err(LevMarBuilderError::ZeroLengthVector)
+        ), "invalid parameter count must produce correct error");
     }
 }
