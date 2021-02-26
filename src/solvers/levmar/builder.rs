@@ -260,7 +260,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use crate::model::builder::error::ModelBuildError;
+
     use crate::solvers::levmar::builder::LevMarBuilderError;
     use crate::solvers::levmar::LevMarBuilder;
     use crate::test_helpers::get_double_exponential_model_with_constant_offset;
@@ -339,7 +339,7 @@ mod test {
         ]);
         let initial_guess = vec![1., 2.];
 
-        let builder = LevMarBuilder::new()
+        let _builder = LevMarBuilder::new()
             .x(x.clone())
             .y(y.clone())
             .initial_guess(initial_guess.as_slice())
@@ -388,12 +388,12 @@ mod test {
         let y = DVector::from(vec![
             4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
         ]);
-        let initial_guess = vec![1., 2.];
+        let _initial_guess = vec![1., 2.];
 
         assert!(
             matches!(
                 LevMarBuilder::new()
-                    .x(x.clone())
+                    .x(x)
                     .y(y.clone())
                     .initial_guess(&[1.])
                     .model(&model)
@@ -407,7 +407,7 @@ mod test {
             matches!(
                 LevMarBuilder::new()
                     .x(DVector::from(vec! {1.,2.,3.}))
-                    .y(y.clone())
+                    .y(y)
                     .initial_guess(&[1.])
                     .model(&model)
                     .build(),
