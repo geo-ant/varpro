@@ -2,7 +2,7 @@ use super::*;
 use crate::test_helpers::differentiation::numerical_derivative;
 use crate::test_helpers::get_double_exponential_model_with_constant_offset;
 use approx::assert_relative_eq;
-use levenberg_marquardt::{differentiate_numerically};
+use levenberg_marquardt::differentiate_numerically;
 
 // test that the jacobian of the least squares problem is correct if the parameter guesses
 // are correct. I observed that the numerical diff inside the levmar crate and my implementation

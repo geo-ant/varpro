@@ -1,7 +1,6 @@
 //use crate::model::SeparableModel;
 
-use nalgebra::{DVector};
-
+use nalgebra::DVector;
 
 use crate::model::builder::SeparableModelBuilder;
 use crate::model::errors::ModelError;
@@ -11,9 +10,16 @@ use crate::test_helpers;
 #[test]
 fn model_gets_initialized_with_correct_parameter_names_and_count() {
     let model = test_helpers::get_double_exponential_model_with_constant_offset();
-    assert_eq!(model.parameter_count(),2,"Double exponential model has 2 parameters");
-    assert_eq!(model.parameters(),&["tau1","tau2"],"Double exponential model has 2 parameters");
-
+    assert_eq!(
+        model.parameter_count(),
+        2,
+        "Double exponential model has 2 parameters"
+    );
+    assert_eq!(
+        model.parameters(),
+        &["tau1", "tau2"],
+        "Double exponential model has 2 parameters"
+    );
 }
 
 #[test]
@@ -70,11 +76,18 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
     let model = test_helpers::get_double_exponential_model_with_constant_offset();
 
-    assert_eq!(model.parameter_count(),2, "double exponential model should have 2 params");
+    assert_eq!(
+        model.parameter_count(),
+        2,
+        "double exponential model should have 2 params"
+    );
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     // now deliberately provide a wrong number of params to eval
-    let params = &[1.,2.,3.,4.,5.];
-    assert!(matches!(model.eval(&tvec,params),Err(ModelError::IncorrectParameterCount {..})));
+    let params = &[1., 2., 3., 4., 5.];
+    assert!(matches!(
+        model.eval(&tvec, params),
+        Err(ModelError::IncorrectParameterCount { .. })
+    ));
 }
 
 #[test]

@@ -390,34 +390,43 @@ mod test {
         ]);
         let initial_guess = vec![1., 2.];
 
-        assert!(matches!(
-            LevMarBuilder::new()
-                .x(x.clone())
-                .y(y.clone())
-                .initial_guess(&[1.])
-                .model(&model)
-                .build(),
-            Err(LevMarBuilderError::InvalidParameterCount { .. })
-        ), "invalid parameter count must produce correct error");
+        assert!(
+            matches!(
+                LevMarBuilder::new()
+                    .x(x.clone())
+                    .y(y.clone())
+                    .initial_guess(&[1.])
+                    .model(&model)
+                    .build(),
+                Err(LevMarBuilderError::InvalidParameterCount { .. })
+            ),
+            "invalid parameter count must produce correct error"
+        );
 
-        assert!(matches!(
-            LevMarBuilder::new()
-                .x(DVector::from(vec!{1.,2.,3.}))
-                .y(y.clone())
-                .initial_guess(&[1.])
-                .model(&model)
-                .build(),
-            Err(LevMarBuilderError::InvalidLengthOfData { .. })
-        ), "invalid parameter count must produce correct error");
+        assert!(
+            matches!(
+                LevMarBuilder::new()
+                    .x(DVector::from(vec! {1.,2.,3.}))
+                    .y(y.clone())
+                    .initial_guess(&[1.])
+                    .model(&model)
+                    .build(),
+                Err(LevMarBuilderError::InvalidLengthOfData { .. })
+            ),
+            "invalid parameter count must produce correct error"
+        );
 
-        assert!(matches!(
-            LevMarBuilder::new()
-                .x(DVector::from(Vec::<f64>::new()))
-                .y(DVector::from(Vec::<f64>::new()))
-                .initial_guess(&[1.])
-                .model(&model)
-                .build(),
-            Err(LevMarBuilderError::ZeroLengthVector)
-        ), "invalid parameter count must produce correct error");
+        assert!(
+            matches!(
+                LevMarBuilder::new()
+                    .x(DVector::from(Vec::<f64>::new()))
+                    .y(DVector::from(Vec::<f64>::new()))
+                    .initial_guess(&[1.])
+                    .model(&model)
+                    .build(),
+                Err(LevMarBuilderError::ZeroLengthVector)
+            ),
+            "invalid parameter count must produce correct error"
+        );
     }
 }
