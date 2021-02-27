@@ -23,7 +23,7 @@ fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses() {
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
 
-    let mut problem = LevMarBuilder::new()
+    let mut problem = LevMarProblemBuilder::new()
         .x(tvec)
         .y(yvec)
         .model(&model)
@@ -55,7 +55,7 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
 
-    let mut problem = LevMarBuilder::new()
+    let mut problem = LevMarProblemBuilder::new()
         .x(tvec)
         .y(yvec)
         .model(&model)
@@ -116,7 +116,7 @@ fn residuals_are_calculated_correctly() {
 
     let data_length = tvec.len();
 
-    let mut problem = LevMarBuilder::new()
+    let mut problem = LevMarProblemBuilder::new()
         .x(tvec)
         .y(yvec)
         .model(&model)

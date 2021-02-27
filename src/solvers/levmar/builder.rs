@@ -47,7 +47,7 @@ pub enum LevMarBuilderError {
 }
 
 #[derive(Clone)]
-pub struct LevMarBuilder<'a, ScalarType>
+pub struct LevMarProblemBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
@@ -68,7 +68,7 @@ where
 }
 
 /// Same as `Self::new()`.
-impl<'a, ScalarType> Default for LevMarBuilder<'a, ScalarType>
+impl<'a, ScalarType> Default for LevMarProblemBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField + Zero,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
@@ -78,7 +78,7 @@ where
     }
 }
 
-impl<'a, ScalarType> LevMarBuilder<'a, ScalarType>
+impl<'a, ScalarType> LevMarProblemBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField + Zero,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
@@ -195,7 +195,7 @@ where
 }
 
 // private implementations
-impl<'a, ScalarType> LevMarBuilder<'a, ScalarType>
+impl<'a, ScalarType> LevMarProblemBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
@@ -205,7 +205,7 @@ where
     fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType>, LevMarBuilderError> {
         match self {
             // in this case all required fields are set to something
-            LevMarBuilder {
+            LevMarProblemBuilder {
                 x: Some(x),
                 y: Some(y),
                 separable_model: Some(model),
@@ -235,7 +235,7 @@ where
                 }
             }
             // not all required fields are set, report missing parameters
-            LevMarBuilder {
+            LevMarProblemBuilder {
                 x,
                 y,
                 separable_model: model,
@@ -262,14 +262,14 @@ where
 mod test {
 
     use crate::solvers::levmar::builder::LevMarBuilderError;
-    use crate::solvers::levmar::LevMarBuilder;
+    use crate::solvers::levmar::LevMarProblemBuilder;
     use crate::test_helpers::get_double_exponential_model_with_constant_offset;
     use nalgebra::DVector;
 
     #[test]
     fn new_builder_starts_with_empty_fields() {
-        let builder = LevMarBuilder::<f64>::new();
-        let LevMarBuilder {
+        let builder = LevMarProblemBuilder::<f64>::new();
+        let LevMarProblemBuilder {
             x,
             y,
             separable_model: model,
@@ -296,7 +296,7 @@ mod test {
         let initial_guess = vec![1., 2.];
 
         // build a problem with default epsilon
-        let builder = LevMarBuilder::new()
+        let builder = LevMarProblemBuilder::new()
             .x(x.clone())
             .y(y.clone())
             .initial_guess(initial_guess.as_slice())
@@ -339,14 +339,14 @@ mod test {
         ]);
         let initial_guess = vec![1., 2.];
 
-        let _builder = LevMarBuilder::new()
+        let _builder = LevMarProblemBuilder::new()
             .x(x.clone())
             .y(y.clone())
             .initial_guess(initial_guess.as_slice())
             .model(&model);
 
         assert!(matches!(
-            LevMarBuilder::new()
+            LevMarProblemBuilder::new()
                 .y(y.clone())
                 .initial_guess(initial_guess.as_slice())
                 .model(&model)
@@ -354,7 +354,7 @@ mod test {
             Err(LevMarBuilderError::XDataMissing)
         ));
         assert!(matches!(
-            LevMarBuilder::new()
+            LevMarProblemBuilder::new()
                 .x(x.clone())
                 .initial_guess(initial_guess.as_slice())
                 .model(&model)
@@ -362,7 +362,7 @@ mod test {
             Err(LevMarBuilderError::YDataMissing)
         ));
         assert!(matches!(
-            LevMarBuilder::new()
+            LevMarProblemBuilder::new()
                 .x(x.clone())
                 .y(y.clone())
                 .model(&model)
@@ -370,7 +370,7 @@ mod test {
             Err(LevMarBuilderError::InitialGuessMissing)
         ));
         assert!(matches!(
-            LevMarBuilder::new()
+            LevMarProblemBuilder::new()
                 .x(x)
                 .y(y)
                 .initial_guess(initial_guess.as_slice())
@@ -392,7 +392,7 @@ mod test {
 
         assert!(
             matches!(
-                LevMarBuilder::new()
+                LevMarProblemBuilder::new()
                     .x(x)
                     .y(y.clone())
                     .initial_guess(&[1.])
@@ -405,7 +405,7 @@ mod test {
 
         assert!(
             matches!(
-                LevMarBuilder::new()
+                LevMarProblemBuilder::new()
                     .x(DVector::from(vec! {1.,2.,3.}))
                     .y(y)
                     .initial_guess(&[1.])
@@ -418,7 +418,7 @@ mod test {
 
         assert!(
             matches!(
-                LevMarBuilder::new()
+                LevMarProblemBuilder::new()
                     .x(DVector::from(Vec::<f64>::new()))
                     .y(DVector::from(Vec::<f64>::new()))
                     .initial_guess(&[1.])
