@@ -65,6 +65,7 @@ where
     fn params(&self) -> Vector<ScalarType, Dynamic, Self::ParameterStorage> {
         DVector::from(self.model_parameters.clone())
     }
+
     fn residuals(&self) -> Option<Vector<ScalarType, Dynamic, Self::ResidualStorage>> {
         Some(self.current_residuals.clone())
     }
