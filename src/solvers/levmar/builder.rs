@@ -5,6 +5,7 @@ use nalgebra::{ComplexField, DVector, Scalar, SVD};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
 use std::ops::Mul;
+use crate::linear_algebra::DiagDMatrix;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, Snafu, PartialEq)]
@@ -44,6 +45,12 @@ pub enum LevMarBuilderError {
         model_count: usize,
         provided_count: usize,
     },
+
+    /// y vector and weights have different lengths
+    #[snafu(display(
+    "The weights must have the same length as the data y."
+    ))]
+    InvalidLengthOfWeights,
 }
 
 #[derive(Clone)]
@@ -65,6 +72,11 @@ where
     /// if this is not given, when building the builder,
     /// the this is set to machine epsilon.
     epsilon: Option<ScalarType::RealField>,
+    /// Optional: weights to be applied to the data for weightes least squares
+    /// if no weights are given, the problem is unweighted, i.e. the same as if
+    /// all weights were 1.
+    /// Must have the same length as x and y.
+    weights : Option<DiagDMatrix<ScalarType>>,
 }
 
 /// Same as `Self::new()`.
@@ -91,6 +103,7 @@ where
             separable_model: None,
             parameter_initial_guess: None,
             epsilon: None,
+            weights: None,
         }
     }
 
@@ -176,6 +189,7 @@ where
                 singular_values: DVector::from_element(data_length, Float::epsilon()),
             },
             linear_coefficients: DVector::from_element(param_count, Zero::zero()),
+            weight_matrix : finalized_builder.weights,
         };
         problem.set_params(&DVector::from(finalized_builder.parameter_initial_guess));
         Ok(problem)
@@ -194,6 +208,7 @@ where
     model: &'a SeparableModel<ScalarType>,
     parameter_initial_guess: Vec<ScalarType>,
     epsilon: ScalarType::RealField,
+    weights : Option<DiagDMatrix<ScalarType>>,
 }
 
 // private implementations
@@ -213,6 +228,7 @@ where
                 separable_model: Some(model),
                 parameter_initial_guess: Some(parameter_initial_guess),
                 epsilon,
+                weights,
             } => {
                 if x.len() != y.len() {
                     Err(LevMarBuilderError::InvalidLengthOfData {
@@ -226,6 +242,8 @@ where
                         model_count: model.parameter_count(),
                         provided_count: parameter_initial_guess.len(),
                     })
+                }  else if weights.as_ref().map(|w|w.size() != y.len()).unwrap_or(false) { //check that weights have correct length if they were given
+                    Err(LevMarBuilderError::InvalidLengthOfWeights)
                 } else {
                     Ok(FinalizedBuilder {
                         x,
@@ -233,6 +251,7 @@ where
                         model,
                         parameter_initial_guess,
                         epsilon: epsilon.unwrap_or_else(Float::epsilon),
+                        weights,
                     })
                 }
             }
@@ -243,6 +262,7 @@ where
                 separable_model: model,
                 parameter_initial_guess,
                 epsilon: _,
+                weights: _
             } => {
                 if x.is_none() {
                     Err(LevMarBuilderError::XDataMissing)
@@ -253,7 +273,7 @@ where
                 } else if parameter_initial_guess.is_none() {
                     Err(LevMarBuilderError::InitialGuessMissing)
                 } else {
-                    unreachable!()
+                    unreachable!("Error in the library.")
                 }
             }
         }
@@ -277,12 +297,14 @@ mod test {
             separable_model: model,
             parameter_initial_guess,
             epsilon,
+            weights,
         } = builder;
         assert!(x.is_none());
         assert!(y.is_none());
         assert!(model.is_none());
         assert!(parameter_initial_guess.is_none());
         assert!(epsilon.is_none());
+        assert!(weights.is_none());
     }
 
     #[test]

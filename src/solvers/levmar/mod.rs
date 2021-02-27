@@ -11,6 +11,7 @@ pub use builder::LevMarProblemBuilder;
 pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use num_traits::Float;
 use std::ops::Mul;
+use crate::linear_algebra::DiagDMatrix;
 
 /// TODO add weight matrix
 /// TODO Document
@@ -35,6 +36,10 @@ where
     model: &'a SeparableModel<ScalarType>,
     /// truncation epsilon for SVD below which all singular values are assumed zero
     svd_epsilon: ScalarType::RealField,
+    /// the weights of the data. If none are given, the data is not weighted
+    /// If weights were provided, the builder has checked that the weights have the
+    /// correct dimension for the data
+    weight_matrix : Option<DiagDMatrix<ScalarType>>,
 }
 
 /// TODO document and document panics!
