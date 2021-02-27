@@ -96,18 +96,20 @@ where
 
     /// **Mandatory**: Set the value of the independent variable `$\vec{x}$` of the problem
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn x(self, xvec: DVector<ScalarType>) -> Self {
+    pub fn x<VectorType>(self, xvec: VectorType) -> Self
+    where DVector::<ScalarType> : From<VectorType> {
         Self {
-            x: Some(xvec),
+            x: Some(DVector::from(xvec)),
             ..self
         }
     }
 
     /// **Mandatory**: Set the data to fit with `$\vec{y}=\vec{y}(\vec{x})$` of the problem
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn y(self, yvec: DVector<ScalarType>) -> Self {
+    pub fn y<VectorType>(self, yvec: VectorType) -> Self
+    where DVector::<ScalarType> : From<VectorType>{
         Self {
-            y: Some(yvec),
+            y: Some(DVector::from(yvec)),
             ..self
         }
     }
