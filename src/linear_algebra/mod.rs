@@ -41,9 +41,12 @@ impl<ScalarType: Scalar + ComplexField> DiagDMatrix<ScalarType> {
     }
 }
 /// Generate a square diagonal matrix from the given diagonal vector.
-impl<ScalarType: Scalar+ComplexField> From<DVector<ScalarType>> for DiagDMatrix<ScalarType> {
-    fn from(diagonal: DVector<ScalarType>) -> Self {
-        Self { diagonal }
+impl<ScalarType: Scalar+ComplexField, VectorType> From<VectorType> for DiagDMatrix<ScalarType>
+where DVector<ScalarType> : From<VectorType> {
+    fn from(diagonal: VectorType) -> Self {
+        Self {
+            diagonal : DVector::from(diagonal)
+        }
     }
 }
 

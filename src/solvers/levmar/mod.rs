@@ -6,12 +6,16 @@ use nalgebra::{ComplexField, DMatrix, DVector, Dynamic, Matrix, Scalar, Vector, 
 mod builder;
 #[cfg(test)]
 mod test;
+mod weights;
 
 pub use builder::LevMarProblemBuilder;
 pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use num_traits::Float;
 use std::ops::Mul;
 use crate::linear_algebra::DiagDMatrix;
+
+
+
 
 /// TODO add weight matrix
 /// TODO Document
@@ -55,18 +59,23 @@ where
     type JacobianStorage = Owned<ScalarType, Dynamic, Dynamic>;
     type ParameterStorage = Owned<ScalarType, Dynamic>;
 
+    #[allow(non_snake_case)]
     fn set_params(&mut self, params: &Vector<ScalarType, Dynamic, Self::ParameterStorage>) {
         self.model_parameters = params.iter().cloned().collect();
-        let model_value_matrix = self
+        // matrix of weighted model function values
+        let mut Phi_W = self
             .model
             .eval(&self.x, self.model_parameters.as_slice())
             .expect("Error evaluating function value matrix");
-        self.current_svd = model_value_matrix.clone().svd(true, true);
+        if let Some(W) = self.weight_matrix.as_ref() {
+            Phi_W = W*&Phi_W;
+        }
+        self.current_svd = Phi_W.clone().svd(true, true);
         self.linear_coefficients = self
             .current_svd
             .solve(&self.y_w, self.svd_epsilon)
             .expect("Error calculating solution with SVD.");
-        self.current_residuals = &self.y_w - model_value_matrix * &self.linear_coefficients;
+        self.current_residuals = &self.y_w - Phi_W * &self.linear_coefficients;
     }
 
     fn params(&self) -> Vector<ScalarType, Dynamic, Self::ParameterStorage> {
@@ -89,15 +98,18 @@ where
         let U_t = U.transpose();
 
         //let Sigma_inverse : DMatrix<ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
-
         //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
         for (k, mut jacobian_col) in jacobian_matrix.column_iter_mut().enumerate() {
-            let Dk = self
+            let mut Dk = self
                 .model
                 .eval_deriv(&self.x, self.model_parameters.as_slice())
                 .at(k)
                 .expect("Error evaluating model derivatives.");
+            // apply the weights
+            if let Some(W) = self.weight_matrix.as_ref() {
+                Dk = W*&Dk;
+            }
             let Dk_c = &Dk * &self.linear_coefficients;
             let minus_ak: DVector<ScalarType> = U * (&U_t * (&Dk_c)) - Dk_c;
             //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
