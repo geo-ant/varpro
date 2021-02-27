@@ -1,3 +1,4 @@
+use crate::linear_algebra::DiagDMatrix;
 use crate::model::SeparableModel;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
@@ -5,7 +6,6 @@ use nalgebra::{ComplexField, DVector, Scalar, SVD};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
 use std::ops::Mul;
-use crate::linear_algebra::DiagDMatrix;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, Snafu, PartialEq)]
@@ -47,9 +47,7 @@ pub enum LevMarBuilderError {
     },
 
     /// y vector and weights have different lengths
-    #[snafu(display(
-    "The weights must have the same length as the data y."
-    ))]
+    #[snafu(display("The weights must have the same length as the data y."))]
     InvalidLengthOfWeights,
 }
 
@@ -76,7 +74,7 @@ where
     /// if no weights are given, the problem is unweighted, i.e. the same as if
     /// all weights were 1.
     /// Must have the same length as x and y.
-    weights : Option<DiagDMatrix<ScalarType>>,
+    weights: Option<DiagDMatrix<ScalarType>>,
 }
 
 /// Same as `Self::new()`.
@@ -110,7 +108,9 @@ where
     /// **Mandatory**: Set the value of the independent variable `$\vec{x}$` of the problem
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
     pub fn x<VectorType>(self, xvec: VectorType) -> Self
-    where DVector::<ScalarType> : From<VectorType> {
+    where
+        DVector<ScalarType>: From<VectorType>,
+    {
         Self {
             x: Some(DVector::from(xvec)),
             ..self
@@ -120,7 +120,9 @@ where
     /// **Mandatory**: Set the data to fit with `$\vec{y}=\vec{y}(\vec{x})$` of the problem
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
     pub fn y<VectorType>(self, yvec: VectorType) -> Self
-    where DVector::<ScalarType> : From<VectorType>{
+    where
+        DVector<ScalarType>: From<VectorType>,
+    {
         Self {
             y: Some(DVector::from(yvec)),
             ..self
@@ -173,31 +175,13 @@ where
         let param_count = finalized_builder.model.parameter_count();
         let data_length = finalized_builder.y.len();
 
-        let mut problem = LevMarProblem {
-            // these parameters all come from the builder
-            x: finalized_builder.x,
-            y: finalized_builder.y,
-            model: finalized_builder.model,
-            svd_epsilon: finalized_builder.epsilon,
-            // these parameters are bs, but they will be overwritten immediately
-            // by the call to set_params
-            model_parameters: Vec::new(),
-            current_residuals: DVector::from_element(data_length, Zero::zero()),
-            current_svd: SVD {
-                u: None,
-                v_t: None,
-                singular_values: DVector::from_element(data_length, Float::epsilon()),
-            },
-            linear_coefficients: DVector::from_element(param_count, Zero::zero()),
-            weight_matrix : finalized_builder.weights,
-        };
-        problem.set_params(&DVector::from(finalized_builder.parameter_initial_guess));
-        Ok(problem)
+        Ok(LevMarProblem::from(finalized_builder))
     }
 }
 
 /// helper structure that has the same fields as the builder
-/// but none of them are optional
+/// but all of them are valid
+#[doc(hidden)]
 struct FinalizedBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField,
@@ -208,7 +192,56 @@ where
     model: &'a SeparableModel<ScalarType>,
     parameter_initial_guess: Vec<ScalarType>,
     epsilon: ScalarType::RealField,
-    weights : Option<DiagDMatrix<ScalarType>>,
+    weights: Option<DiagDMatrix<ScalarType>>,
+}
+
+/// helper to create a [LevMarProblem] from a finalized builder. This initializes all fields
+/// with valid values. Most importantly, the data is weighted with the weight matrix and
+/// the initial parameters are set.
+#[doc(hidden)]
+#[allow(non_snake_case)]
+impl<'a, ScalarType> From<FinalizedBuilder<'a, ScalarType>> for LevMarProblem<'a, ScalarType>
+where
+    ScalarType: Scalar + ComplexField,
+    ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
+{
+    fn from(finalized_builder: FinalizedBuilder<'a, ScalarType>) -> Self {
+        let param_count = finalized_builder.model.parameter_count();
+        let data_length = finalized_builder.y.len();
+
+        // 1) create weighted data
+        let y_w = finalized_builder
+            .weights
+            .as_ref()
+            .map(|W| W * &finalized_builder.y)
+            .unwrap_or(finalized_builder.y);
+
+        // 2) initialize the levmar problem. Some field values are dummy initialized
+        // (like the SVD) because they are calculated in step 3 as part of set_params
+        let mut problem = LevMarProblem {
+            // these parameters all come from the builder
+            x: finalized_builder.x,
+            y_w,
+            model: finalized_builder.model,
+            svd_epsilon: finalized_builder.epsilon,
+            // these parameters are dummies and they will be overwritten immediately
+            // by the call to set_params
+            model_parameters: Vec::new(),
+            current_residuals: DVector::from_element(data_length, Zero::zero()),
+            current_svd: SVD {
+                u: None,
+                v_t: None,
+                singular_values: DVector::from_element(data_length, Float::epsilon()),
+            },
+            linear_coefficients: DVector::from_element(param_count, Zero::zero()),
+            weight_matrix: finalized_builder.weights,
+        };
+        // 3) step 3: overwrite the dummy values with the correct results for the given
+        // parameters, such that the problem is in a valid state
+        problem.set_params(&DVector::from(finalized_builder.parameter_initial_guess));
+
+        problem
+    }
 }
 
 // private implementations
@@ -242,7 +275,12 @@ where
                         model_count: model.parameter_count(),
                         provided_count: parameter_initial_guess.len(),
                     })
-                }  else if weights.as_ref().map(|w|w.size() != y.len()).unwrap_or(false) { //check that weights have correct length if they were given
+                } else if weights
+                    .as_ref()
+                    .map(|w| w.size() != y.len())
+                    .unwrap_or(false)
+                {
+                    //check that weights have correct length if they were given
                     Err(LevMarBuilderError::InvalidLengthOfWeights)
                 } else {
                     Ok(FinalizedBuilder {
@@ -262,7 +300,7 @@ where
                 separable_model: model,
                 parameter_initial_guess,
                 epsilon: _,
-                weights: _
+                weights: _,
             } => {
                 if x.is_none() {
                     Err(LevMarBuilderError::XDataMissing)
@@ -331,7 +369,7 @@ mod test {
             .expect("Valid builder should not fail build");
 
         assert_eq!(problem.x, x);
-        assert_eq!(problem.y, y);
+        assert_eq!(problem.y_w, y);
         assert_eq!(problem.model_parameters, initial_guess);
         //assert!(problem.model.as_ref().as_ptr()== model.as_ptr()); // this don't work, boss
         assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)

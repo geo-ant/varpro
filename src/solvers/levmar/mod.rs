@@ -22,8 +22,10 @@ where
 {
     /// the independent variable `\vec{x}` (location parameter)
     x: DVector<ScalarType>,
-    /// the data vector to which to fit the model `$\vec{y}$`
-    y: DVector<ScalarType>,
+    /// the weighted data vector to which to fit the model `$\vec{y}$`
+    /// **Attention** the data vector is weighted with the weights if some weights
+    /// where provided
+    y_w: DVector<ScalarType>,
     /// current parameters that the optimizer is operating on
     model_parameters: Vec<ScalarType>,
     /// The current residual of model function values belonging to the current parameters
@@ -62,9 +64,9 @@ where
         self.current_svd = model_value_matrix.clone().svd(true, true);
         self.linear_coefficients = self
             .current_svd
-            .solve(&self.y, self.svd_epsilon)
+            .solve(&self.y_w, self.svd_epsilon)
             .expect("Error calculating solution with SVD.");
-        self.current_residuals = &self.y - model_value_matrix * &self.linear_coefficients;
+        self.current_residuals = &self.y_w - model_value_matrix * &self.linear_coefficients;
     }
 
     fn params(&self) -> Vector<ScalarType, Dynamic, Self::ParameterStorage> {
@@ -79,7 +81,7 @@ where
     fn jacobian(&self) -> Option<Matrix<ScalarType, Dynamic, Dynamic, Self::JacobianStorage>> {
         //todo: make this more efficient by parallelizing
         let mut jacobian_matrix = unsafe {
-            DMatrix::<ScalarType>::new_uninitialized(self.y.len(), self.model.parameter_count())
+            DMatrix::<ScalarType>::new_uninitialized(self.y_w.len(), self.model.parameter_count())
         };
 
         let U = self.current_svd.u.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");

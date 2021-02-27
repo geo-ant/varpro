@@ -74,3 +74,23 @@ where
         result_matrix
     }
 }
+
+/// Matrix-vector product of the diagonal matrix and the given vector
+/// # Panics
+/// operation panics if the matrix and vector dimensions are incorrect for a product
+impl<ScalarType> Mul<&DVector<ScalarType>> for &DiagDMatrix<ScalarType>
+    where
+        ScalarType: ClosedMul + Scalar + ComplexField,
+{
+    type Output = DVector<ScalarType>;
+
+    fn mul(self, rhs: &DVector<ScalarType>) -> Self::Output {
+        assert_eq!(
+            self.ncols(),
+            rhs.len(),
+            "Matrix dimensions incorrect for diagonal matrix multiplication."
+        );
+
+        self.diagonal.component_mul(&rhs)
+    }
+}
