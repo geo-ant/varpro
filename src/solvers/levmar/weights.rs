@@ -115,8 +115,8 @@ mod test {
         let v = DVector::from(vec!{1.,3.,3.,7.});
         let A = DMatrix::from_element(4,4,2.0);
 
-        assert_eq!(v.clone(), &W*v);
-        assert_eq!(A.clone(), &W*A);
+        assert_eq!(&W*v.clone(),v);
+        assert_eq!(&W*A.clone(),A);
     }
 
     #[test]

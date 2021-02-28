@@ -1,8 +1,7 @@
-use crate::linalg_helpers::DiagDMatrix;
 use crate::model::SeparableModel;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DVector, Scalar, SVD};
+use nalgebra::{ComplexField, DVector, Scalar};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
 use std::ops::Mul;
@@ -185,9 +184,6 @@ where
     pub fn build(self) -> Result<LevMarProblem<'a, ScalarType>, LevMarBuilderError> {
         let finalized_builder = self.finalize()?;
 
-        let param_count = finalized_builder.model.parameter_count();
-        let data_length = finalized_builder.y.len();
-
         Ok(LevMarProblem::from(finalized_builder))
     }
 }
@@ -219,8 +215,6 @@ where
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
 {
     fn from(finalized_builder: FinalizedBuilder<'a, ScalarType>) -> Self {
-        let param_count = finalized_builder.model.parameter_count();
-        let data_length = finalized_builder.y.len();
 
         // 1) create weighted data
         let y_w = &finalized_builder
@@ -349,6 +343,7 @@ mod test {
 
     #[test]
     #[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
+    #[allow(non_snake_case)]
     fn builder_assigns_fields_correctly() {
         let model = get_double_exponential_model_with_constant_offset();
         // octave x = linspace(0,10,11);
@@ -386,7 +381,7 @@ mod test {
 
         // now check that the given epsilon is also passed correctly to the model
         // and also that the weights are correctly passed and used to weigh the original data
-        let weights = 2.*&y.clone();
+        let weights = 2.*&y;
         let W = DMatrix::from_diagonal(&weights);
 
         let problem = builder

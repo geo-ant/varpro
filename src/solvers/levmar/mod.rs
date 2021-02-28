@@ -8,7 +8,6 @@ mod builder;
 mod test;
 mod weights;
 
-use crate::linalg_helpers::DiagDMatrix;
 use crate::solvers::levmar::weights::Weights;
 pub use builder::LevMarProblemBuilder;
 pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
@@ -72,7 +71,7 @@ where
     fn set_params(&mut self, params: &Vector<ScalarType, Dynamic, Self::ParameterStorage>) {
         self.model_parameters = params.iter().cloned().collect();
         // matrix of weighted model function values
-        let mut Phi_w = self
+        let Phi_w = self
             .model
             .eval(&self.x, self.model_parameters.as_slice())
             .ok()
@@ -119,7 +118,7 @@ where
         //todo: make this more efficient by parallelizing
 
         if let Some(CachedCalculations {
-            current_residuals,
+            current_residuals : _,
             current_svd,
             linear_coefficients,
         }) = self.cached.as_ref()
@@ -136,7 +135,7 @@ where
 
             for (k, mut jacobian_col) in jacobian_matrix.column_iter_mut().enumerate() {
                 // weighted derivative matrix
-                let mut Dk = &self.weights
+                let Dk = &self.weights
                     * self
                         .model
                         .eval_deriv(&self.x, self.model_parameters.as_slice())

@@ -14,7 +14,7 @@ use levenberg_marquardt::differentiate_numerically;
 // the finite difference and make one of the taus zero, which means 1/tau diverges. I don't know
 // exactly why it stalls though. This seems like bad behavior.
 #[test]
-fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses() {
+fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unweighted() {
     let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
@@ -46,7 +46,7 @@ fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses() {
 // I am using the formula for the partial derivatives of the residual sum of squares from
 // [my post](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) on varpro
 // (found between numbered formulas 8 and 9).
-fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squares() {
+fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squares_unweighted() {
     let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
@@ -105,7 +105,7 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
 }
 
 #[test]
-fn residuals_are_calculated_correctly() {
+fn residuals_are_calculated_correctly_unweighted() {
     let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
