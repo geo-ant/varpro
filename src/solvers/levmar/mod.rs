@@ -12,7 +12,7 @@ pub use builder::LevMarProblemBuilder;
 pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use num_traits::Float;
 use std::ops::Mul;
-use crate::linear_algebra::DiagDMatrix;
+use crate::linalg_helpers::DiagDMatrix;
 
 
 

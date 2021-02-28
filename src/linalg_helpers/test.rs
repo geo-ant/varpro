@@ -1,4 +1,4 @@
-use crate::linear_algebra::DiagDMatrix;
+use crate::linalg_helpers::DiagDMatrix;
 use nalgebra::{DVector, DMatrix};
 
 #[test]

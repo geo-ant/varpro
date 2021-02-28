@@ -1,4 +1,4 @@
-use crate::linear_algebra::DiagDMatrix;
+use crate::linalg_helpers::DiagDMatrix;
 use crate::model::SeparableModel;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
