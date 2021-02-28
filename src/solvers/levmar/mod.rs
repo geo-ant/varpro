@@ -14,7 +14,17 @@ use num_traits::Float;
 use std::ops::Mul;
 use crate::linalg_helpers::DiagDMatrix;
 
-
+/// helper structure that stores the cached calculations,
+/// which are carried out by the LevMarProblem on setting the parameters
+#[derive(Debug,Clone)]
+struct CachedCalculations<ScalarType:Scalar+ComplexField> {
+    /// The current residual of model function values belonging to the current parameters
+    current_residuals: DVector<ScalarType>,
+    /// Singular value decomposition of the current function value matrix
+    current_svd: SVD<ScalarType, Dynamic, Dynamic>,
+    /// the linear coefficients `$\vec{c}$` providing the current best fit
+    linear_coefficients: DVector<ScalarType>,
+}
 
 
 /// TODO add weight matrix
@@ -32,12 +42,6 @@ where
     y_w: DVector<ScalarType>,
     /// current parameters that the optimizer is operating on
     model_parameters: Vec<ScalarType>,
-    /// The current residual of model function values belonging to the current parameters
-    current_residuals: DVector<ScalarType>,
-    /// Singular value decomposition of the current function value matrix
-    current_svd: SVD<ScalarType, Dynamic, Dynamic>,
-    /// the linear coefficients `$\vec{c}$` providing the current best fit
-    linear_coefficients: DVector<ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
     model: &'a SeparableModel<ScalarType>,
     /// truncation epsilon for SVD below which all singular values are assumed zero
@@ -46,6 +50,11 @@ where
     /// If weights were provided, the builder has checked that the weights have the
     /// correct dimension for the data
     weight_matrix : Option<DiagDMatrix<ScalarType>>,
+    /// the currently cached calculations belonging to the currently set model parameters
+    /// those are updated on set_params. If this is None, then it indicates some error that
+    /// is propagated on to the levenberg-marquardt crate by also returning None results
+    /// by residuals() and/or jacobian()
+    cached : Option<CachedCalculations<ScalarType>>,
 }
 
 /// TODO document and document panics!
@@ -70,12 +79,16 @@ where
         if let Some(W) = self.weight_matrix.as_ref() {
             Phi_W = W*&Phi_W;
         }
-        self.current_svd = Phi_W.clone().svd(true, true);
-        self.linear_coefficients = self
-            .current_svd
+        let current_svd = Phi_W.clone().svd(true, true);
+        let linear_coefficients = current_svd
             .solve(&self.y_w, self.svd_epsilon)
             .expect("Error calculating solution with SVD.");
-        self.current_residuals = &self.y_w - Phi_W * &self.linear_coefficients;
+        let current_residuals = &self.y_w - Phi_W * &linear_coefficients;
+        self.cached = Some(CachedCalculations{
+            current_residuals,
+            current_svd,
+            linear_coefficients,
+        })
     }
 
     fn params(&self) -> Vector<ScalarType, Dynamic, Self::ParameterStorage> {
@@ -83,7 +96,7 @@ where
     }
 
     fn residuals(&self) -> Option<Vector<ScalarType, Dynamic, Self::ResidualStorage>> {
-        Some(self.current_residuals.clone())
+        self.cached.as_ref().map(|cached|cached.current_residuals.clone())
     }
 
     #[allow(non_snake_case)]
@@ -93,30 +106,34 @@ where
             DMatrix::<ScalarType>::new_uninitialized(self.y_w.len(), self.model.parameter_count())
         };
 
-        let U = self.current_svd.u.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
-        // U transposed
-        let U_t = U.transpose();
+        if let Some(CachedCalculations{ current_residuals, current_svd, linear_coefficients } ) = self.cached.as_ref() {
+            let U = current_svd.u.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
+            // U transposed
+            let U_t = U.transpose();
 
-        //let Sigma_inverse : DMatrix<ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
-        //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
+            //let Sigma_inverse : DMatrix<ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
+            //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
-        for (k, mut jacobian_col) in jacobian_matrix.column_iter_mut().enumerate() {
-            let mut Dk = self
-                .model
-                .eval_deriv(&self.x, self.model_parameters.as_slice())
-                .at(k)
-                .expect("Error evaluating model derivatives.");
-            // apply the weights
-            if let Some(W) = self.weight_matrix.as_ref() {
-                Dk = W*&Dk;
+            for (k, mut jacobian_col) in jacobian_matrix.column_iter_mut().enumerate() {
+                let mut Dk = self
+                    .model
+                    .eval_deriv(&self.x, self.model_parameters.as_slice())
+                    .at(k)
+                    .expect("Error evaluating model derivatives.");
+                // apply the weights
+                if let Some(W) = self.weight_matrix.as_ref() {
+                    Dk = W * &Dk;
+                }
+                let Dk_c = &Dk * linear_coefficients;
+                let minus_ak: DVector<ScalarType> = U * (&U_t * (&Dk_c)) - Dk_c;
+                //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
+                //let Dk_t_rw : DVector<ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
+                //let _minus_bk : DVector<ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
+                jacobian_col.copy_from(&(minus_ak));
             }
-            let Dk_c = &Dk * &self.linear_coefficients;
-            let minus_ak: DVector<ScalarType> = U * (&U_t * (&Dk_c)) - Dk_c;
-            //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
-            //let Dk_t_rw : DVector<ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
-            //let _minus_bk : DVector<ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
-            jacobian_col.copy_from(&(minus_ak));
+            Some(jacobian_matrix)
+        } else {
+            None
         }
-        Some(jacobian_matrix)
     }
 }

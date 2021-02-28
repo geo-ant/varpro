@@ -227,13 +227,7 @@ where
             // these parameters are dummies and they will be overwritten immediately
             // by the call to set_params
             model_parameters: Vec::new(),
-            current_residuals: DVector::from_element(data_length, Zero::zero()),
-            current_svd: SVD {
-                u: None,
-                v_t: None,
-                singular_values: DVector::from_element(data_length, Float::epsilon()),
-            },
-            linear_coefficients: DVector::from_element(param_count, Zero::zero()),
+            cached:None,
             weight_matrix: finalized_builder.weights,
         };
         // 3) step 3: overwrite the dummy values with the correct results for the given
@@ -374,11 +368,11 @@ mod test {
         //assert!(problem.model.as_ref().as_ptr()== model.as_ptr()); // this don't work, boss
         assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
         assert!(
-            problem.current_svd.u.is_some(),
+            problem.cached.as_ref().unwrap().current_svd.u.is_some(),
             "SVD U must have been calculated on initialization"
         );
         assert!(
-            problem.current_svd.v_t.is_some(),
+            problem.cached.as_ref().unwrap().current_svd.v_t.is_some(),
             "SVD V^T must have been calculated on initialization"
         );
 

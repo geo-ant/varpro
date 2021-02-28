@@ -18,10 +18,6 @@ where
 }
 
 impl<ScalarType> Weights<ScalarType> where ScalarType: Scalar + ComplexField {
-    /// create unit weights
-    pub fn unit() -> Self{
-        Self::default()
-    }
 
     /// create diagonal weights with the given diagonal elements of a matrix.
     /// The resulting diagonal matrix is a square matrix with the given diagonal
@@ -34,7 +30,7 @@ impl<ScalarType> Weights<ScalarType> where ScalarType: Scalar + ComplexField {
     }
 }
 
-/// Get a variant representing an unweighted problem (i.e. unit weights)
+/// Get a variant representing unit weights (i.e. unweighted problem)
 impl<ScalarType> Default for Weights<ScalarType>
 where
     ScalarType: Scalar + ComplexField,
