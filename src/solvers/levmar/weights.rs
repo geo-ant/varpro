@@ -95,3 +95,35 @@ impl<ScalarType> Mul<DVector<ScalarType>> for &Weights<ScalarType>
     }
 }
 
+#[cfg(test)]
+mod test {
+    use crate::solvers::levmar::weights::Weights;
+    use nalgebra::{DVector, DMatrix};
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn unit_weight_produce_correct_results_when_multiplied_to_matrix_or_vector() {
+        let W = Weights::default();
+        let v = DVector::from(vec!{1.,3.,3.,7.});
+        let A = DMatrix::from_element(4,4,2.0);
+
+        assert_eq!(v.clone(), &W*v);
+        assert_eq!(A.clone(), &W*A);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn diagonal_weights_produce_correct_results_when_multiplied_to_matrix_or_vector() {
+        let diagonal = DVector::from(vec!{3.,78.,6.,5.});
+        let D = DMatrix::from_diagonal(&diagonal);
+        let W = Weights::diagonal(diagonal);
+
+        let v = DVector::from(vec!{1.,3.,3.,7.});
+        let mut A = DMatrix::from_element(4,2,0.);
+        A.set_column(0,&DVector::from(vec!{32.,5.,86.,51.}));
+        A.set_column(1,&DVector::from(vec!{65.,46.,8.,85.}));
+
+        assert_eq!(&D*&v,&W*v);
+        assert_eq!(&D*&A,&W*A);
+    }
+}
