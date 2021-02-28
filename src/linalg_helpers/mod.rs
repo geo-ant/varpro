@@ -93,7 +93,6 @@ impl<ScalarType> Mul<&DVector<ScalarType>> for &DiagDMatrix<ScalarType>
             rhs.len(),
             "Matrix dimensions incorrect for diagonal matrix multiplication."
         );
-
         self.diagonal.component_mul(&rhs)
     }
 }

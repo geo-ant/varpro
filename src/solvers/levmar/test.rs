@@ -5,12 +5,12 @@ use approx::assert_relative_eq;
 use levenberg_marquardt::differentiate_numerically;
 
 // test that the jacobian of the least squares problem is correct if the parameter guesses
-// are correct. I observed that the numerical diff inside the levmar crate and my implementation
+// are correct. I observed that the numerical differentiation inside the levmar crate and my implementation
 // produce significantly different results otherwise. I don't trust the levmar implementation that much,
 // so I'll add another test based on my own numerical differentiation. But I'll keep this for a
 // sanity check
 // **ATTENTION** Also note that the numerical derivative provided by the levenberg-marquart crate
-// stalls when one of the initial guesses is 1, because it weill use a step size of one to calculate
+// stalls when one of the initial guesses is 1 or smaller, because it weill use a step size of 1 to calculate
 // the finite difference and make one of the taus zero, which means 1/tau diverges. I don't know
 // exactly why it stalls though. This seems like bad behavior.
 #[test]
@@ -56,7 +56,7 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
     ]);
 
     // generate some non-unit test weights (which have no physical meaning)
-    let weights = yvec.map(|v:f64|v.sqrt()+v.sin());
+    let weights = yvec.map(|v: f64| v.sqrt() + v.sin());
 
     let mut problem = LevMarProblemBuilder::new()
         .x(tvec)
@@ -177,14 +177,13 @@ fn residuals_are_calculated_correctly_with_weights() {
     let data_length = tvec.len();
 
     // generate some non-unit test weights (which have no physical meaning)
-    let weights = yvec.map(|v:f64|v.sqrt()+2.*v.sin());
+    let weights = yvec.map(|v: f64| v.sqrt() + 2. * v.sin());
 
     // assert that the residual is also calculated correctly for parameters which are
     // not equal to the true parameters.
     // I have calculated the ground truth using octave here, which is why it is hard coded
     let tau1 = 0.5;
     let tau2 = 6.5;
-
 
     let mut problem = LevMarProblemBuilder::new()
         .x(tvec)
@@ -205,17 +204,8 @@ fn residuals_are_calculated_correctly_with_weights() {
     // c = pinv(Phi_w)*y_w
     // residuals = y_w-Phi_w*c
     let expected_residuals = DVector::from(vec![
-        -0.307187,
-       0.493658,
-       0.286886,
-      -0.150538,
-      -0.346541,
-      -0.342850,
-      -0.235283,
-      -0.084548,
-       0.077943,
-       0.237072,
-       0.385972
+        -0.307187, 0.493658, 0.286886, -0.150538, -0.346541, -0.342850, -0.235283, -0.084548,
+        0.077943, 0.237072, 0.385972,
     ]);
     problem.set_params(&params);
     let residuals = problem

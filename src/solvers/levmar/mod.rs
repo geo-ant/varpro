@@ -118,16 +118,19 @@ where
         //todo: make this more efficient by parallelizing
 
         if let Some(CachedCalculations {
-            current_residuals : _,
+            current_residuals: _,
             current_svd,
             linear_coefficients,
         }) = self.cached.as_ref()
         {
             let mut jacobian_matrix = unsafe {
-                DMatrix::<ScalarType>::new_uninitialized(self.y_w.len(), self.model.parameter_count())
+                DMatrix::<ScalarType>::new_uninitialized(
+                    self.y_w.len(),
+                    self.model.parameter_count(),
+                )
             };
 
-            let U = current_svd.u.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
+            let U = current_svd.u.as_ref()?; // will return None if this was not calculated
             let U_t = U.transpose();
 
             //let Sigma_inverse : DMatrix<ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
@@ -140,8 +143,7 @@ where
                         .model
                         .eval_deriv(&self.x, self.model_parameters.as_slice())
                         .at(k)
-                        .expect("Error evaluating model derivatives.");
-
+                        .ok()?; // will return none if this could not be calculated
                 let Dk_c = &Dk * linear_coefficients;
                 let minus_ak: DVector<ScalarType> = U * (&U_t * (&Dk_c)) - Dk_c;
                 //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
