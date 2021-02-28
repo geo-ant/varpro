@@ -16,6 +16,14 @@ pub struct DoubleExponentialDecayFittingWithOffset
     x : DVector<f64>,
     /// the data (must have same length as x)
     y : DVector<f64>,
+    /// precached calculations for the exponential terms so that the jacobian and residuals can
+    /// share these calculations
+    /// 1) a vector of ones
+    vector_of_ones : DVector<f64>,
+    /// 2) exp(-x/tau1)
+    precalc_exp_tau1 : DVector<f64>,
+    /// 3) exp(-x/tau2)
+    precalc_exp_tau2 : DVector<f64>,
 }
 
 impl DoubleExponentialDecayFittingWithOffset {
@@ -23,11 +31,17 @@ impl DoubleExponentialDecayFittingWithOffset {
     pub fn new(initial_guesses : &[f64], x : &DVector<f64>, y:&DVector<f64>) -> Self{
         assert_eq!(initial_guesses.len(),5,"Wrong parameter count. The 5 Parameters are: tau1, tau2, c1, c2, c3");
         assert_eq!(y.len(),x.len(),"x and y must have same length");
-        Self {
-            params : DVector::from(initial_guesses.to_vec()),
+        let parameters =  DVector::from(initial_guesses.to_vec());
+        let mut problem = Self {
+            params : parameters.clone(),
             x : x.clone(),
             y : y.clone(),
-        }
+            vector_of_ones : DVector::from_element(x.len(),1.),
+            precalc_exp_tau1 : DVector::from_element(x.len(),0.), //will both be overwritten with correct vals
+            precalc_exp_tau2 : DVector::from_element(x.len(),0.), //by the following call to set params
+        };
+        problem.set_params(&parameters);
+        problem
     }
 }
 
@@ -38,6 +52,12 @@ impl LeastSquaresProblem<f64,Dynamic,Dynamic> for DoubleExponentialDecayFittingW
 
     fn set_params(&mut self, params: &DVector<f64>) {
         self.params = params.clone();
+        let tau1 = params[0];
+        let tau2 = params[1];
+
+        // and do precalculations
+        self.precalc_exp_tau1 = self.x.map(|x:f64|(-x/tau1).exp());
+        self.precalc_exp_tau2 = self.x.map(|x:f64|(-x/tau2).exp());
     }
 
     fn params(&self) -> DVector<f64> {
@@ -53,7 +73,8 @@ impl LeastSquaresProblem<f64,Dynamic,Dynamic> for DoubleExponentialDecayFittingW
         let c3 = self.params[4];
 
         // function values at the parameters
-        let f = self.x.map(|x|c1*(-x/tau1).exp()+c2*(-x/tau2).exp()+c3);
+        //let f = self.x.map(|x|c1*(-x/tau1).exp()+c2*(-x/tau2).exp()+c3);
+        let f = c1*&self.precalc_exp_tau1 +c2*&self.precalc_exp_tau2 + c3*&self.vector_of_ones;
 
         // residuals: f-y
         Some(&f- &self.y)
@@ -71,15 +92,21 @@ impl LeastSquaresProblem<f64,Dynamic,Dynamic> for DoubleExponentialDecayFittingW
         let nrows = self.x.len();
         let mut jacobian :DMatrix<f64> = unsafe {DMatrix::new_uninitialized(nrows,ncols)};
 
-        for (k, x) in self.x.iter().enumerate() {
-            jacobian.set_row(k, &RowDVector::from_iterator(5,vec!{
-                c1*x*(-x/tau1).exp()/(tau1.powi(2)), //df/dtau1
-                c2*x*(-x/tau2).exp()/(tau2.powi(2)), //df/dtau1
-                (-x/tau1).exp(),    //df/c1
-                (-x/tau2).exp(),     //df/dc2
-                    1.  //df/dc3
-            }.into_iter()));
-        }
+        // for (k, x) in self.x.iter().enumerate() {
+        //     jacobian.set_row(k, &RowDVector::from_iterator(5,vec!{
+        //         c1*x*(-x/tau1).exp()/(tau1.powi(2)), //df/dtau1
+        //         c2*x*(-x/tau2).exp()/(tau2.powi(2)), //df/dtau1
+        //         (-x/tau1).exp(),    //df/c1
+        //         (-x/tau2).exp(),     //df/dc2
+        //             1.  //df/dc3
+        //     }.into_iter()));
+        // }
+        jacobian.set_column(0,&(c1/(tau1.powi(2))*&(self.precalc_exp_tau1.component_mul(&self.x))));
+        jacobian.set_column(1,&(c2/(tau2.powi(2))*&(self.precalc_exp_tau2.component_mul(&self.x))));
+        jacobian.set_column(2,&self.precalc_exp_tau1);
+        jacobian.set_column(3,&self.precalc_exp_tau2);
+        jacobian.set_column(4,&self.vector_of_ones);
+
         Some(jacobian)
     }
 }
