@@ -6,6 +6,7 @@ use nalgebra::{ComplexField, DVector, Scalar, SVD};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
 use std::ops::Mul;
+use crate::solvers::levmar::weights::Weights;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, Snafu, PartialEq)]
@@ -74,7 +75,7 @@ where
     /// if no weights are given, the problem is unweighted, i.e. the same as if
     /// all weights were 1.
     /// Must have the same length as x and y.
-    weights: Option<DiagDMatrix<ScalarType>>,
+    weights: Weights<ScalarType>,
 }
 
 /// Same as `Self::new()`.
@@ -93,7 +94,7 @@ where
     ScalarType: Scalar + ComplexField + Zero,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
-    /// Create a new builder with empty fields
+    /// Create a new builder with empty fields and unit weights
     pub fn new() -> Self {
         Self {
             x: None,
@@ -101,7 +102,7 @@ where
             separable_model: None,
             parameter_initial_guess: None,
             epsilon: None,
-            weights: None,
+            weights: Weights::default(),
         }
     }
 
@@ -160,6 +161,18 @@ where
         }
     }
 
+    /// **Optional** Add diagonal weights to the problem (meaning data points are statistically
+    /// independent). If this is not given, the problem is unweighted, i.e. each data point has
+    /// unit weight.
+    pub fn weights<VectorType>(self, weights : VectorType) -> Self
+    where DVector<ScalarType>: From<VectorType> {
+        Self {
+            weights: Weights::diagonal(weights),
+            ..self
+        }
+    }
+
+
     /// build the least squares problem from the builder.
     /// # Prerequisites
     /// * All mandatory parameters have been set (see individual builder methods for details)
@@ -192,7 +205,7 @@ where
     model: &'a SeparableModel<ScalarType>,
     parameter_initial_guess: Vec<ScalarType>,
     epsilon: ScalarType::RealField,
-    weights: Option<DiagDMatrix<ScalarType>>,
+    weights: Weights<ScalarType>,
 }
 
 /// helper to create a [LevMarProblem] from a finalized builder. This initializes all fields
@@ -210,11 +223,8 @@ where
         let data_length = finalized_builder.y.len();
 
         // 1) create weighted data
-        let y_w = finalized_builder
-            .weights
-            .as_ref()
-            .map(|W| W * &finalized_builder.y)
-            .unwrap_or(finalized_builder.y);
+        let y_w = &finalized_builder
+            .weights * finalized_builder.y;
 
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
@@ -228,7 +238,7 @@ where
             // by the call to set_params
             model_parameters: Vec::new(),
             cached:None,
-            weight_matrix: finalized_builder.weights,
+            weights: finalized_builder.weights,
         };
         // 3) step 3: overwrite the dummy values with the correct results for the given
         // parameters, such that the problem is in a valid state
@@ -269,11 +279,7 @@ where
                         model_count: model.parameter_count(),
                         provided_count: parameter_initial_guess.len(),
                     })
-                } else if weights
-                    .as_ref()
-                    .map(|w| w.size() != y.len())
-                    .unwrap_or(false)
-                {
+                } else if !weights.is_size_correct_for_data_length(y.len()) {
                     //check that weights have correct length if they were given
                     Err(LevMarBuilderError::InvalidLengthOfWeights)
                 } else {
@@ -319,6 +325,7 @@ mod test {
     use crate::solvers::levmar::LevMarProblemBuilder;
     use crate::test_helpers::get_double_exponential_model_with_constant_offset;
     use nalgebra::DVector;
+    use crate::solvers::levmar::weights::Weights;
 
     #[test]
     fn new_builder_starts_with_empty_fields() {
@@ -336,7 +343,7 @@ mod test {
         assert!(model.is_none());
         assert!(parameter_initial_guess.is_none());
         assert!(epsilon.is_none());
-        assert!(weights.is_none());
+        assert_eq!(weights, Weights::Unit);
     }
 
     #[test]

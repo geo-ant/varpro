@@ -7,7 +7,7 @@ use std::ops::Mul;
 /// matrix for the weights. Can easily be extended in the future, because this structure
 /// offers an interface for matrix-matrix multiplication and matrix-vector multiplication
 #[derive(Debug, Clone, PartialEq)]
-enum Weights<ScalarType>
+pub enum Weights<ScalarType>
 where
     ScalarType: Scalar + ComplexField,
 {
@@ -27,6 +27,18 @@ impl<ScalarType> Weights<ScalarType> where ScalarType: Scalar + ComplexField {
     pub fn diagonal<VectorType>(diagonal: VectorType) -> Self
     where DVector<ScalarType> : From<VectorType> {
         Self::from(DiagDMatrix::from(diagonal))
+    }
+
+    /// check that the weights are appropriately sized for the given data vector, so that
+    /// they can be applied without panic. For unit weights this is always true, but for diagonal
+    /// weights it is not.
+    /// # Arguments
+    /// * `data_len`: the number of elements in the data vector
+    pub fn is_size_correct_for_data_length(&self, data_len : usize ) -> bool {
+        match self {
+            Weights::Unit => {true}
+            Weights::Diagonal(diag) => {diag.size()==data_len}
+        }
     }
 }
 

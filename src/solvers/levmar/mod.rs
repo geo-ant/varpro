@@ -13,6 +13,7 @@ pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use num_traits::Float;
 use std::ops::Mul;
 use crate::linalg_helpers::DiagDMatrix;
+use crate::solvers::levmar::weights::Weights;
 
 /// helper structure that stores the cached calculations,
 /// which are carried out by the LevMarProblem on setting the parameters
@@ -36,9 +37,9 @@ where
 {
     /// the independent variable `\vec{x}` (location parameter)
     x: DVector<ScalarType>,
-    /// the weighted data vector to which to fit the model `$\vec{y}$`
+    /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
-    /// where provided
+    /// where provided (otherwise it is unweighted)
     y_w: DVector<ScalarType>,
     /// current parameters that the optimizer is operating on
     model_parameters: Vec<ScalarType>,
@@ -49,7 +50,7 @@ where
     /// the weights of the data. If none are given, the data is not weighted
     /// If weights were provided, the builder has checked that the weights have the
     /// correct dimension for the data
-    weight_matrix : Option<DiagDMatrix<ScalarType>>,
+    weights: Weights<ScalarType>,
     /// the currently cached calculations belonging to the currently set model parameters
     /// those are updated on set_params. If this is None, then it indicates some error that
     /// is propagated on to the levenberg-marquardt crate by also returning None results
@@ -72,13 +73,11 @@ where
     fn set_params(&mut self, params: &Vector<ScalarType, Dynamic, Self::ParameterStorage>) {
         self.model_parameters = params.iter().cloned().collect();
         // matrix of weighted model function values
-        let mut Phi_W = self
+        let mut Phi_W = &self.weights * self
             .model
             .eval(&self.x, self.model_parameters.as_slice())
             .expect("Error evaluating function value matrix");
-        if let Some(W) = self.weight_matrix.as_ref() {
-            Phi_W = W*&Phi_W;
-        }
+
         let current_svd = Phi_W.clone().svd(true, true);
         let linear_coefficients = current_svd
             .solve(&self.y_w, self.svd_epsilon)
@@ -115,15 +114,13 @@ where
             //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
             for (k, mut jacobian_col) in jacobian_matrix.column_iter_mut().enumerate() {
-                let mut Dk = self
+                // weighted derivative matrix
+                let mut Dk = &self.weights * self
                     .model
                     .eval_deriv(&self.x, self.model_parameters.as_slice())
                     .at(k)
                     .expect("Error evaluating model derivatives.");
-                // apply the weights
-                if let Some(W) = self.weight_matrix.as_ref() {
-                    Dk = W * &Dk;
-                }
+
                 let Dk_c = &Dk * linear_coefficients;
                 let minus_ak: DVector<ScalarType> = U * (&U_t * (&Dk_c)) - Dk_c;
                 //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
