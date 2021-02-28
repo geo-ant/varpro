@@ -385,11 +385,11 @@ mod test {
         let W = DMatrix::from_diagonal(&weights);
 
         let problem = builder
-            .epsilon(-1.0) // check that negative values are converted to absolutes
+            .epsilon(-1.337) // check that negative values are converted to absolutes
             .weights(weights.clone())
             .build()
             .expect("Valid builder should not fail");
-        assert_eq!(problem.svd_epsilon, 1.0);
+        assert_eq!(problem.svd_epsilon, 1.337);
         assert_eq!(problem.y_w,&W*&y,"Data must be correctly weighted with weights");
         if let Weights::Diagonal(diag) = problem.weights {
             assert_eq!(diag,DiagDMatrix::from(weights),"Diagonal weight matrix must be correctly passed on");

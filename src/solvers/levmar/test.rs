@@ -46,7 +46,7 @@ fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unw
 // I am using the formula for the partial derivatives of the residual sum of squares from
 // [my post](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) on varpro
 // (found between numbered formulas 8 and 9).
-fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squares_unweighted() {
+fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squares_weighted() {
     let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
@@ -55,11 +55,15 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
 
+    // generate some non-unit test weights (which have no physical meaning)
+    let weights = yvec.map(|v:f64|v.sqrt()+v.sin());
+
     let mut problem = LevMarProblemBuilder::new()
         .x(tvec)
         .y(yvec)
         .model(&model)
         .initial_guess(&[1., 2.]) // these initial params don't for this test
+        .weights(weights)
         .build()
         .expect("Building a valid solver must not return an error.");
 
@@ -120,7 +124,7 @@ fn residuals_are_calculated_correctly_unweighted() {
         .x(tvec)
         .y(yvec)
         .model(&model)
-        .initial_guess(&[2., 4.]) // these initial params don't for this test
+        .initial_guess(&[2., 4.])
         .build()
         .expect("Building a valid solver must not return an error.");
 
@@ -158,4 +162,64 @@ fn residuals_are_calculated_correctly_unweighted() {
         .residuals()
         .expect("Calculating residuals must not fail");
     assert_relative_eq!(residuals, expected_residuals, epsilon = 1e-4);
+}
+
+#[test]
+fn residuals_are_calculated_correctly_with_weights() {
+    let model = get_double_exponential_model_with_constant_offset();
+    //octave: t = linspace(0,10,11);
+    let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
+    //octave y = 2*exp(-t/2)+exp(-t/4)+1
+    let yvec = DVector::from(vec![
+        4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
+    ]);
+
+    let data_length = tvec.len();
+
+    // generate some non-unit test weights (which have no physical meaning)
+    let weights = yvec.map(|v:f64|v.sqrt()+2.*v.sin());
+
+    // assert that the residual is also calculated correctly for parameters which are
+    // not equal to the true parameters.
+    // I have calculated the ground truth using octave here, which is why it is hard coded
+    let tau1 = 0.5;
+    let tau2 = 6.5;
+
+
+    let mut problem = LevMarProblemBuilder::new()
+        .x(tvec)
+        .y(yvec)
+        .model(&model)
+        .weights(weights)
+        .initial_guess(&[tau1, tau2])
+        .build()
+        .expect("Building a valid solver must not return an error.");
+
+    let params = DVector::from(vec![tau1, tau2]);
+
+    //calculated with octave
+    // Phi = [exp(-t/0.5)',exp(-t/6.5)',ones(11,1)]
+    // W = W=diag(sqrt(y)+2*sin(y))
+    // y_w = W*y';
+    // Phi_w = W*Phi;
+    // c = pinv(Phi_w)*y_w
+    // residuals = y_w-Phi_w*c
+    let expected_residuals = DVector::from(vec![
+        -0.307187,
+       0.493658,
+       0.286886,
+      -0.150538,
+      -0.346541,
+      -0.342850,
+      -0.235283,
+      -0.084548,
+       0.077943,
+       0.237072,
+       0.385972
+    ]);
+    problem.set_params(&params);
+    let residuals = problem
+        .residuals()
+        .expect("Calculating residuals must not fail");
+    assert_relative_eq!(residuals, expected_residuals, epsilon = 1e-3);
 }
