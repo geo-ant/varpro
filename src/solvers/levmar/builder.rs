@@ -324,8 +324,9 @@ mod test {
     use crate::solvers::levmar::builder::LevMarBuilderError;
     use crate::solvers::levmar::LevMarProblemBuilder;
     use crate::test_helpers::get_double_exponential_model_with_constant_offset;
-    use nalgebra::DVector;
+    use nalgebra::{DVector, DMatrix};
     use crate::solvers::levmar::weights::Weights;
+    use crate::linalg_helpers::DiagDMatrix;
 
     #[test]
     fn new_builder_starts_with_empty_fields() {
@@ -383,12 +384,23 @@ mod test {
             "SVD V^T must have been calculated on initialization"
         );
 
-        // now check that a given epsilon is also passed through to the model
+        // now check that the given epsilon is also passed correctly to the model
+        // and also that the weights are correctly passed and used to weigh the original data
+        let weights = 2.*&y.clone();
+        let W = DMatrix::from_diagonal(&weights);
+
         let problem = builder
             .epsilon(-1.0) // check that negative values are converted to absolutes
+            .weights(weights.clone())
             .build()
             .expect("Valid builder should not fail");
         assert_eq!(problem.svd_epsilon, 1.0);
+        assert_eq!(problem.y_w,&W*&y,"Data must be correctly weighted with weights");
+        if let Weights::Diagonal(diag) = problem.weights {
+            assert_eq!(diag,DiagDMatrix::from(weights),"Diagonal weight matrix must be correctly passed on");
+        } else {
+            panic!("Simple weights call must produce diagonal weight matrix!");
+        }
     }
 
     #[test]
@@ -456,7 +468,7 @@ mod test {
         assert!(
             matches!(
                 LevMarProblemBuilder::new()
-                    .x(x)
+                    .x(x.clone())
                     .y(y.clone())
                     .initial_guess(&[1.])
                     .model(&model)
@@ -470,8 +482,8 @@ mod test {
             matches!(
                 LevMarProblemBuilder::new()
                     .x(DVector::from(vec! {1.,2.,3.}))
-                    .y(y)
-                    .initial_guess(&[1.])
+                    .y(y.clone())
+                    .initial_guess(&[1.,2.])
                     .model(&model)
                     .build(),
                 Err(LevMarBuilderError::InvalidLengthOfData { .. })
@@ -484,12 +496,27 @@ mod test {
                 LevMarProblemBuilder::new()
                     .x(DVector::from(Vec::<f64>::new()))
                     .y(DVector::from(Vec::<f64>::new()))
-                    .initial_guess(&[1.])
+                    .initial_guess(&[1.,2.])
                     .model(&model)
                     .build(),
                 Err(LevMarBuilderError::ZeroLengthVector)
             ),
-            "invalid parameter count must produce correct error"
+            "zero parameter count must produce correct error"
         );
+
+        assert!(
+            matches!(
+                LevMarProblemBuilder::new()
+                    .x(x)
+                    .y(y)
+                    .initial_guess(&[1.,2.])
+                    .model(&model)
+                    .weights(vec!{1.,2.,3.})
+                    .build(),
+                Err(LevMarBuilderError::InvalidLengthOfWeights { .. })
+            ),
+            "invalid length of weights"
+        );
+
     }
 }

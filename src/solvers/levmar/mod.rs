@@ -129,7 +129,6 @@ where
             };
 
             let U = current_svd.u.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
-            // U transposed
             let U_t = U.transpose();
 
             //let Sigma_inverse : DMatrix<ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
