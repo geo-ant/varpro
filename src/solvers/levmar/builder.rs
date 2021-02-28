@@ -1,11 +1,11 @@
 use crate::model::SeparableModel;
+use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, DVector, Scalar};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
 use std::ops::Mul;
-use crate::solvers::levmar::weights::Weights;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, Snafu, PartialEq)]
@@ -163,14 +163,15 @@ where
     /// **Optional** Add diagonal weights to the problem (meaning data points are statistically
     /// independent). If this is not given, the problem is unweighted, i.e. each data point has
     /// unit weight.
-    pub fn weights<VectorType>(self, weights : VectorType) -> Self
-    where DVector<ScalarType>: From<VectorType> {
+    pub fn weights<VectorType>(self, weights: VectorType) -> Self
+    where
+        DVector<ScalarType>: From<VectorType>,
+    {
         Self {
             weights: Weights::diagonal(weights),
             ..self
         }
     }
-
 
     /// build the least squares problem from the builder.
     /// # Prerequisites
@@ -215,10 +216,8 @@ where
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
 {
     fn from(finalized_builder: FinalizedBuilder<'a, ScalarType>) -> Self {
-
         // 1) create weighted data
-        let y_w = &finalized_builder
-            .weights * finalized_builder.y;
+        let y_w = &finalized_builder.weights * finalized_builder.y;
 
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
@@ -231,7 +230,7 @@ where
             // these parameters are dummies and they will be overwritten immediately
             // by the call to set_params
             model_parameters: Vec::new(),
-            cached:None,
+            cached: None,
             weights: finalized_builder.weights,
         };
         // 3) step 3: overwrite the dummy values with the correct results for the given
@@ -315,12 +314,12 @@ where
 #[cfg(test)]
 mod test {
 
+    use crate::linalg_helpers::DiagDMatrix;
     use crate::solvers::levmar::builder::LevMarBuilderError;
+    use crate::solvers::levmar::weights::Weights;
     use crate::solvers::levmar::LevMarProblemBuilder;
     use crate::test_helpers::get_double_exponential_model_with_constant_offset;
-    use nalgebra::{DVector, DMatrix};
-    use crate::solvers::levmar::weights::Weights;
-    use crate::linalg_helpers::DiagDMatrix;
+    use nalgebra::{DMatrix, DVector};
 
     #[test]
     fn new_builder_starts_with_empty_fields() {
@@ -381,7 +380,7 @@ mod test {
 
         // now check that the given epsilon is also passed correctly to the model
         // and also that the weights are correctly passed and used to weigh the original data
-        let weights = 2.*&y;
+        let weights = 2. * &y;
         let W = DMatrix::from_diagonal(&weights);
 
         let problem = builder
@@ -390,9 +389,17 @@ mod test {
             .build()
             .expect("Valid builder should not fail");
         assert_eq!(problem.svd_epsilon, 1.337);
-        assert_eq!(problem.y_w,&W*&y,"Data must be correctly weighted with weights");
+        assert_eq!(
+            problem.y_w,
+            &W * &y,
+            "Data must be correctly weighted with weights"
+        );
         if let Weights::Diagonal(diag) = problem.weights {
-            assert_eq!(diag,DiagDMatrix::from(weights),"Diagonal weight matrix must be correctly passed on");
+            assert_eq!(
+                diag,
+                DiagDMatrix::from(weights),
+                "Diagonal weight matrix must be correctly passed on"
+            );
         } else {
             panic!("Simple weights call must produce diagonal weight matrix!");
         }
@@ -478,7 +485,7 @@ mod test {
                 LevMarProblemBuilder::new()
                     .x(DVector::from(vec! {1.,2.,3.}))
                     .y(y.clone())
-                    .initial_guess(&[1.,2.])
+                    .initial_guess(&[1., 2.])
                     .model(&model)
                     .build(),
                 Err(LevMarBuilderError::InvalidLengthOfData { .. })
@@ -491,7 +498,7 @@ mod test {
                 LevMarProblemBuilder::new()
                     .x(DVector::from(Vec::<f64>::new()))
                     .y(DVector::from(Vec::<f64>::new()))
-                    .initial_guess(&[1.,2.])
+                    .initial_guess(&[1., 2.])
                     .model(&model)
                     .build(),
                 Err(LevMarBuilderError::ZeroLengthVector)
@@ -504,14 +511,13 @@ mod test {
                 LevMarProblemBuilder::new()
                     .x(x)
                     .y(y)
-                    .initial_guess(&[1.,2.])
+                    .initial_guess(&[1., 2.])
                     .model(&model)
-                    .weights(vec!{1.,2.,3.})
+                    .weights(vec! {1.,2.,3.})
                     .build(),
                 Err(LevMarBuilderError::InvalidLengthOfWeights { .. })
             ),
             "invalid length of weights"
         );
-
     }
 }

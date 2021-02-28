@@ -1,14 +1,14 @@
 #[cfg(test)]
 mod test;
 
-use nalgebra::{DMatrix, DVector, Scalar, ClosedMul, ComplexField};
-use std::ops::{Mul};
+use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Scalar};
+use std::ops::Mul;
 
 /// A square diagonal matrix with dynamic dimension. Off-diagonal entries are assumed zero.
 /// This internally stores only the diagonal elements
 /// # Types
 /// ScalarType: the numeric type of the matrix
-#[derive(Debug,Clone,PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DiagDMatrix<ScalarType>
 where
     ScalarType: Scalar + ComplexField,
@@ -36,16 +36,18 @@ impl<ScalarType: Scalar + ComplexField> DiagDMatrix<ScalarType> {
 
     /// Generate a square matrix containing the entries of the vector which
     /// contains only real field values of this (potentially) complex type
-    pub fn from_real_field(diagonal : &DVector<ScalarType::RealField>) -> Self {
+    pub fn from_real_field(diagonal: &DVector<ScalarType::RealField>) -> Self {
         Self::from(diagonal.map(ScalarType::from_real))
     }
 }
 /// Generate a square diagonal matrix from the given diagonal vector.
-impl<ScalarType: Scalar+ComplexField, VectorType> From<VectorType> for DiagDMatrix<ScalarType>
-where DVector<ScalarType> : From<VectorType> {
+impl<ScalarType: Scalar + ComplexField, VectorType> From<VectorType> for DiagDMatrix<ScalarType>
+where
+    DVector<ScalarType>: From<VectorType>,
+{
     fn from(diagonal: VectorType) -> Self {
         Self {
-            diagonal : DVector::from(diagonal)
+            diagonal: DVector::from(diagonal),
         }
     }
 }
@@ -82,8 +84,8 @@ where
 /// # Panics
 /// operation panics if the matrix and vector dimensions are incorrect for a product
 impl<ScalarType> Mul<&DVector<ScalarType>> for &DiagDMatrix<ScalarType>
-    where
-        ScalarType: ClosedMul + Scalar + ComplexField,
+where
+    ScalarType: ClosedMul + Scalar + ComplexField,
 {
     type Output = DVector<ScalarType>;
 

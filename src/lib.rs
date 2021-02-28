@@ -13,7 +13,6 @@ pub mod model;
 pub mod prelude;
 pub mod solvers;
 
-
 /// private module that contains helper functionality for linear algebra that is not yet
 /// implemented in the nalgebra crate
 mod linalg_helpers;
