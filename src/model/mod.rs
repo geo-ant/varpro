@@ -84,7 +84,7 @@ where
 
 impl<ScalarType> SeparableModel<ScalarType>
 where
-    ScalarType: Scalar ,
+    ScalarType: Scalar,
 {
     /// # Arguments
     /// * `location`: the value of the independent location parameter `$\vec{x}$`

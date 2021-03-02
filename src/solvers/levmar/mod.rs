@@ -64,7 +64,9 @@ impl<'a, ScalarType: Scalar + ComplexField> LevMarProblem<'a, ScalarType> {
     /// encountered an error. After the solver finished, this is the least squares best estimate
     /// for the linear coefficients of the base functions.
     pub fn linear_coefficients(&self) -> Option<DVector<ScalarType>> {
-        self.cached.as_ref().map(|cache|cache.linear_coefficients.clone())
+        self.cached
+            .as_ref()
+            .map(|cache| cache.linear_coefficients.clone())
     }
 }
 
