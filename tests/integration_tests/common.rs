@@ -1,7 +1,6 @@
 use num_traits::Float;
 use nalgebra::{DVector, Scalar, ComplexField};
 use varpro::model::SeparableModel;
-use std::ops::Mul;
 use varpro::model::builder::SeparableModelBuilder;
 
 /// create holding `count` the elements from range [first,last] with linear spacing. (equivalent to matlabs linspace)

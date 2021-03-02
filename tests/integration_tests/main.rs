@@ -25,27 +25,37 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let c3 = 1.; //<- coefficient of constant offset
     // generate some data without noise
     let y = evaluate_complete_model(&model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
+    let tau1_guess = 2.;
+    let tau2_guess = 6.5;
 
-    let lmp = levmar::DoubleExponentialDecayFittingWithOffset::new(&[1.1*tau1,1.2*tau2,0.5*c1,0.75*c2,1.75*c3], &x, &y);
+    println!("True params (tau1, tau2) = ({}, {})", tau1,tau2);
+    println!("True params (c1, c2, c3) = ({}, {}, {})", c1,c2,c3);
 
+
+    // for solving the fitting problem using only the levenberg_marquardt crate                  the crate cannot deal with this:     &[tau1_guess,tau2_guess,c1,c2,c3]
+    // we have to make the initial guesses closer to the true values for the Levenberg Marquart Algo
+    let levenberg_marquart_problem = levmar::DoubleExponentialDecayFittingWithOffset::new(&[0.75*tau1,1.25*tau2,c1,c2,c3], &x, &y);
+
+    let tic = Instant::now();
     let problem = LevMarProblemBuilder::new()
         .model(&model)
         .x(x)
         .y(y)
-        .initial_guess(&[2., 6.5])
+        .initial_guess(&[tau1_guess, tau2_guess])
         .build()
         .expect("Building valid problem should not panic");
 
-    let tic = Instant::now();
     let (problem, report) = LevMarSolver::new().minimize(problem);
     let toc = Instant::now();
     println!("varpro: elapsed time for double exponential fit = {} µs = {} ms", (toc-tic).as_micros(),(toc-tic).as_millis());
 
     let tic = Instant::now();
-    let (lmp, rep) = LevMarSolver::new().minimize(lmp);
+    let (levenberg_marquardt_solution, rep) = LevMarSolver::new().minimize(levenberg_marquart_problem);
     let toc = Instant::now();
     println!("levenberg_marquardt: elapsed time for double exponential fit = {} µs = {} ms", (toc-tic).as_micros(),(toc-tic).as_millis());
-    println!("leveberg_marquardt: params = {:?}", lmp.params());
+    println!("levenberg_marquardt: (tau1, tau2) = ({}, {})", levenberg_marquardt_solution.params()[0],levenberg_marquardt_solution.params()[1]);
+    println!("levenberg_marquardt: (c1, c2, c3) = ({}, {}, {})", levenberg_marquardt_solution.params()[2],levenberg_marquardt_solution.params()[3],levenberg_marquardt_solution.params()[4]);
+
 
     assert!(report.termination.was_successful(), "Termination must be successful");
     // extract the calculated paramters, because tau1 and tau2 might switch places here
