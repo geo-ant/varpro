@@ -84,7 +84,7 @@ where
 
 impl<ScalarType> SeparableModel<ScalarType>
 where
-    ScalarType: Scalar + Zero,
+    ScalarType: Scalar,
 {
     /// # Arguments
     /// * `location`: the value of the independent location parameter `$\vec{x}$`
@@ -176,7 +176,6 @@ where
     /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
     /// * the given parameter index is out of bounds
     /// * the given parameter name is not a parameter of the model.
-
     pub fn eval_deriv<'a, 'b, 'c, 'd>(
         &'a self,
         location: &'b DVector<ScalarType>,

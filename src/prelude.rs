@@ -1,2 +1,3 @@
-// pub use crate::model::builder::GeneralModelBuilder;
-// pub use crate::model::builder::DerivativeModelBuilder;
+pub use crate::basis_function::BasisFunction;
+pub use crate::model::builder::SeparableModelBuilder;
+pub use levenberg_marquardt::LeastSquaresProblem;

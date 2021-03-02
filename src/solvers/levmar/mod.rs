@@ -56,6 +56,20 @@ where
     cached: Option<CachedCalculations<ScalarType>>,
 }
 
+impl<'a, ScalarType: Scalar + ComplexField> LevMarProblem<'a, ScalarType> {
+    /// Get the linear coefficients for the current problem. After a successful pass of the solver,
+    /// this contains a value with the best fitting linear coefficients
+    /// # Returns
+    /// Either the current best estimate coefficients or None, if none were calculated or the solver
+    /// encountered an error. After the solver finished, this is the least squares best estimate
+    /// for the linear coefficients of the base functions.
+    pub fn linear_coefficients(&self) -> Option<DVector<ScalarType>> {
+        self.cached
+            .as_ref()
+            .map(|cache| cache.linear_coefficients.clone())
+    }
+}
+
 /// TODO document and document panics!
 impl<'a, ScalarType> LevenbergMarquardtLeastSquaresProblem<ScalarType, Dynamic, Dynamic>
     for LevMarProblem<'a, ScalarType>
@@ -68,6 +82,7 @@ where
     type ParameterStorage = Owned<ScalarType, Dynamic>;
 
     #[allow(non_snake_case)]
+    //todo document
     fn set_params(&mut self, params: &Vector<ScalarType, Dynamic, Self::ParameterStorage>) {
         self.model_parameters = params.iter().cloned().collect();
         // matrix of weighted model function values
@@ -103,10 +118,12 @@ where
         }
     }
 
+    // todo document
     fn params(&self) -> Vector<ScalarType, Dynamic, Self::ParameterStorage> {
         DVector::from(self.model_parameters.clone())
     }
 
+    // todo document
     fn residuals(&self) -> Option<Vector<ScalarType, Dynamic, Self::ResidualStorage>> {
         self.cached
             .as_ref()
@@ -114,6 +131,7 @@ where
     }
 
     #[allow(non_snake_case)]
+    // todo document
     fn jacobian(&self) -> Option<Matrix<ScalarType, Dynamic, Dynamic, Self::JacobianStorage>> {
         //todo: make this more efficient by parallelizing
 

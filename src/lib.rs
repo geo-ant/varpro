@@ -18,4 +18,4 @@ pub mod solvers;
 mod linalg_helpers;
 
 #[cfg(test)]
-mod test_helpers;
+pub mod test_helpers;
