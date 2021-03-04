@@ -16,11 +16,11 @@ where
     ScalarType: Scalar,
     Func: Fn(&DVector<ScalarType>, ScalarType) -> DVector<ScalarType>,
 {
-    fn eval(&self, location: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType> {
+    fn eval(&self, x: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType> {
         if params.len() != Self::ARGUMENT_COUNT {
             panic!("Basisfunction expected {} arguments but the provided parameter slice has {} elements.",Self::ARGUMENT_COUNT,params.len());
         }
-        (&self)(location, params[0].clone())
+        (&self)(x, params[0].clone())
     }
 
     const ARGUMENT_COUNT: usize = 1;
@@ -35,7 +35,8 @@ where
 // i.e. these example expressions evaluate to true:
 // count_args(1,2,3)==count_args(1,2,3,) == 3usize, as well as
 // count_args(a,b)==count_args(a,b,)==2usize
-//TODO: see also daniel keep post (see above): recursion is not the most efficient way to implement this!
+//TODO: maybe see also daniel keep post (see above): recursion is not the most efficient way to implement this!
+// however, the alternative solutions can't be used in constant expressions, iirc.
 macro_rules! count_args {
     () => {0usize};
     ($_head:tt, $($tail:tt),*) => {1usize + count_args!($($tail,)*)}; //these overloads are there to allow with and w/o trailing comma syntax
@@ -111,4 +112,4 @@ basefunction_impl_helper!(
     (8, T),
     (9, T)
 ); //10 parameter arguments
-   //todo: if more are implemented, add tests as well
+   //if more are implemented, add tests as well

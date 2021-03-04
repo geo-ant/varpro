@@ -35,7 +35,6 @@ mod test;
 /// ### Base Functions
 /// TODO FURTHER: can depend on subset, must have derivatives, should be nonlinear and should be
 /// linearly independent
-/// TODO FURTHER
 ///
 ///
 /// A separable nonlinear model is the linear combination of a set of nonlinear basefunctions.

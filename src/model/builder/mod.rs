@@ -15,6 +15,15 @@ mod test;
 pub mod error;
 
 ///! This is a builder for a [SeparableModel].
+/// TODO DOCUMENT
+///     //todo document
+//     //     //BIG TODO: document that the argument list of the partial derivative must be the same
+//     //     //as the argument list of the parent function. This is a limitation of the way I pass functions
+//     //     //because I assume the same argument list. But it actually makes sense because paramters would
+//     //     //only vanish in the derivatives when the are linear, which I do not want to encourage anyways
+//     //     //TODO ALSO: document that partial derivative must take the arguments in the same order as
+//     //     //the base function for which they are the derivative
+#[must_use="The builder should be transformed into a model using the build() method"]
 pub struct SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
@@ -49,7 +58,11 @@ impl<ScalarType> SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
-    //todo document
+    /// Create a new builder for a model that depends on this list of paramters
+    /// The model parameters indices correspond to the order of appearance in here.
+    /// Model parameter indices start at 0.
+    /// # Arguments
+    /// * `parameter_names` A collection containing all the nonlinear model parameters
     pub fn new<StrCollection>(parameter_names: StrCollection) -> Self
     where
         StrCollection: IntoIterator,
@@ -73,7 +86,12 @@ where
         }
     }
 
-    //todo document
+    /// Add a function `$\vec{f}(\vec{x})$` to the model. In the `varpro` library this is called
+    /// an *invariant* function because the model function is independent of the model parameters
+    /// # Usage
+    /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// struct documentation.
+
     pub fn invariant_function<F>(mut self, function: F) -> Self
     where
         F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
@@ -86,7 +104,11 @@ where
         self
     }
 
-    //todo document
+    /// Add a function `$\vec{f}(\vec{x},\alpha_1,...,\alpha_n)$` to the model that depends on the
+    /// location parameter `\vec{x}` and nonlinear model parameters.
+    /// # Usage
+    /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// struct documentation.
     pub fn function<F, StrCollection, ArgList>(
         self,
         function_params: StrCollection,
@@ -164,6 +186,14 @@ where
     }
 }
 
+/// This is just a proxy that does need to be used directly. For constructing a model from
+/// a builder see the documentation for [SeparableModelBuilder](self::SeparableModelBuilder).
+/// **Sidenote** This structure will hopefully be made more elegant using some metaprogramming techniques
+/// in the future. Right now this exists to make sure that partial derivatives cannot accidentally
+/// be added to invariant functions. The compiler simply will forbid it. In future the library aims
+/// to make more such checks at compile time and reduce the need for runtime errors caused by invalid model
+/// construction.
+#[must_use="This is meant as a transient expression proxy. Use build() to build a model."]
 pub struct SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
@@ -186,7 +216,12 @@ impl<ScalarType> SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
 {
-    //todo document
+    /// Construct an instance. This is invoked when adding a function that depends on model
+    /// parameters to the [SeparableModelBuilder](self::SeparableModelBuilder)
+    /// # Arguments
+    /// * `model_result`: the current model or an error
+    /// * `function_parameters`: the given list of nonlinear function parameters
+    /// * `function`: the function
     fn new<F, StrCollection, ArgList>(
         model_result: Result<SeparableModel<ScalarType>, ModelBuildError>,
         function_parameters: StrCollection,
@@ -217,13 +252,10 @@ where
         }
     }
 
-    //todo document
-    //BIG TODO: document that the argument list of the partial derivative must be the same
-    //as the argument list of the parent function. This is a limitation of the way I pass functions
-    //because I assume the same argument list. But it actually makes sense because paramters would
-    //only vanish in the derivatives when the are linear, which I do not want to encourage anyways
-    //TODO ALSO: document that partial derivative must take the arguments in the same order as
-    //the base function for which they are the derivative
+    /// Add a partial derivative to a function. This function is documented as part of the
+    /// [SeparableModelBuilder](self::SeparableModelBuilder) documentation.
+    /// *Info*: the reason it appears in this proxy only is to make sure that partial derivatives
+    /// can only be added to functions that depend on model parameters.
     pub fn partial_deriv<StrType: AsRef<str>, F, ArgList>(
         self,
         parameter: StrType,
@@ -243,10 +275,8 @@ where
         }
     }
 
-    // since this proxy variant was started by adding a function to the [SeparableModelBuilder]
-    // we know here that we must first finalize the function in the builder, add it to the model
-    // (if the model is ok) and then add the invariant function that is pushed here. We add the
-    // invariant function by bassing the model to a
+    /// Add a function `\vec{f}(\vec{x})` that does not depend on the model parameters. This is documented
+    /// as part of the [SeparableModelBuilder](self::SeparableModelBuilder) documentation.
     pub fn invariant_function<F>(self, function: F) -> SeparableModelBuilder<ScalarType>
     where
         F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
@@ -263,7 +293,9 @@ where
         }
     }
 
-    //todo document
+    /// Add a function `\vec{f}(\vec{x},\alpha_j,...,\alpha_k)` that depends on a subset of the
+    /// model parameters. This functionality is documented as part of the [SeparableModelBuilder](self::SeparableModelBuilder)
+    /// documentation.
     pub fn function<F, StrCollection, ArgList>(
         self,
         function_params: StrCollection,
@@ -291,7 +323,9 @@ where
         }
     }
 
-    //todo document
+    /// Finalized the building process and build a separable model.
+    /// This functionality is documented as part of the [SeparableModelBuilder](self::SeparableModelBuilder)
+    /// documentation.
     pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
         // this method converts the internal results into a separable model and uses its
         // facilities to check for completion and the like
