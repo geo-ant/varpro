@@ -157,7 +157,7 @@ where
     /// For more info on how the Jacobian is calculated in the VarPro algorithm, see
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<ScalarType, Dynamic, Dynamic, Self::JacobianStorage>> {
-        //todo: make this more efficient by parallelizing
+        // TODO (Performance): make this more efficient by parallelizing
 
         if let Some(CachedCalculations {
             current_residuals: _,

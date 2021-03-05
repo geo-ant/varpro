@@ -33,7 +33,7 @@ mod test;
 /// We refer to functions `$f_j(\vec{x})$` that depend on none of the model parameters as *invariant
 /// functions*. We offer special methods to add invariant functions during the model building process.
 /// ### Base Functions
-/// TODO FURTHER: can depend on subset, must have derivatives, should be nonlinear and should be
+/// TODO DOCUMENT: can depend on subset, must have derivatives, should be nonlinear and should be
 /// linearly independent
 ///
 ///

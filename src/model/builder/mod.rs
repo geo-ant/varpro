@@ -14,14 +14,17 @@ mod test;
 
 pub mod error;
 
-///! This is a builder for a [SeparableModel].
+///! A builder that allows us to construct a valid [SeparableModel](crate::model::SeparableModel).
+///
+/// The builder allows us to provide basis functions for a separable model as a step by step process.
 /// TODO DOCUMENT
-///     //todo document
-//     //     //BIG TODO: document that the argument list of the partial derivative must be the same
+//     //     //FOR PARTIAL DERIVS: mention that the partial deriv function must have the same number
+//              of args as the original function. (mention: this should be the case anyways because
+//              otherwise it indicates that the parameter was linear in the deriv
 //     //     //as the argument list of the parent function. This is a limitation of the way I pass functions
 //     //     //because I assume the same argument list. But it actually makes sense because paramters would
 //     //     //only vanish in the derivatives when the are linear, which I do not want to encourage anyways
-//     //     //TODO ALSO: document that partial derivative must take the arguments in the same order as
+//     //     //!!!ALSO: document that partial derivative must take the arguments in the same order as!!!!
 //     //     //the base function for which they are the derivative
 #[must_use="The builder should be transformed into a model using the build() method"]
 pub struct SeparableModelBuilder<ScalarType>
@@ -91,7 +94,6 @@ where
     /// # Usage
     /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
     /// struct documentation.
-
     pub fn invariant_function<F>(mut self, function: F) -> Self
     where
         F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
@@ -122,7 +124,15 @@ where
         SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
 
-    //todo document
+    /// Build a separable model from the contents of this builder.
+    /// # Result
+    /// A valid separable model or an error indicating why a valid model could not be constructed.
+    /// See also the documentation for [SeparableModelBuilder](self::SeparableModelBuilder)
+    /// fo what constitutes a valid model.
+    ///
+    /// **Note** The order of basis functions in the model is order in which the basis functions
+    /// where provided during the builder stage. That means the first basis functions gets index `0` in
+    /// the model, the second gets index `1` and so on.
     pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
         self.model_result.and_then(check_validity)
     }

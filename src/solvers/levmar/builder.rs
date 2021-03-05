@@ -55,8 +55,8 @@ pub enum LevMarBuilderError {
 /// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
 /// fitting a separable model to data.
 /// # Example
-/// The following code shows how to create an unweighted least squares problem to fit the model
-/// `$\vec{f}(\vec{x},\vec{\alpha})$` given by `model` to data `$\vec{y}$` (given as `y`) using the
+/// The following code shows how to create an unweighted least squares problem to fit the separable model
+/// `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` given by `model` to data `$\vec{y}$` (given as `y`) using the
 /// independent variable `$\vec{x}$` (given as `x`). Furthermore we need an initial guess `params`
 /// for the nonlinear model parameters `$\vec{\alpha}$`
 /// ```rust

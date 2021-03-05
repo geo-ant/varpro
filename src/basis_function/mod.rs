@@ -5,8 +5,8 @@ mod detail;
 
 use nalgebra::{DVector, Scalar};
 
-/// This trait allows us to pass vector valued functions `$f(\vec{x},\alpha_1,...\alpha_N$)` in a generic fashion,
-/// where
+/// This trait allows us to pass vector valued functions `$\vec{f}(\vec{x},\alpha_1,...\alpha_N$)` in a generic fashion, where
+///
 /// * `$\vec{x}$` is an independent variable, like time, spatial coordinates and so on,
 /// * `$\alpha_j$` are scalar parameter of this function
 /// The functions must have at least one parameter argument additional ot the location parameter, i.e. a function
@@ -15,12 +15,11 @@ use nalgebra::{DVector, Scalar};
 /// add this function to a model this is actually a requirement that will lead to errors, even panics
 /// if violated).
 /// Unfortunately, requirement on the length of the output vector cannot be enforced by the type system.
-/// If it is violated, then calculations using the basis function will fail in the [SeparableModel].
+/// If it is violated, then calculations using the basis function will return errors in the [SeparableModel](crate::model::SeparableModel).
 ///
 /// # Variadic Functions
 /// Since Rust does not have variadic functions or generics, this trait is implemented for all functions up to
-/// a maximum number of arguments. This maximum number of arguments can be found out by checking
-/// the blanket implementations.
+/// a maximum number of arguments. Right now this is implemented for up to 10 arguments.
 ///
 /// # Generic Parameters
 /// ## Scalar Type
@@ -37,21 +36,26 @@ pub trait BasisFunction<ScalarType, ArgList>
 where
     ScalarType: Scalar + Clone,
 {
-    /// A common calling interface to evaluate this function by passing a slice of scalar types
-    /// that is dispatched to the arguments in order. The slice must have the same
-    /// length as the parameter argument list.
+    /// A common calling interface to evaluate this function `$\vec{f}(\vec{x},\alpha_1,...\alpha_N)$` by passing a slice of scalar types
+    /// that is dispatched to the arguments in order.
+    ///
+    /// # Arguments
+    /// * `x`: the vector `$\vec{x}$`
+    /// * `params`: The parameters `$(\alpha_1,...,\alpha_N)$` as a slice. The slice must have
+    /// the correct number of arguments for calling the function (no more, no less).
+    ///
     /// # Effect and Panics
     /// If the slice has fewer elements than the parameter argument list. If the slice has more element,
     /// only the first `$N$` elements are used and dispatched to the parameters in order, i.e.
     /// `$\alpha_1$`=`param[0]`, ..., `$\alpha_N$`=`param[N-1]`. Calling eval will result in evaluating
     /// the implementing callable at the location and arguments given.
     ///
-    /// **Attention** The library takes care that no panics can be caused by calls to `eval` (from
+    /// **Attention** The `varpro` library takes care that no panics can be caused by calls to `eval` (from
     /// within this library) by making sure the parameter slice has the correct length. Therefore
     /// it is not recommended (and not necessary) to use this function in other code than inside this library.
-    fn eval(&self, location: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType>;
+    fn eval(&self, x: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType>;
 
     /// This gives the number of parameter arguments to the callable. So for a function `$f(\vec{x},\alpha_1,...\alpha_N)$`
-    /// this is give `N`.
+    /// this is equal to `$N$`.
     const ARGUMENT_COUNT: usize;
 }

@@ -20,7 +20,7 @@ where
         return Err(ModelBuildError::EmptyParameters);
     }
 
-    // todo: this is inefficient. Refactor the interface of this method
+    // TODO (Performance): this is inefficient. Refactor the interface of this method
     if let Some(param_name) = param_names.iter().find(|&p| p.clone().into().contains(',')) {
         return Err(ModelBuildError::CommaInParameterNameNotAllowed {
             param_name: param_name.clone().into(),
@@ -109,7 +109,7 @@ where
     let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
 
     let wrapped = move |x: &DVector<ScalarType>, params: &[ScalarType]| {
-        //todo: refactor this, since this is not elegant and not parallelizeable
+        // TODO (Performance): refactor this, since this is not elegant and not parallelizeable
         let mut parameters_for_function = Vec::<ScalarType>::with_capacity(index_mapping.len());
         for param_idx in index_mapping.iter() {
             parameters_for_function.push(params[*param_idx].clone());

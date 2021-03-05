@@ -35,7 +35,7 @@ where
 // i.e. these example expressions evaluate to true:
 // count_args(1,2,3)==count_args(1,2,3,) == 3usize, as well as
 // count_args(a,b)==count_args(a,b,)==2usize
-//TODO: maybe see also daniel keep post (see above): recursion is not the most efficient way to implement this!
+//TODO (Performance): maybe see also daniel keep post (see above): recursion is not the most efficient way to implement this!
 // however, the alternative solutions can't be used in constant expressions, iirc.
 macro_rules! count_args {
     () => {0usize};
