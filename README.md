@@ -5,25 +5,25 @@
 ![lints](https://github.com/geo-ant/varpro/workflows/lints/badge.svg?branch=main)
 [![coverage](https://codecov.io/gh/geo-ant/varpro/branch/main/graph/badge.svg?token=1L2PEJFMXP)](https://codecov.io/gh/geo-ant/varpro)
 
-This library enables robust and fast least-squares fitting of nonlinear, separable model functions to data. It uses the VarPro algorithm to achieve this end.
+This library enables robust and fast least-squares fitting of nonlinear, separable model functions to observations. It uses the VarPro algorithm to achieve this.
 
-# Brief Introduction
+## Brief Introduction
 The lack of formulas on this site makes it hard to get into the depth of the what and how of this crate at this point. [Refer to the documentation](https://docs.rs/varpro/) for all the meaty details including the math.
 
-## What are Separable Model Functions?
+### What are Separable Model Functions?
 Put simply, separable model functions are nonlinear functions that can be written as a *linear combination* of some *nonlinear* basis functions. A common use case for VarPro is e.g. fitting sums of exponentials, which is a notoriously ill-conditioned problem.
 
-## What is VarPro?
-Variable Projection (VarPro) is an algorithm that takes advantage of the fact that the fitting problem can be separated into linear and truly nonlinear parameters. The linear parameters are eliminated and the fitting problem is cast into a problem that only depends on the nonlinear parameters. This reduced problem is then solved by using a common nonlinear fitting algorithm, such as Levenberg-Marquardt.
+### What is VarPro?
+Variable Projection (VarPro) is an algorithm that takes advantage of the fact that the fitting problem can be separated into linear and truly nonlinear parameters. The linear parameters are eliminated and the fitting problem is cast into a problem that only depends on the nonlinear parameters. This reduced problem is then solved by using a common nonlinear fitting algorithm, such as Levenberg-Marquardt (LM). The varpro library uses the [levenberg-marquardt](https://crates.io/crates/levenberg-marquardt) crate as a backend for the LM minimizer.
 
-## When Should You Give it a Try?
+### When Should You Give it a Try?
 VarPro can dramatically increase the robustness and speed of the fitting process compared to using the nonlinear approach directly. When
 * the model function you want to fit is a linear combination of nonlinear functions
 * *and* you know the analytical derivatives of all those functions
 
 *then* you should give it a whirl.
 
-# Example
+## Example
 The following example shows how to use varpro to fit a double exponential decay with constant offset to a data vector `y` obtained at grid points `x`. [Refer to the documentation](https://docs.rs/varpro/) for a more in-depth guide.
 
 The exponential decay and it's derivative are given as:
@@ -78,7 +78,7 @@ let alpha = solved_problem.params();
 let c = solved_problem.linear_coefficients().unwrap();
 ```
 
-# References and Further Reading
+## References and Further Reading
 (O'Leary2013) O’Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems. *Comput Optim Appl* **54**, 579–593 (2013). DOI: [10.1007/s10589-012-9492-9](https://doi.org/10.1007/s10589-012-9492-9)
 
 **attention**: the O'Leary paper contains errors that are fixed (so I hope) in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) of mine.
