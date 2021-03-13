@@ -16,8 +16,70 @@ pub mod error;
 
 ///! A builder that allows us to construct a valid [SeparableModel](crate::model::SeparableModel).
 /// # Introduction
-/// As explained elsewhere, the separable model is a vector valued function that is the linear
-/// combination of nonlinear base functions.
+/// As explained elsewhere, the separable model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` is a vector
+/// valued function that is the linear combination of nonlinear base functions.
+/// ```math
+///  \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(\vec{x},S_j(\alpha))
+/// ```
+/// The basis functions `$\vec{f}_j(\vec{x},S_j(\alpha))$` depend on the independent variable `$\vec{x}$`
+/// and *a subset* `$S_j(\alpha)$` of the *nonlinear* model parameters `$\vec{\alpha}$`. The subset
+/// may or may not be different for each model function. It is okay if two or more model functions
+/// depend on the same parameters.
+///
+/// # Usage
+/// The SeparableModelBuilder is concerned with building a model from basis functions and
+/// their derivatives. This is done as a step by step process.
+///
+/// ## Constructing an Empty Builder
+/// The first step is to create an empty builder by specifying the complete set of *nonlinear* parameters that
+/// the model will be depending on. This is done by calling [SeparableModelBuilder::new](SeparableModelBuilder::new)
+/// and specifying the list of parameters of the model by name.
+///
+/// ## Adding Basis Functions to The Model
+/// Basis functions come in two flavors. Those that depend on a subset of the nonlinear parameters
+/// `$\vec{\alpha}$` and those that do not. Both function types have to obey certain rules to
+/// be considered valid:
+///
+/// **Function Arguments and Output**
+///
+/// * The first argument of the function is a `&DVector` type and is a reference to the vector of
+/// grid points `$\vec{x}$`.
+/// * The function outputs a `DVector` type of the same size as `$\vec{x}$`
+///
+/// ** Linear Independence**
+/// The basis functions must be linearly independent. That means adding `$\vec{f_1}(\vec{x})=\vec{x}$`
+/// and `$\vec{f_1}(\vec{x})=2\,\vec{x}$` is a bad idea. It is a bad idea because it *might* destabilize
+/// the calculations. It is also a bad idea because it adds no value, since the model functions have
+/// associated linear expansion coefficients anyways.
+///
+/// For some models, e.g. sums of exponential decays it might happen that the basis functions become
+/// linearly dependent *for some combinations* of nonlinear model parameters. This isn't great but it is
+/// okay, since the VarPro algorithm in this crate exhibits a level of robustness against basis functions
+/// becoming collinear (see [LevMarProblemBuilder::epsilon](crate::solvers::levmar::LevMarProblemBuilder::epsilon)).
+///
+/// ### Invariant Basis Functions
+/// Basis functions that do not depend on model parameters are treated specially. The library refers
+/// to them as *invariant functions* and they are added to a builder by calling
+/// [SeparableModelBuilder::invariant_function](SeparableModelBuilder::invariant_function). Since
+/// the basis function depends only on `$\vec{x}$` it can be written as `$\vec{f}_j(\vec{x})`$. In Rust
+/// this translates to a signature `Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static` for the callable.
+///
+/// **Usage Example**: Calling [SeparableModelBuilder::invariant_function](SeparableModelBuilder::invariant_function)
+/// adds the function to the model. These calls can be chained to add more functions.
+///
+/// TODO ADD EXAMPLE
+///
+/// ```rust
+///
+/// ```
+/// ### Basis Functions
+/// Most of the time we'll be adding basis functions to the model that depend on some of the model
+/// parameters. We can add a basis function to a builder by calling `builder.function`. Each call must
+/// be immediately followed by calls to `partial_deriv` for each of the parameters that the basis
+/// function depends on.
+///
+/// TODO DOCUMENT FURTHER HERE
+///
 /// The builder allows us to provide basis functions for a separable model as a step by step process.
 /// TODO DOCUMENT
 //     //     //FOR PARTIAL DERIVS: mention that the partial deriv function must have the same number
@@ -68,6 +130,12 @@ where
     /// Model parameter indices start at 0.
     /// # Arguments
     /// * `parameter_names` A collection containing all the nonlinear model parameters
+    /// # Requirements on the Parameters
+    /// * The list of parameters must only contain unique names
+    /// * The list of parameter names must not be empty
+    /// * Parameter names must not contain a comma. This is a precaution because
+    /// `&["alpha,beta"]` most likely indicates a typo for `&["alpha","beta"]`. Any other form
+    /// of punctuation is allowed.
     pub fn new<StrCollection>(parameter_names: StrCollection) -> Self
     where
         StrCollection: IntoIterator,
