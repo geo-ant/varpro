@@ -46,20 +46,127 @@
 //! uses the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate as it's optimization backend. Other
 //! optimization backends are planned for future releases.
 //!
-//! The VarPro algorithm implemented here follows (O'Leary2013), but does use the Kaufmann approximation
+//! The VarPro algorithm implemented here follows (O'Leary2013), but does use the Kaufman approximation
 //! to calculate the Jacobian.
 //!
 //! # Usage and Workflow
-//!
-//! TODO DOCUMENT WORKFLOW
+//! The workflow for solving a least squares fitting problem with varpro is consists of the following steps.
+//! 1. Create a [SeparableModel](crate::model::SeparableModel) which describes the model function using
+//! the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). This is done by
+//! adding individual basis functions as well as their partial derivatives.
+//! 2. Choose a nonlinear minimizer backend. Right now the only implemented nonlinear minimizer
+//! is the [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
+//! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate. So just proceed
+//! to the next step.
+//! 3. Cast the fitting problem into a [LevMarProblem](crate::solvers::levmar::LevMarProblem) using
+//! the [LevMarProblemBuilder](crate::solvers::levmar::builder::LevMarProblemBuilder).
+//! 4. Solve the fitting problem using the [LevMarSolver](crate::solvers::levmar::LevMarSolver), which
+//! is an alias for the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt) and allows to set
+//! additional parameters of the algorithm before performing the minimization.
+//! 5. Check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
+//! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
+//! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
 //!
 //! # Example
 //!
-//! TODO GIVE EXAMPLE
+//! ## Preliminaries
+//! The following example demonstrates how to fit a double exponential decay model with constant offset
+//! to observations `$\vec{y}$` obtained at grid points `$\vec{x}$`. The model itself is a vector valued
+//! function with the same number of elements as `$\vec{x}$` and `$\vec{y}$`. The component at index
+//! `k` is given by
+//! ```math
+//! f_k(\vec{x},\vec{\alpha},\vec{c})= c_1 \exp\left(-x_k/\tau_1\right)+c_2 \exp\left(-x_k/\tau_2\right)+c_3,
+//! ```
+//! which a fancy way of saying that the exponential functions are applied element-wise to the vector `$\vec{x}$`.
+//!
+//! We can see that the model depends on the nonlinear parameters `$\vec{\alpha}=(\tau_1,\tau_2)^T$`
+//! and the linear coefficients `$\vec{c}=(c_1,c_2,c_3)^T$`. Both exponential functions can be modeled
+//! as an exponential decay with signature `$\vec{f}_j(\vec{x},\tau)$`. In varpro, the basis functions
+//! must take `$\vec{x}$` by reference and a number of parameters as further scalar arguments. So
+//! the decay is implemented as:
+//!
+//! ```rust
+//! use nalgebra::DVector;
+//! fn exp_decay(x :&DVector<f64>, tau : f64) -> DVector<f64> {
+//!     x.map(|x|(-x/tau).exp())
+//! }
+//! ```
+//!
+//! For our separable model we also need the partial derivatives of the basis functions with
+//! respect to all the parameters that each basis function depends on. Thus, in
+//! this case we have to provide `$\partial/\partial\tau\,\vec{f}_j(\vec{x},\tau)$`.
+//! ```rust
+//! use nalgebra::DVector;
+//! fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) -> DVector<f64> {
+//!     tvec.map(|t| (-t / tau).exp() * t / tau.powi(2))
+//! }
+//! ```
+//!
+//! We'll see in the example how the [function](crate::model::builder::SeparableModelBuilder::function) method
+//! and the [partial_deriv](crate::model::builder::SeparableModelBuilderProxWithDerivatives::partial_deriv)
+//! methods let us add the function and the derivative as base functions.
+//!
+//! There is a second type of basis function, which corresponds to coefficient `$c_3$`. This is a constant
+//! function returning a vector of ones. It does not depend on any parameters, which is why there
+//! is a separate way of adding these types of *invariant functions* to the model. For that use
+//! [invariant_function](crate::model::builder::SeparableModelBuilder::invariant_function)
+//! of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder).
+//!
+//! ## Example Code
+//! Using the functions above our example code of fitting a linear model to a vector of data `y` obtained
+//! at grid points `x` looks like this:
+//!
+//! ```rust
+//! use nalgebra::DVector;
+//! use varpro::prelude::*;
+//! use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+//! # fn exp_decay(x :&DVector<f64>, tau : f64) -> DVector<f64> {
+//! #     x.map(|x|(-x/tau).exp())
+//! # }
+//! # fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) -> DVector<f64> {
+//! #    tvec.map(|t| (-t / tau).exp() * t / tau.powi(2))
+//! # }
+//! # fn fit_model_example(x:DVector<f64>, y:DVector<f64>) {
+//! //1. create the model by giving only the nonlinear parameter names it depends on
+//! let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
+//!     // add the first exponential decay and its partial derivative to the model
+//!     // give all parameter names that the function depends on
+//!     // and subsequently provide the partial derivative for each parameter
+//!     .function(&["tau1"], exp_decay)
+//!     .partial_deriv("tau1", exp_decay_dtau)
+//!     // add the second exponential decay and its partial derivative to the model
+//!     .function(&["tau2"], exp_decay)
+//!     .partial_deriv("tau2", exp_decay_dtau)
+//!     // add the constant as a vector of ones as an invariant function
+//!     .invariant_function(|x|DVector::from_element(x.len(),1.))
+//!     // build the model
+//!     .build()
+//!     .unwrap();
+//! // 2.,3: Cast the fitting problem as a nonlinear least squares minimization problem
+//! let problem = LevMarProblemBuilder::new()
+//!     .model(&model)
+//!     .x(x)
+//!     .y(y)
+//!     .initial_guess(&[1., 2.])
+//!     .build()
+//!     .expect("Building valid problem should not panic");
+//! // 4. Solve using the fitting problem
+//! let (solved_problem, report) = LevMarSolver::new().minimize(problem);
+//! assert!(report.termination.was_successful());
+//! // the nonlinear parameters after fitting
+//! // they are in the same order as the parameter names given to the model
+//! let alpha = solved_problem.params();
+//! // the linear coefficients after fitting
+//! // the are in the same order as the basis functions that were added to the model
+//! let c = solved_problem.linear_coefficients().unwrap();
+//! # }
+//! ```
 //!
 //! # References and Further Reading
 //! (O'Leary2013) O’Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems. *Comput Optim Appl* **54**, 579–593 (2013). DOI: [10.1007/s10589-012-9492-9](https://doi.org/10.1007/s10589-012-9492-9)
-//! (attention: the paper contains errors that are fixed in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) of mine.
+//!
+//! **attention**: the O'Leary paper contains errors that are fixed in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) of mine.
+//!
 //! (Golub2003) Golub, G. , Pereyra, V Separable nonlinear least squares: the variable projection method and its applications. Inverse Problems **19** R1 (2003) [https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201](https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201)
 pub mod basis_function;
 pub mod model;

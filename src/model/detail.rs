@@ -122,7 +122,7 @@ where
 
 /// Check that the parameter count in the list of function parameters really does match the number of
 /// parameters the function type requires. If so return Ok(()), otherwise return an error
-pub fn check_parameter_count<StrType,ScalarType,F, ArgList>(function_parameters : &[StrType],function : &F) -> Result<(),ModelBuildError>
+pub fn check_parameter_count<StrType,ScalarType,F, ArgList>(function_parameters : &[StrType],_function : &F) -> Result<(),ModelBuildError>
 where StrType : Into<String> + Clone,
     F: BasisFunction<ScalarType, ArgList> + 'static,
 ScalarType: Scalar {

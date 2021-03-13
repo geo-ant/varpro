@@ -63,7 +63,7 @@ pub enum LevMarBuilderError {
 /// # use nalgebra::{DVector, Scalar};
 /// # use varpro::model::SeparableModel;
 /// # use varpro::solvers::levmar::{LevMarProblem, LevMarProblemBuilder};
-/// # fn builder_example(x : DVector<f64>, y :DVector<f64>,model : & SeparableModel<f64>, params: &[f64]) -> LevMarProblem<f64> {
+/// # fn builder_example(x : DVector<f64>, y :DVector<f64>,model : & SeparableModel<f64>, params: &[f64]) {
 ///   let problem = LevMarProblemBuilder::new()
 ///                 .x(x)
 ///                 .y(y)
@@ -71,7 +71,6 @@ pub enum LevMarBuilderError {
 ///                 .initial_guess(params)
 ///                 .build()
 ///                 .unwrap();
-/// # problem
 /// # }
 /// ```
 /// # Building a Model

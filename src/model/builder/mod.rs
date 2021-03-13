@@ -15,7 +15,9 @@ mod test;
 pub mod error;
 
 ///! A builder that allows us to construct a valid [SeparableModel](crate::model::SeparableModel).
-///
+/// # Introduction
+/// As explained elsewhere, the separable model is a vector valued function that is the linear
+/// combination of nonlinear base functions.
 /// The builder allows us to provide basis functions for a separable model as a step by step process.
 /// TODO DOCUMENT
 //     //     //FOR PARTIAL DERIVS: mention that the partial deriv function must have the same number
