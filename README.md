@@ -14,7 +14,7 @@ The lack of formulas on this site makes it hard to get into the depth of the wha
 Put simply, separable model functions are nonlinear functions that can be written as a *linear combination* of some *nonlinear* basis functions. A common use case for VarPro is e.g. fitting sums of exponentials, which is a notoriously ill-conditioned problem.
 
 ### What is VarPro?
-Variable Projection (VarPro) is an algorithm that takes advantage of the fact that the fitting problem can be separated into linear and truly nonlinear parameters. The linear parameters are eliminated and the fitting problem is cast into a problem that only depends on the nonlinear parameters. This reduced problem is then solved by using a common nonlinear fitting algorithm, such as Levenberg-Marquardt (LM). The varpro library uses the [levenberg-marquardt](https://crates.io/crates/levenberg-marquardt) crate as a backend for the LM minimizer.
+Variable Projection (VarPro) is an algorithm that takes advantage of the fact that the fitting problem can be separated into linear and truly nonlinear parameters. The linear parameters are eliminated and the fitting problem is cast into a problem that only depends on the nonlinear parameters. This reduced problem is then solved by using a common nonlinear fitting algorithm, such as Levenberg-Marquardt (LM). The varpro library uses the [levenberg-marquardt](https://crates.io/crates/levenberg-marquardt) crate as a backend for the LM minimizer. This crate further uses [nalgebra](https://crates.io/crates/nalgebra) for vector and matrix calculations.
 
 ### When Should You Give it a Try?
 VarPro can dramatically increase the robustness and speed of the fitting process compared to using the nonlinear approach directly. When
