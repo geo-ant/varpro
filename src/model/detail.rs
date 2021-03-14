@@ -104,7 +104,7 @@ where
 {
     check_parameter_names(&model_parameters)?;
     check_parameter_names(&function_parameters)?;
-    check_parameter_count(&function_parameters,&function)?;
+    check_parameter_count(&function_parameters, &function)?;
 
     let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
 
@@ -122,10 +122,15 @@ where
 
 /// Check that the parameter count in the list of function parameters really does match the number of
 /// parameters the function type requires. If so return Ok(()), otherwise return an error
-pub fn check_parameter_count<StrType,ScalarType,F, ArgList>(function_parameters : &[StrType],_function : &F) -> Result<(),ModelBuildError>
-where StrType : Into<String> + Clone,
+pub fn check_parameter_count<StrType, ScalarType, F, ArgList>(
+    function_parameters: &[StrType],
+    _function: &F,
+) -> Result<(), ModelBuildError>
+where
+    StrType: Into<String> + Clone,
     F: BasisFunction<ScalarType, ArgList> + 'static,
-ScalarType: Scalar {
+    ScalarType: Scalar,
+{
     if function_parameters.len() == F::ARGUMENT_COUNT {
         Ok(())
     } else {

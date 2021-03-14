@@ -192,7 +192,7 @@ pub mod error;
 /// The model is finalized and built using the [SeparableModelBuilder::build](SeparableModelBuilder::build)
 /// method. This method returns a valid model or an error variant doing a pretty good job of
 /// explaning why the model is invalid.
-#[must_use="The builder should be transformed into a model using the build() method"]
+#[must_use = "The builder should be transformed into a model using the build() method"]
 pub struct SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
@@ -381,7 +381,7 @@ where
 /// be added to invariant functions. The compiler simply will forbid it. In future the library aims
 /// to make more such checks at compile time and reduce the need for runtime errors caused by invalid model
 /// construction.
-#[must_use="This is meant as a transient expression proxy. Use build() to build a model."]
+#[must_use = "This is meant as a transient expression proxy. Use build() to build a model."]
 pub struct SeparableModelBuilderProxyWithDerivatives<ScalarType>
 where
     ScalarType: Scalar,
