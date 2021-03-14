@@ -61,13 +61,11 @@ pub mod error;
 /// Basis functions that do not depend on model parameters are treated specially. The library refers
 /// to them as *invariant functions* and they are added to a builder by calling
 /// [SeparableModelBuilder::invariant_function](SeparableModelBuilder::invariant_function). Since
-/// the basis function depends only on `$\vec{x}$` it can be written as `$\vec{f}_j(\vec{x})`$. In Rust
+/// the basis function depends only on `$\vec{x}$` it can be written as `$\vec{f}_j(\vec{x})$`. In Rust
 /// this translates to a signature `Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static` for the callable.
 ///
-/// **Usage Example**: Calling [SeparableModelBuilder::invariant_function](SeparableModelBuilder::invariant_function)
+/// **Example**: Calling [SeparableModelBuilder::invariant_function](SeparableModelBuilder::invariant_function)
 /// adds the function to the model. These calls can be chained to add more functions.
-///
-/// TODO ADD EXAMPLE
 ///
 /// ```rust
 /// use nalgebra::DVector;
@@ -92,7 +90,7 @@ pub mod error;
 /// be immediately followed by calls to `partial_deriv` for each of the parameters that the basis
 /// function depends on.
 ///
-/// **Example**: The procedure is best illustrated using an example
+/// **Example**: The procedure is best illustrated with an example
 ///
 /// ```rust
 /// // exponential decay f(t,tau) = exp(-t/tau)
@@ -141,7 +139,7 @@ pub mod error;
 ///     tvec.map(|t| (omega * t + phi).cos())
 /// }
 ///
-/// let builder = SeparableModelBuilder::<f64>::new(&["tau","omega","phi"])
+/// let model = SeparableModelBuilder::<f64>::new(&["tau","omega","phi"])
 ///               // add the exp decay and all derivatives
 ///               .function(&["tau"],exp_decay)
 ///               .partial_deriv("tau",exp_decay_dtau)
@@ -157,7 +155,12 @@ pub mod error;
 ///               // or an error variant which is pretty helpful in understanding what went wrong
 ///               .build().unwrap();
 /// ```
-/// There is some special macro magic that
+/// There is some [special macro magic](https://geo-ant.github.io/blog/2021/rust-traits-and-variadic-functions/)
+/// that allows us to pass a function `$f(\vec{x},a_1,..,a_n)$`
+/// as any item that implements the Rust trait `Fn(&DVector<ScalarType>, ScalarType,... ,ScalarType)->DVector<ScalarType> + 'static`.
+/// This allows us to write the functions in an intuitive fashion in Rust code. All nonlinear parameters `$\alpha$`
+/// are simply scalar arguments in the parameter list of the function. This works for functions
+/// taking up to 10 nonlinear arguments, but can be extended easily by modifying this crates source.
 ///
 /// #### Rules for Model Functions
 /// There are several rules for adding model functions. One of them is enforced by the compiler,
@@ -172,7 +175,7 @@ pub mod error;
 /// * Derivatives must take the same parameter arguments *and in the same order* as the original
 /// basis function. This means if basis function `$\vec{f}_j$` is given as `$\vec{f}_j(\vec{x},a,b)$`,
 /// then the derivatives must also be given with the parameters `$a,b$` in the same order, i.e.
-/// `\partial/\partial a $\vec{f}_j(\vec{x},a,b)$`, `\partial/\partial b $\vec{f}_j(\vec{x},a,b)$`.
+/// `$\partial/\partial a \vec{f}_j(\vec{x},a,b)$`, `$\partial/\partial b \vec{f}_j(\vec{x},a,b)$`.
 ///
 /// **Rules Enforced at Compile Time**
 /// * Partial derivatives cannot be added to invariant functions. This is the reason for the
