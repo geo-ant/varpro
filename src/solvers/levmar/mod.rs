@@ -1,5 +1,5 @@
 use crate::model::SeparableModel;
-use levenberg_marquardt::LeastSquaresProblem as LevenbergMarquardtLeastSquaresProblem;
+use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::storage::Owned;
 use nalgebra::{ComplexField, DMatrix, DVector, Dynamic, Matrix, Scalar, Vector, SVD};
 
@@ -26,8 +26,18 @@ struct CachedCalculations<ScalarType: Scalar + ComplexField> {
     linear_coefficients: DVector<ScalarType>,
 }
 
-/// TODO add weight matrix
-/// TODO Document
+/// This is a the problem of fitting the separable model to data in a form that the
+/// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate can use it to
+/// perform the least squares fit.
+/// # Construction
+/// Use the [LevMarProblemBuilder](self::builder::LevMarProblemBuilder) to create an instance of a
+/// levmar problem.
+/// # Usage
+/// After obtaining an instance of `LevMarProblem` we can pass it to the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
+/// structure of the levenberg_marquardt crate for minimization. Refer to the documentation of the
+/// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) for an overview. A usage example
+/// is provided in this crate documentation as well. The [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
+/// solver is reexported by this module as [LevMarSolver](self::LevMarSolver) for naming consistency.
 #[derive(Clone)]
 pub struct LevMarProblem<'a, ScalarType>
 where
@@ -70,8 +80,7 @@ impl<'a, ScalarType: Scalar + ComplexField> LevMarProblem<'a, ScalarType> {
     }
 }
 
-/// TODO document and document panics!
-impl<'a, ScalarType> LevenbergMarquardtLeastSquaresProblem<ScalarType, Dynamic, Dynamic>
+impl<'a, ScalarType> LeastSquaresProblem<ScalarType, Dynamic, Dynamic>
     for LevMarProblem<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField,
@@ -82,7 +91,10 @@ where
     type ParameterStorage = Owned<ScalarType, Dynamic>;
 
     #[allow(non_snake_case)]
-    //todo document
+    /// Set the (nonlinear) model parameters `$\vec{\alpha}$` and update the internal state of the
+    /// problem accordingly. The parameters are expected in the same order that the parameter
+    /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
+    /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
     fn set_params(&mut self, params: &Vector<ScalarType, Dynamic, Self::ParameterStorage>) {
         self.model_parameters = params.iter().cloned().collect();
         // matrix of weighted model function values
@@ -118,12 +130,22 @@ where
         }
     }
 
-    // todo document
+    /// Retrieve the (nonlinear) model parameters as a vector `$\vec{\alpha}$`.
+    /// The order of the parameters in the vector is the same as the order of the parameter
+    /// names given on model creation. E.g. if the parameters at model creation where given as
+    /// `&["tau","beta"]`, then the returned vector is `$\vec{\alpha} = (\tau,\beta)^T$`, i.e.
+    /// the value of parameter `$\tau$` is at index `0` and the value of `$\beta$` at index `1`.
     fn params(&self) -> Vector<ScalarType, Dynamic, Self::ParameterStorage> {
         DVector::from(self.model_parameters.clone())
     }
 
-    // todo document
+    /// Calculate the residual vector `$\vec{r}_w$` of *weighted* residuals at every location `$\vec{x}$`.
+    /// The residual is calculated from the data `\vec{y}` as `$\vec{r}_w(\vec{\alpha}) = W\cdot(\vec{y}-\vec{f}(\vec{x},\vec{\alpha},\vec{c}(\vec{\alpha}))$`,
+    /// where `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` is the model function evaluated at the currently
+    /// set nonlinear parameters `$\vec{\alpha}$` and the linear coefficients `$\vec{c}(\vec{\alpha})$`. The VarPro
+    /// algorithm calculates `$\vec{c}(\vec{\alpha})$` as the coefficients that provide the best linear least squares
+    /// fit, given the current `$\vec{\alpha}$`. For more info on the math of VarPro, see
+    /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn residuals(&self) -> Option<Vector<ScalarType, Dynamic, Self::ResidualStorage>> {
         self.cached
             .as_ref()
@@ -131,9 +153,11 @@ where
     }
 
     #[allow(non_snake_case)]
-    // todo document
+    /// Calculate the Jacobian matrix of the *weighted* residuals `$\vec{r}_w(\vec{\alpha})$`.
+    /// For more info on how the Jacobian is calculated in the VarPro algorithm, see
+    /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<ScalarType, Dynamic, Dynamic, Self::JacobianStorage>> {
-        //todo: make this more efficient by parallelizing
+        // TODO (Performance): make this more efficient by parallelizing
 
         if let Some(CachedCalculations {
             current_residuals: _,

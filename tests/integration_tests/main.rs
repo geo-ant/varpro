@@ -34,7 +34,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     // for solving the fitting problem using only the levenberg_marquardt crate                  the crate cannot deal with this:     &[tau1_guess,tau2_guess,c1,c2,c3]
     // we have to make the initial guesses closer to the true values for the Levenberg Marquart Algo
     let levenberg_marquart_problem = levmar::DoubleExponentialDecayFittingWithOffset::new(
-        &[0.75 * tau1, 1.25 * tau2, c1, c2, c3],
+        &[0.5 * tau1, 1.5 * tau2, c1, c2, c3],
         &x,
         &y,
     );

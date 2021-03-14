@@ -12,40 +12,61 @@ mod model_basis_function;
 #[cfg(test)]
 mod test;
 
-/// This structure represents a separable nonlinear model.A separable nonlinear model is
-/// a (nonlinear) function `$f(\vec{x},\vec{\alpha})$` which depends on
-/// * the independent variable `$\vec{x}$`, e.g. a location, time, etc...
-/// * the actual model parameters `$\vec{\alpha}$`.
+/// This structure represents a separable nonlinear model.
+///
+/// # Introduction
+/// A separable nonlinear model is
+/// a nonlinear, vector valued function function `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` which depends on
+/// * an independent variable `$\vec{x}$`, e.g. a location, time, etc...
+/// * the *nonlinear* model parameters `$\vec{\alpha}$`.
+/// * and a number of linear parameters `$\vec{c}$`
+/// The number of elements in `$\vec{f}$` must be the same as in the independent variable `$\vec{x}$`.
 ///
 /// *Separable* means that the nonlinear model function can be written as the
-/// linear combination of `$M$` nonlinear base functions, i.e.
+/// linear combination of `$N_{base}$` nonlinear base functions, i.e.
 /// ```math
-/// f(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot f_j(\vec{x},\vec{\alpha}),
+/// f(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(\vec{x},S_j(\vec{\alpha})),
 /// ```
-/// where `\vec{c}=(c_1,\dots,\c_M)` are the coefficients of the model basis functions.
+/// where `$\vec{c}=(c_1,\dots,\c_M)$` are the coefficients of the model basis functions and
+/// `$S_j(\vec{\alpha})$` is a subset of the nonlinear model parameters that may be different
+/// for each model function. The basis functions should depend on the model parameters nonlinearly.
+/// Linear parameters should be in the coefficient vector `$\vec{c}$` only.
 ///
-/// The base functions `$f_j$` typically depend on individual subsets of the model parameters `$\vec{\alpha}$`.
+/// ## Important Considerations for Basis Functions
+/// We have already stated that the basis functions should depend on their parameter subset
+/// `$S_j(\vec{\alpha})$` in a non-linear manner. Linear dependencies should be rewritten in such a
+/// way that we can stick them into the coefficient vector `$\vec{c}$`. It is not strictly necessary
+/// to do that, but it will only make the fitting process slower and less robust. The great strength
+/// of varpro comes from treating the linear and nonlinear parameters differently.
+///
+/// Another important thing is to ensure that the basis functions are not linearly dependent. That is,
+/// at least not for all possible choices of `$\vec{alpha}$`. It is OK if model functions become linearly
+/// dependent for *some* combinations of model parameters. See also
+/// [LevMarProblemBuilder::epsilon](crate::solver::levmar::builder::LevMarProblemBuilder::epsilon).
 ///
 /// ## Base Functions
 /// It perfectly fine for a base function to depend on all or none of the model parameters or any
 /// subset of the model parameters.
+///
 /// ### Invariant Functions
-/// We refer to functions `$f_j(\vec{x})$` that depend on none of the model parameters as *invariant
+/// We refer to functions `$\vec{f}_j(\vec{x})$` that do not depend on the model parameters as *invariant
 /// functions*. We offer special methods to add invariant functions during the model building process.
+///
 /// ### Base Functions
-/// TODO FURTHER: can depend on subset, must have derivatives, should be nonlinear and should be
-/// linearly independent
-/// TODO FURTHER
+/// The varpro library expresses base function signatures as `$\vec{f}_j(\vec{x},p_1,...,p_{P_j}))$`, where
+/// `$p_1,...,p_{P_J}$` are the paramters that the basefunction with index `$j$` actually depends on.
+/// These are not given as a vector, but as a (variadic) list of arguments. The parameters must be
+/// a subset of the model parameters. In order to add functions like this to a model, we must also
+/// provide all partial derivatives (for parameters that the function explicitly depends on).
 ///
+/// Refer to the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+/// to see how to construct a model with basis functions.
 ///
-/// A separable nonlinear model is the linear combination of a set of nonlinear basefunctions.
-/// The basefunctions depend on a vector `alpha` of parameters. They basefunctions are commonly
-/// nonlinear in the parameters `alpha` (but they don't have to be). Each individual base function
-/// may also depend only on a subset of the model parameters `alpha`.
-/// Further, the modelfunctions should be linearly independent to make the fit more numerically
-/// robust.
-/// Fitting a separable nonlinear model consists of finding the best combination of the parameters
-/// for the linear combination of the functions and the nonlinear parameters.
+/// # Usage
+/// The is no reason to interface with the separable model directly. First, construct it using a
+/// [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder) and then pass the model
+/// to one of the problem builders (e.g. [LevMarProblemBuilder](crate::solvers::levmar::builder::LevMarProblemBuilder))
+/// to use it for nonlinear least squares fitting.
 pub struct SeparableModel<ScalarType>
 where
     ScalarType: Scalar,

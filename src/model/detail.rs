@@ -20,7 +20,7 @@ where
         return Err(ModelBuildError::EmptyParameters);
     }
 
-    // todo: this is inefficient. Refactor the interface of this method
+    // TODO (Performance): this is inefficient. Refactor the interface of this method
     if let Some(param_name) = param_names.iter().find(|&p| p.clone().into().contains(',')) {
         return Err(ModelBuildError::CommaInParameterNameNotAllowed {
             param_name: param_name.clone().into(),
@@ -104,26 +104,12 @@ where
 {
     check_parameter_names(&model_parameters)?;
     check_parameter_names(&function_parameters)?;
-
-    //check that the parameter count in the string parameter list is equal to the
-    //parameter count in the argument of the function
-    //todo: refactor into it's own function
-    if function_parameters.len() != F::ARGUMENT_COUNT {
-        return Err(ModelBuildError::IncorrectParameterCount {
-            params: function_parameters
-                .iter()
-                .cloned()
-                .map(|p| p.into())
-                .collect(),
-            string_params_count: function_parameters.len(),
-            function_argument_count: F::ARGUMENT_COUNT,
-        });
-    }
+    check_parameter_count(&function_parameters, &function)?;
 
     let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
 
     let wrapped = move |x: &DVector<ScalarType>, params: &[ScalarType]| {
-        //todo: refactor this, since this is unelegant and not parallelizable
+        // TODO (Performance): refactor this, since this is not elegant and not parallelizeable
         let mut parameters_for_function = Vec::<ScalarType>::with_capacity(index_mapping.len());
         for param_idx in index_mapping.iter() {
             parameters_for_function.push(params[*param_idx].clone());
@@ -132,6 +118,32 @@ where
     };
 
     Ok(Box::new(wrapped))
+}
+
+/// Check that the parameter count in the list of function parameters really does match the number of
+/// parameters the function type requires. If so return Ok(()), otherwise return an error
+pub fn check_parameter_count<StrType, ScalarType, F, ArgList>(
+    function_parameters: &[StrType],
+    _function: &F,
+) -> Result<(), ModelBuildError>
+where
+    StrType: Into<String> + Clone,
+    F: BasisFunction<ScalarType, ArgList> + 'static,
+    ScalarType: Scalar,
+{
+    if function_parameters.len() == F::ARGUMENT_COUNT {
+        Ok(())
+    } else {
+        Err(ModelBuildError::IncorrectParameterCount {
+            params: function_parameters
+                .iter()
+                .cloned()
+                .map(|p| p.into())
+                .collect(),
+            string_params_count: function_parameters.len(),
+            function_argument_count: F::ARGUMENT_COUNT,
+        })
+    }
 }
 
 #[cfg(test)]

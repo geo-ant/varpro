@@ -1,11 +1,11 @@
 use super::*;
 
-/// a function taking a location vector and 1 parameter argument
+/// a function taking a location vector x and 1 parameter argument
 fn callable1(x: &DVector<f64>, alpha: f64) -> DVector<f64> {
     alpha * x.clone()
 }
 
-/// a function taking a location vector and 2 parameter arguments
+/// a function taking a location vector y  and 2 parameter arguments
 fn callable2(x: &DVector<f64>, alpha1: f64, alpha2: f64) -> DVector<f64> {
     alpha1 * alpha2 * x.clone()
 }

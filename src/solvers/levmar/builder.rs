@@ -52,6 +52,42 @@ pub enum LevMarBuilderError {
 }
 
 #[derive(Clone)]
+/// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
+/// fitting a separable model to data.
+/// # Example
+/// The following code shows how to create an unweighted least squares problem to fit the separable model
+/// `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` given by `model` to data `$\vec{y}$` (given as `y`) using the
+/// independent variable `$\vec{x}$` (given as `x`). Furthermore we need an initial guess `params`
+/// for the nonlinear model parameters `$\vec{\alpha}$`
+/// ```rust
+/// # use nalgebra::{DVector, Scalar};
+/// # use varpro::model::SeparableModel;
+/// # use varpro::solvers::levmar::{LevMarProblem, LevMarProblemBuilder};
+/// # fn builder_example(x : DVector<f64>, y :DVector<f64>,model : & SeparableModel<f64>, params: &[f64]) {
+///   let problem = LevMarProblemBuilder::new()
+///                 .x(x)
+///                 .y(y)
+///                 .model(model)
+///                 .initial_guess(params)
+///                 .build()
+///                 .unwrap();
+/// # }
+/// ```
+/// # Building a Model
+/// A new builder is constructed with the [new](LevMarProblemBuilder::new) method. It must be filled with
+/// content using the methods described in the following. After all mandatory fields have been filled,
+/// the [build](LevMarProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
+/// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
+/// it contains an error variant.
+/// ## Mandatory Building Blocks
+/// The following methods must be called before building a problem with the builder.
+/// * [x](LevMarProblemBuilder::x) to set the values of the independent variable `$\vec{x}$`
+/// * [y](LevMarProblemBuilder::y) to set the values of the independent variable `$\vec{y}$`
+/// * [model](LevMarProblemBuilder::model) to set the model function
+/// * [initial_guess](LevMarProblemBuilder::initial_guess) provide an initial guess
+/// ## Additional Building blocks
+/// The other methods of the builder allow to manipulate further aspects, like adding weights to the data.
+/// The methods are marked as **Optional**.
 pub struct LevMarProblemBuilder<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField,
@@ -105,7 +141,7 @@ where
         }
     }
 
-    /// **Mandatory**: Set the value of the independent variable `$\vec{x}$` of the problem
+    /// **Mandatory**: Set the value of the independent variable `$\vec{x}$` of the problem.
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
     pub fn x<VectorType>(self, xvec: VectorType) -> Self
     where
@@ -117,7 +153,7 @@ where
         }
     }
 
-    /// **Mandatory**: Set the data to fit with `$\vec{y}=\vec{y}(\vec{x})$` of the problem
+    /// **Mandatory**: Set the data which we want to fit: `$\vec{y}=\vec{y}(\vec{x})$`.
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
     pub fn y<VectorType>(self, yvec: VectorType) -> Self
     where
@@ -129,8 +165,7 @@ where
         }
     }
 
-    /// **Mandatory**: Set the initial guesses of the model parameters
-    /// The parameter must have the same length as the model parameters
+    /// **Mandatory**: Set the actual model used for fitting
     pub fn model(self, model: &'a SeparableModel<ScalarType>) -> Self {
         Self {
             separable_model: Some(model),
@@ -138,8 +173,8 @@ where
         }
     }
 
-    /// **Mandatory**: provide initial guess for the parameters
-    /// they must have the same number of elements as the model parameters
+    /// **Mandatory**: provide initial guess for the parameters.
+    /// The number of values in the initial guess  must match the number of model parameters
     pub fn initial_guess(self, params: &[ScalarType]) -> Self {
         Self {
             parameter_initial_guess: Some(params.to_vec()),
@@ -147,12 +182,16 @@ where
         }
     }
 
-    /// **Optional** set epsilon below which two singular values are considered zero
-    /// If this value is not given, it will be set to machine epsilon. The epsilon is
-    /// automatically converted to a non-negative number. This value
-    /// can be used to mitigate the effects of basis functions becoming linearly dependent
-    /// when model parameters align in an unfortunate way. Then set it to some small factor
-    /// times the machine precision.
+    /// **Optional** This value is relevant for the solver, because it uses singular value decomposition
+    /// internally. This method sets a value `\epsilon` for which smaller (i.e. absolute - wise) singular
+    /// values are considered zero. In essence this gives a truncation of the SVD. This might be
+    /// helpful if two basis functions become linear dependent when the nonlinear model parameters
+    /// align in an unfortunate way. In this case a higher epsilon might increase the robustness
+    /// of the fitting process.
+    ///
+    /// If this value is not given, it will be set to machine epsilon.
+    ///
+    /// The given epsilon is automatically converted to a non-negative number.
     pub fn epsilon(self, eps: ScalarType::RealField) -> Self {
         Self {
             epsilon: Some(<ScalarType::RealField as Float>::abs(eps)),
@@ -163,6 +202,11 @@ where
     /// **Optional** Add diagonal weights to the problem (meaning data points are statistically
     /// independent). If this is not given, the problem is unweighted, i.e. each data point has
     /// unit weight.
+    ///
+    /// **Note** The weighted residual is calculated as `$||W(\vec{y}-\vec{f}(\vec{\alpha})||^2$`, so
+    /// to make weights that have a statistical meaning, the diagonal elements of the weight matrix should be
+    /// set to `w_{jj} = 1/\sigma_j` where `$\sigma_j$` is the (estimated) standard deviation associated with
+    /// data point `$y_j$`.
     pub fn weights<VectorType>(self, weights: VectorType) -> Self
     where
         DVector<ScalarType>: From<VectorType>,
@@ -180,7 +224,7 @@ where
     /// * `$\vec{x}$` and `$\vec{y}$` have a nonzero number of elements
     /// * the length of the initial guesses vector is the same as the number of model parameters
     /// # Returns
-    /// If all prerequisites are fullfilled, returns a [LevMarLeastSquaresProblem] with the given
+    /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     pub fn build(self) -> Result<LevMarProblem<'a, ScalarType>, LevMarBuilderError> {
         let finalized_builder = self.finalize()?;
