@@ -70,26 +70,125 @@ pub mod error;
 /// TODO ADD EXAMPLE
 ///
 /// ```rust
+/// use nalgebra::DVector;
+/// use varpro::prelude::SeparableModelBuilder;
+/// fn squared(x: &DVector<f64>) -> DVector<f64> {
+///     x.map(|x|x.powi(2))
+/// }
 ///
-/// ```
+/// let builder = SeparableModelBuilder::<f64>::new(&["alpha","beta"])
+///                 // we can add an invariant function using a function pointer
+///                 .invariant_function(squared)
+///                 // or we can add it using a lambda
+///                 .invariant_function(|x|x.map(|x|(x+1.).sin()));
+///```
+/// Caveat: we cannot successfully build a model containing only invariant functions. It would
+/// make no sense to use the varpro library to fit such a model because that is purely a linear
+/// least squares problem. See the next section for adding parameter dependent functions.
+///
 /// ### Basis Functions
 /// Most of the time we'll be adding basis functions to the model that depend on some of the model
 /// parameters. We can add a basis function to a builder by calling `builder.function`. Each call must
 /// be immediately followed by calls to `partial_deriv` for each of the parameters that the basis
 /// function depends on.
 ///
-/// TODO DOCUMENT FURTHER HERE
+/// **Example**: The procedure is best illustrated using an example
+///
+/// ```rust
+/// // exponential decay f(t,tau) = exp(-t/tau)
+/// use nalgebra::{Scalar, DVector};
+/// use num_traits::Float;
+/// use varpro::prelude::SeparableModelBuilder;
+/// pub fn exp_decay<ScalarType: Float + Scalar>(
+///     tvec: &DVector<ScalarType>,
+///     tau: ScalarType,
+/// ) -> DVector<ScalarType> {
+///     tvec.map(|t| (-t / tau).exp())
+/// }
+///
+/// // derivative of exp decay with respect to tau
+/// pub fn exp_decay_dtau<ScalarType: Scalar + Float>(
+///     tvec: &DVector<ScalarType>,
+///     tau: ScalarType,
+/// ) -> DVector<ScalarType> {
+///     tvec.map(|t| (-t / tau).exp() * t / (tau * tau))
+/// }
+///
+/// // function sin (omega*t+phi)
+/// pub fn sin_ometa_t_plus_phi<ScalarType: Scalar + Float>(
+///     tvec: &DVector<ScalarType>,
+///     omega: ScalarType,
+///     phi: ScalarType,
+/// ) -> DVector<ScalarType> {
+///     tvec.map(|t| (omega * t + phi).sin())
+/// }
+///
+/// // derivative d/d(omega) sin (omega*t+phi)
+/// pub fn sin_ometa_t_plus_phi_domega<ScalarType: Scalar + Float>(
+///     tvec: &DVector<ScalarType>,
+///     omega: ScalarType,
+///     phi: ScalarType,
+/// ) -> DVector<ScalarType> {
+///     tvec.map(|t| t * (omega * t + phi).cos())
+/// }
+///
+/// // derivative d/d(phi) sin (omega*t+phi)
+/// pub fn sin_ometa_t_plus_phi_dphi<ScalarType: Scalar + Float>(
+///     tvec: &DVector<ScalarType>,
+///     omega: ScalarType,
+///     phi: ScalarType,
+/// ) -> DVector<ScalarType> {
+///     tvec.map(|t| (omega * t + phi).cos())
+/// }
+///
+/// let builder = SeparableModelBuilder::<f64>::new(&["tau","omega","phi"])
+///               // add the exp decay and all derivatives
+///               .function(&["tau"],exp_decay)
+///               .partial_deriv("tau",exp_decay_dtau)
+///               // a new call to function finalizes adding the previous function
+///               .function(&["omega","phi"],sin_ometa_t_plus_phi)
+///               .partial_deriv("phi", sin_ometa_t_plus_phi_dphi)
+///               .partial_deriv("omega",sin_ometa_t_plus_phi_domega)
+///               // we can also add invariant functions. Same as above, the
+///               // call tells the model builder that the previous function has all
+///               // the partial derivatives finished
+///               .invariant_function(|x|x.clone())
+///               // we build the model calling build. This returns either a valid model
+///               // or an error variant which is pretty helpful in understanding what went wrong
+///               .build().unwrap();
+/// ```
+/// There is some special macro magic that
+///
+/// #### Rules for Model Functions
+/// There are several rules for adding model functions. One of them is enforced by the compiler,
+/// some of them are enforced at runtime (when trying to build the model) and others simply cannot
+/// be enforced by the library.
+///
+/// **Purely Semantic Rules:
+/// * Basis functions must be **nonlinear** in the parameters they take. If they aren't, you can always
+/// rewrite the problem so that the linear parameters go in the coefficient vector `$\vec{c}$`. This
+/// means that each partial derivative also depend on all the parameters that the basis function depends
+/// on.
+/// * Derivatives must take the same parameter arguments *and in the same order* as the original
+/// basis function. This means if basis function `$\vec{f}_j$` is given as `$\vec{f}_j(\vec{x},a,b)$`,
+/// then the derivatives must also be given with the parameters `$a,b$` in the same order, i.e.
+/// `\partial/\partial a $\vec{f}_j(\vec{x},a,b)$`, `\partial/\partial b $\vec{f}_j(\vec{x},a,b)$`.
+///
+/// **Rules Enforced at Compile Time**
+/// * Partial derivatives cannot be added to invariant functions. This is the reason for the
+/// weird proxy in the module.
+///
+/// **Rules Enforced at Runtime**
+/// * A partial derivative must be given for each parameter that the basis function depends on.
+/// * Basis functions may only depend on the parameters that the model depends on.
+///
 ///
 /// The builder allows us to provide basis functions for a separable model as a step by step process.
-/// TODO DOCUMENT
-//     //     //FOR PARTIAL DERIVS: mention that the partial deriv function must have the same number
-//              of args as the original function. (mention: this should be the case anyways because
-//              otherwise it indicates that the parameter was linear in the deriv
-//     //     //as the argument list of the parent function. This is a limitation of the way I pass functions
-//     //     //because I assume the same argument list. But it actually makes sense because paramters would
-//     //     //only vanish in the derivatives when the are linear, which I do not want to encourage anyways
-//     //     //!!!ALSO: document that partial derivative must take the arguments in the same order as!!!!
-//     //     //the base function for which they are the derivative
+///
+/// ## Building a Model
+/// The model is finalized and built using the [SeparableModelBuilder::build](SeparableModelBuilder::build)
+/// method. This method returns a valid model or an error variant doing a pretty good job of
+/// explaning why the model is invalid.
 #[must_use="The builder should be transformed into a model using the build() method"]
 pub struct SeparableModelBuilder<ScalarType>
 where
@@ -197,9 +296,15 @@ where
     /// Build a separable model from the contents of this builder.
     /// # Result
     /// A valid separable model or an error indicating why a valid model could not be constructed.
-    /// See also the documentation for [SeparableModelBuilder](self::SeparableModelBuilder)
-    /// fo what constitutes a valid model.
     ///
+    /// ## Valid Models
+    /// A model is valid if the following conditions where upheld during construction
+    /// * The list of parameters is valid (see [SeparableModelBuilder::new](SeparableModelBuilder::new))
+    /// * Each basis function depends on valid parameters
+    /// * Each basis function only depends on (a subset of) the parameters given on model construction
+    /// * For each parameter in the model, there is at least one function that depends on it
+    ///
+    /// # Order of the Basis Functions in the Model
     /// **Note** The order of basis functions in the model is order in which the basis functions
     /// where provided during the builder stage. That means the first basis functions gets index `0` in
     /// the model, the second gets index `1` and so on.
