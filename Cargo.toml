@@ -1,6 +1,6 @@
 [package]
 name = "varpro"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["geo-ant"]
 edition = "2018"
 license = "MIT"
@@ -15,8 +15,8 @@ keywords = ["nonlinear","least","squares","fitting","regression"]
 
 [dependencies]
 snafu = "0.6"
-levenberg-marquardt = "0.7"
-nalgebra = "0.23"
+levenberg-marquardt = "0.8.0"
+nalgebra = "0.25.3"
 num-traits = "0.2"
 
 [dev-dependencies]

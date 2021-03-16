@@ -2,7 +2,7 @@
 //!
 //! # Introduction
 //! A large class of nonlinear models consists of a mixture of truly nonlinear as well as linear model
-//! parameters. These are the so called *separable models* which can be written as a linear combination
+//! parameters. These are called *separable models* which can be written as a linear combination
 //! of `$N_{basis}$` nonlinear model basis functions. The purpose of this crate provide a simple interface to
 //! robust and fast routines to fit separable models to data. Consider a data vector `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`, which
 //! is sampled at grid points `$\vec{x}=(x_1,\dots,x_{N_{data}})^T$`, both with `$N_{data}$` elements. Our goal is to fit a nonlinear,
@@ -77,7 +77,7 @@
 //! ```math
 //! f_k(\vec{x},\vec{\alpha},\vec{c})= c_1 \exp\left(-x_k/\tau_1\right)+c_2 \exp\left(-x_k/\tau_2\right)+c_3,
 //! ```
-//! which a fancy way of saying that the exponential functions are applied element-wise to the vector `$\vec{x}$`.
+//! which is just a fancy way of saying that the exponential functions are applied element-wise to the vector `$\vec{x}$`.
 //!
 //! We can see that the model depends on the nonlinear parameters `$\vec{\alpha}=(\tau_1,\tau_2)^T$`
 //! and the linear coefficients `$\vec{c}=(c_1,c_2,c_3)^T$`. Both exponential functions can be modeled
@@ -108,7 +108,7 @@
 //!
 //! There is a second type of basis function, which corresponds to coefficient `$c_3$`. This is a constant
 //! function returning a vector of ones. It does not depend on any parameters, which is why there
-//! is a separate way of adding these types of *invariant functions* to the model. For that use
+//! is a separate way of adding these types of *invariant functions* to the model. For that, use
 //! [invariant_function](crate::model::builder::SeparableModelBuilder::invariant_function)
 //! of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder).
 //!
@@ -157,7 +157,7 @@
 //! // they are in the same order as the parameter names given to the model
 //! let alpha = solved_problem.params();
 //! // the linear coefficients after fitting
-//! // the are in the same order as the basis functions that were added to the model
+//! // they are in the same order as the basis functions that were added to the model
 //! let c = solved_problem.linear_coefficients().unwrap();
 //! # }
 //! ```
