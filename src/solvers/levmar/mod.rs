@@ -170,6 +170,7 @@ where
                     self.y_w.len(),
                     self.model.parameter_count(),
                 )
+                .assume_init()
             };
 
             let U = current_svd.u.as_ref()?; // will return None if this was not calculated

@@ -89,8 +89,10 @@ impl LeastSquaresProblem<f64, Dynamic, U5> for DoubleExponentialDecayFittingWith
         // populate jacobian
         //let ncols = 5;
         let nrows = self.x.len();
-        let mut jacobian =
-            unsafe { Matrix::<f64, Dynamic, U5, Self::JacobianStorage>::new_uninitialized(nrows) };
+        let mut jacobian = unsafe {
+            Matrix::<f64, Dynamic, U5, Self::JacobianStorage>::new_uninitialized(nrows)
+                .assume_init()
+        };
 
         jacobian.set_column(
             0,

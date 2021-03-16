@@ -148,7 +148,7 @@ where
         let nrows = location.len();
         let ncols = self.basis_function_count();
         let mut function_value_matrix =
-            unsafe { DMatrix::<ScalarType>::new_uninitialized(nrows, ncols) };
+            unsafe { DMatrix::<ScalarType>::new_uninitialized(nrows, ncols).assume_init() };
 
         for (basefunc, mut column) in self
             .basefunctions

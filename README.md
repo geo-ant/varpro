@@ -46,17 +46,11 @@ use varpro::prelude::*;
 use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
 // 1. create the model by giving only the nonlinear parameter names it depends on
 let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
-  // add the first exponential decay and its partial derivative to the model
-// give all parameter names that the function depends on
-// and subsequently provide the partial derivative for each parameter
   .function(&["tau1"], exp_decay)
   .partial_deriv("tau1", exp_decay_dtau)
-  // add the second exponential decay and its partial derivative to the model
   .function(&["tau2"], exp_decay)
   .partial_deriv("tau2", exp_decay_dtau)
-  // add the constant as a vector of ones as an invariant function
   .invariant_function(|x|DVector::from_element(x.len(),1.))
-  // build the model
   .build()
   .unwrap();
 // 2. Cast the fitting problem as a nonlinear least squares minimization problem
@@ -70,11 +64,9 @@ let problem = LevMarProblemBuilder::new()
 // 3. Solve the fitting problem
 let (solved_problem, report) = LevMarSolver::new().minimize(problem);
 assert!(report.termination.was_successful());
-// 4. obtain  the nonlinear parameters after fitting
-// they are in the same order as the parameter names given to the model
+// 4. obtain the nonlinear parameters after fitting
 let alpha = solved_problem.params();
-// the linear coefficients after fitting
-// the are in the same order as the basis functions that were added to the model
+// 5. obtain the linear parameters
 let c = solved_problem.linear_coefficients().unwrap();
 ```
 
