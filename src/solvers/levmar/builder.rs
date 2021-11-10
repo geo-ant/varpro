@@ -1,11 +1,11 @@
 use crate::model::SeparableModel;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblem;
+use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, DVector, Scalar};
 use num_traits::{Float, Zero};
 use snafu::Snafu;
 use std::ops::Mul;
-use levenberg_marquardt::LeastSquaresProblem;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, Snafu, PartialEq)]

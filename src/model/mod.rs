@@ -147,8 +147,7 @@ where
 
         let nrows = location.len();
         let ncols = self.basis_function_count();
-        let mut function_value_matrix =
-             DMatrix::<ScalarType>::zeros(nrows, ncols);
+        let mut function_value_matrix = DMatrix::<ScalarType>::zeros(nrows, ncols);
 
         for (basefunc, mut column) in self
             .basefunctions

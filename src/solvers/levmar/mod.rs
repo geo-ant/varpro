@@ -165,7 +165,8 @@ where
             linear_coefficients,
         }) = self.cached.as_ref()
         {
-            let mut jacobian_matrix = DMatrix::<ScalarType>::zeros(self.y_w.len(),self.model.parameter_count());
+            let mut jacobian_matrix =
+                DMatrix::<ScalarType>::zeros(self.y_w.len(), self.model.parameter_count());
 
             let U = current_svd.u.as_ref()?; // will return None if this was not calculated
             let U_t = U.transpose();
