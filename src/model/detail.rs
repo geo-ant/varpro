@@ -102,9 +102,9 @@ where
     StrType2: Into<String> + Clone + Hash + Eq,
     String: PartialEq<StrType> + PartialEq<StrType2>,
 {
-    check_parameter_names(&model_parameters)?;
-    check_parameter_names(&function_parameters)?;
-    check_parameter_count(&function_parameters, &function)?;
+    check_parameter_names(model_parameters)?;
+    check_parameter_names(function_parameters)?;
+    check_parameter_count(function_parameters, &function)?;
 
     let index_mapping = create_index_mapping(model_parameters, function_parameters)?;
 

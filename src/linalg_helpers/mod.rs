@@ -95,6 +95,6 @@ where
             rhs.len(),
             "Matrix dimensions incorrect for diagonal matrix multiplication."
         );
-        self.diagonal.component_mul(&rhs)
+        self.diagonal.component_mul(rhs)
     }
 }
