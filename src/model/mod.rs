@@ -105,7 +105,7 @@ where
 
 impl<ScalarType> SeparableModel<ScalarType>
 where
-    ScalarType: Scalar,
+    ScalarType: Scalar + Zero,
 {
     /// # Arguments
     /// * `location`: the value of the independent location parameter `$\vec{x}$`
@@ -148,7 +148,7 @@ where
         let nrows = location.len();
         let ncols = self.basis_function_count();
         let mut function_value_matrix =
-            unsafe { DMatrix::<ScalarType>::new_uninitialized(nrows, ncols).assume_init() };
+             DMatrix::<ScalarType>::zeros(nrows, ncols);
 
         for (basefunc, mut column) in self
             .basefunctions
