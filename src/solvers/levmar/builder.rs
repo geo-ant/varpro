@@ -90,7 +90,7 @@ pub enum LevMarBuilderError {
 /// The methods are marked as **Optional**.
 pub struct LevMarProblemBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField,
+    ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     /// Required: the independent variable `$\vec{x}$
@@ -116,7 +116,7 @@ where
 /// Same as `Self::new()`.
 impl<'a, ScalarType> Default for LevMarProblemBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField + Zero,
+    ScalarType: Scalar + ComplexField + Zero + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     fn default() -> Self {
@@ -126,7 +126,7 @@ where
 
 impl<'a, ScalarType> LevMarProblemBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField + Zero,
+    ScalarType: Scalar + ComplexField + Zero + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     /// Create a new builder with empty fields and unit weights
@@ -256,7 +256,7 @@ where
 #[allow(non_snake_case)]
 impl<'a, ScalarType> From<FinalizedBuilder<'a, ScalarType>> for LevMarProblem<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField,
+    ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
 {
     fn from(finalized_builder: FinalizedBuilder<'a, ScalarType>) -> Self {
@@ -288,7 +288,7 @@ where
 // private implementations
 impl<'a, ScalarType> LevMarProblemBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField,
+    ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     /// helper function to check if all required fields have been set and pass the checks

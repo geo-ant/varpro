@@ -70,9 +70,7 @@ where
             "Matrix dimensions incorrect for diagonal matrix multiplication."
         );
 
-        let mut result_matrix = unsafe {
-            DMatrix::<ScalarType>::new_uninitialized(self.nrows(), rhs.ncols()).assume_init()
-        };
+        let mut result_matrix = DMatrix::<ScalarType>::zeros(self.nrows(), rhs.ncols());
 
         for (col_idx, mut col) in result_matrix.column_iter_mut().enumerate() {
             col.copy_from(&self.diagonal.component_mul(&rhs.column(col_idx)));
@@ -96,6 +94,6 @@ where
             rhs.len(),
             "Matrix dimensions incorrect for diagonal matrix multiplication."
         );
-        self.diagonal.component_mul(&rhs)
+        self.diagonal.component_mul(rhs)
     }
 }

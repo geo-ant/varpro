@@ -41,7 +41,7 @@ struct CachedCalculations<ScalarType: Scalar + ComplexField> {
 #[derive(Clone)]
 pub struct LevMarProblem<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField,
+    ScalarType: Scalar + ComplexField + Copy,
 {
     /// the independent variable `\vec{x}` (location parameter)
     x: DVector<ScalarType>,
@@ -66,7 +66,7 @@ where
     cached: Option<CachedCalculations<ScalarType>>,
 }
 
-impl<'a, ScalarType: Scalar + ComplexField> LevMarProblem<'a, ScalarType> {
+impl<'a, ScalarType: Scalar + ComplexField + Copy> LevMarProblem<'a, ScalarType> {
     /// Get the linear coefficients for the current problem. After a successful pass of the solver,
     /// this contains a value with the best fitting linear coefficients
     /// # Returns
@@ -83,7 +83,7 @@ impl<'a, ScalarType: Scalar + ComplexField> LevMarProblem<'a, ScalarType> {
 impl<'a, ScalarType> LeastSquaresProblem<ScalarType, Dynamic, Dynamic>
     for LevMarProblem<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField,
+    ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
 {
     type ResidualStorage = Owned<ScalarType, Dynamic>;
@@ -165,13 +165,8 @@ where
             linear_coefficients,
         }) = self.cached.as_ref()
         {
-            let mut jacobian_matrix = unsafe {
-                DMatrix::<ScalarType>::new_uninitialized(
-                    self.y_w.len(),
-                    self.model.parameter_count(),
-                )
-                .assume_init()
-            };
+            let mut jacobian_matrix =
+                DMatrix::<ScalarType>::zeros(self.y_w.len(), self.model.parameter_count());
 
             let U = current_svd.u.as_ref()?; // will return None if this was not calculated
             let U_t = U.transpose();
