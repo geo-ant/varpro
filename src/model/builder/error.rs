@@ -2,7 +2,7 @@ use snafu::Snafu;
 
 /// An error structure that contains error variants that occur when building a model.
 #[derive(Debug, Clone, Snafu, PartialEq)]
-#[snafu(visibility (pub))]
+#[snafu(visibility(pub))]
 pub enum ModelBuildError {
     /// Model or function parameters contain duplicates
     #[snafu(display("Parameter list {:?} contains duplicates! Parameter lists must comprise only unique elements.",function_parameters))]
