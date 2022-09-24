@@ -8,7 +8,7 @@ use snafu::Snafu;
 use std::ops::Mul;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
-#[derive(Debug, Clone, Snafu, PartialEq)]
+#[derive(Debug, Clone, Snafu, PartialEq, Eq)]
 #[snafu(visibility(pub))]
 pub enum LevMarBuilderError {
     /// the data for the independent variable was not given to the builder

@@ -6,7 +6,7 @@ use std::ops::Mul;
 /// Right now covers only either unit weights (i.e. unweighted problem) or a diagonal
 /// matrix for the weights. Can easily be extended in the future, because this structure
 /// offers an interface for matrix-matrix multiplication and matrix-vector multiplication
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Weights<ScalarType>
 where
     ScalarType: Scalar + ComplexField,

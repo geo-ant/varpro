@@ -1,7 +1,7 @@
 use snafu::Snafu;
 
 /// Errors pertaining to use errors of the [SeparableModel].
-#[derive(Debug, Clone, Snafu, PartialEq)]
+#[derive(Debug, Clone, Snafu, PartialEq, Eq)]
 #[snafu(visibility(pub))]
 pub enum ModelError {
     /// Base functions are expected to return a vector the same length as the location argument.

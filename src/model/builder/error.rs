@@ -1,7 +1,7 @@
 use snafu::Snafu;
 
 /// An error structure that contains error variants that occur when building a model.
-#[derive(Debug, Clone, Snafu, PartialEq)]
+#[derive(Debug, Clone, Snafu, PartialEq, Eq)]
 #[snafu(visibility(pub))]
 pub enum ModelBuildError {
     /// Model or function parameters contain duplicates
