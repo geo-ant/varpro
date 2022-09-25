@@ -8,7 +8,7 @@ use std::ops::Mul;
 /// This internally stores only the diagonal elements
 /// # Types
 /// ScalarType: the numeric type of the matrix
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiagDMatrix<ScalarType>
 where
     ScalarType: Scalar + ComplexField,

@@ -8,8 +8,8 @@ use snafu::Snafu;
 use std::ops::Mul;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
-#[derive(Debug, Clone, Snafu, PartialEq)]
-#[snafu(visibility = "pub")]
+#[derive(Debug, Clone, Snafu, PartialEq, Eq)]
+#[snafu(visibility(pub))]
 pub enum LevMarBuilderError {
     /// the data for the independent variable was not given to the builder
     #[snafu(display("Data for vector x not provided."))]

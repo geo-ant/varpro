@@ -20,7 +20,7 @@ where
         if params.len() != Self::ARGUMENT_COUNT {
             panic!("Basisfunction expected {} arguments but the provided parameter slice has {} elements.",Self::ARGUMENT_COUNT,params.len());
         }
-        (&self)(x, params[0].clone())
+        (self)(x, params[0].clone())
     }
 
     const ARGUMENT_COUNT: usize = 1;
