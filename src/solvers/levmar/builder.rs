@@ -4,50 +4,49 @@ use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, DVector, Scalar};
 use num_traits::{Float, Zero};
-use snafu::Snafu;
+use thiserror::Error as ThisError;
 use std::ops::Mul;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
-#[derive(Debug, Clone, Snafu, PartialEq, Eq)]
-#[snafu(visibility(pub))]
+#[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 pub enum LevMarBuilderError {
     /// the data for the independent variable was not given to the builder
-    #[snafu(display("Data for vector x not provided."))]
+    #[error("Data for vector x not provided.")]
     XDataMissing,
 
     /// the data for y variable was not given to the builder
-    #[snafu(display("Data for vector y not provided."))]
+    #[error("Data for vector y not provided.")]
     YDataMissing,
 
     /// no model was provided to the builder
-    #[snafu(display("Model not provided."))]
+    #[error("Model not provided.")]
     ModelMissing,
 
     /// no model was provided to the builder
-    #[snafu(display("Initial guess for parameters not provided."))]
+    #[error("Initial guess for parameters not provided.")]
     InitialGuessMissing,
 
     /// x and y vector have different lengths
-    #[snafu(display(
+    #[error(
         "Vectors x and y must have same lengths. Given x length = {} and y length = {}",
         x_length,
         y_length
-    ))]
+    )]
     InvalidLengthOfData { x_length: usize, y_length: usize },
 
     /// the provided x and y vectors must not have zero elements
-    #[snafu(display("x or y must have nonzero number of elements."))]
+    #[error("x or y must have nonzero number of elements.")]
     ZeroLengthVector,
 
     /// the model has a different number of parameters than the provided initial guesses
-    #[snafu(display("Initial guess vector must have same length as parameters. Model has {} parameters and {} initial guesses were provided.",model_count, provided_count))]
+    #[error("Initial guess vector must have same length as parameters. Model has {} parameters and {} initial guesses were provided.",model_count, provided_count)]
     InvalidParameterCount {
         model_count: usize,
         provided_count: usize,
     },
 
     /// y vector and weights have different lengths
-    #[snafu(display("The weights must have the same length as the data y."))]
+    #[error("The weights must have the same length as the data y.")]
     InvalidLengthOfWeights,
 }
 
