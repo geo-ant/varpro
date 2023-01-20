@@ -15,6 +15,7 @@ keywords = ["nonlinear","least","squares","fitting","regression"]
 
 [dependencies]
 snafu = "0.7"
+thiserror = "1"
 levenberg-marquardt = "0.12"
 nalgebra = "0.30"
 num-traits = "0.2"
