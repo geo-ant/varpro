@@ -14,7 +14,6 @@ keywords = ["nonlinear","least","squares","fitting","regression"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-snafu = "0.7"
 thiserror = "1"
 levenberg-marquardt = "0.12"
 nalgebra = "0.30"
