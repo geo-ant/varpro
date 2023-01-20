@@ -11,19 +11,32 @@ pub enum ModelError {
         expected_length
     )]
     UnexpectedFunctionOutput {
+        /// the expected length
         expected_length: usize,
+        /// the actual length
         actual_length: usize,
     },
 
     /// Indicates an evaluation for a parameter was requested that is not part of the model parameters
     #[error("Parameter '{}' is not in model", parameter)]
-    ParameterNotInModel { parameter: String },
+    ParameterNotInModel { 
+        /// the parameter that was not part of the model
+        parameter: String 
+    },
 
     /// Indicates that the given derivative index is out of bounds.
     #[error("Index {} for derivative is out of bounds", index)]
-    DerivativeIndexOutOfBounds { index: usize },
+    DerivativeIndexOutOfBounds { 
+        /// the index of the derivative out of bounds
+        index: usize
+    },
 
     /// It was tried to evaluate a model with an incorrect number of parameters
     #[error("Model takes {} parameters, but {} were provide.", required, actual)]
-    IncorrectParameterCount { required: usize, actual: usize },
+    IncorrectParameterCount { 
+        /// the number of parameters that are required for the model
+        required: usize,
+        /// the given number of parameters
+        actual: usize
+    },
 }

@@ -1,3 +1,4 @@
+#![deny(missing_docs)]
 //! The varpro crate enables nonlinear least squares fitting for separable models using the Variable Projection (VarPro) algorithm.
 //!
 //! # Introduction
@@ -178,9 +179,14 @@
 //! **attention**: the O'Leary paper contains errors that are fixed in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) of mine.
 //!
 //! (Golub2003) Golub, G. , Pereyra, V Separable nonlinear least squares: the variable projection method and its applications. Inverse Problems **19** R1 (2003) [https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201](https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201)
+
+/// helper implementation to make working with basis functions more seamless
 pub mod basis_function;
+/// code pertaining to building and working with separable models
 pub mod model;
+/// commonly useful imports
 pub mod prelude;
+/// solvers for the nonlinear minimization problem
 pub mod solvers;
 
 /// private module that contains helper functionality for linear algebra that is not yet

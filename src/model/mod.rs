@@ -5,8 +5,10 @@ use nalgebra::{DMatrix, DVector};
 use num_traits::Zero;
 
 mod detail;
+/// contains the error structure that belongs to a model 
 pub mod errors;
 
+/// contains the builder code for model creation
 pub mod builder;
 mod model_basis_function;
 #[cfg(test)]

@@ -12,6 +12,7 @@ mod modelfunction_builder;
 #[cfg(test)]
 mod test;
 
+/// contains the error for the model builder
 pub mod error;
 
 ///! A builder that allows us to construct a valid [SeparableModel](crate::model::SeparableModel).

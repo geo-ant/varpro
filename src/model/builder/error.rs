@@ -5,7 +5,10 @@ use thiserror::Error as ThisError;
 pub enum ModelBuildError {
     /// Model or function parameters contain duplicates
     #[error("Parameter list {:?} contains duplicates! Parameter lists must comprise only unique elements.",function_parameters)]
-    DuplicateParameterNames { function_parameters: Vec<String> },
+    DuplicateParameterNames { 
+        /// the given parameter list containing duplicates
+        function_parameters: Vec<String>
+    },
 
     /// Model or function parameter list is empty. To add functions that are independent of
     /// model parameters, use the interface for adding invariant functions.
@@ -19,7 +22,10 @@ pub enum ModelBuildError {
         "Function parameter '{}' is not part of the model parameters.",
         function_parameter
     )]
-    FunctionParameterNotInModel { function_parameter: String },
+    FunctionParameterNotInModel { 
+        /// the name of the parameter not in the set
+        function_parameter: String
+    },
 
     /// Tried to provide a partial derivative with respect to a parameter that a function does
     /// not depend on
@@ -29,13 +35,18 @@ pub enum ModelBuildError {
         function_parameters
     )]
     InvalidDerivative {
+        /// paramter where a derivative was provided
         parameter: String,
+        /// the actual parameters this function depends on
         function_parameters: Vec<String>,
     },
 
     /// Tried to provide the same partial derivative twice.
     #[error("Derivative for parameter '{}' was already provided! Give each partial derivative exactly once.", parameter)]
-    DuplicateDerivative { parameter: String },
+    DuplicateDerivative { 
+        /// the name of the derivative specified twice
+        parameter: String 
+    },
 
     /// Not all partial derivatives for a function where given. Each function must be given
     /// a partial derivative with respect to each parameter it depends on.
@@ -45,7 +56,9 @@ pub enum ModelBuildError {
         missing_parameter
     )]
     MissingDerivative {
+        /// this parameter misses a derivative
         missing_parameter: String,
+        /// the parameters that this function depends on
         function_parameters: Vec<String>,
     },
 
@@ -57,7 +70,10 @@ pub enum ModelBuildError {
 
     /// The model depends on a certain parameter that none of the base functions depend on.
     #[error("Model depends on parameter '{}', but none of its functions use it. Each model parameter must occur in at least one function.",parameter)]
-    UnusedParameter { parameter: String },
+    UnusedParameter { 
+        /// the unused parameter name
+        parameter: String
+    },
 
     /// This error indicates that the more or fewer string parameters where provided as function
     /// parameters than the actual variadic function takes. This might accidentally happen when giving
@@ -71,8 +87,11 @@ pub enum ModelBuildError {
         function_argument_count,
     )]
     IncorrectParameterCount {
+        /// the parameters that the function actually depends on
         params: Vec<String>,
+        /// the number of parameters provided through the string api
         string_params_count: usize,
+        /// the number of arguments this function actually takes
         function_argument_count: usize,
     },
 
@@ -80,5 +99,7 @@ pub enum ModelBuildError {
     /// `["tau,phi"]`, instead of actually `["tau","phi"]`. So this is forbidden in order to help spotting these
     /// hard to find errors.
     #[error("Parameter names may not contain comma separator: '{}'. Did you want to give two parameters?",param_name)]
-    CommaInParameterNameNotAllowed { param_name: String },
+    CommaInParameterNameNotAllowed { 
+        /// the parameter name 
+        param_name: String },
 }
