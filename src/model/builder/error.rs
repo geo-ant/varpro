@@ -5,9 +5,9 @@ use thiserror::Error as ThisError;
 pub enum ModelBuildError {
     /// Model or function parameters contain duplicates
     #[error("Parameter list {:?} contains duplicates! Parameter lists must comprise only unique elements.",function_parameters)]
-    DuplicateParameterNames { 
+    DuplicateParameterNames {
         /// the given parameter list containing duplicates
-        function_parameters: Vec<String>
+        function_parameters: Vec<String>,
     },
 
     /// Model or function parameter list is empty. To add functions that are independent of
@@ -22,9 +22,9 @@ pub enum ModelBuildError {
         "Function parameter '{}' is not part of the model parameters.",
         function_parameter
     )]
-    FunctionParameterNotInModel { 
+    FunctionParameterNotInModel {
         /// the name of the parameter not in the set
-        function_parameter: String
+        function_parameter: String,
     },
 
     /// Tried to provide a partial derivative with respect to a parameter that a function does
@@ -43,9 +43,9 @@ pub enum ModelBuildError {
 
     /// Tried to provide the same partial derivative twice.
     #[error("Derivative for parameter '{}' was already provided! Give each partial derivative exactly once.", parameter)]
-    DuplicateDerivative { 
+    DuplicateDerivative {
         /// the name of the derivative specified twice
-        parameter: String 
+        parameter: String,
     },
 
     /// Not all partial derivatives for a function where given. Each function must be given
@@ -70,9 +70,9 @@ pub enum ModelBuildError {
 
     /// The model depends on a certain parameter that none of the base functions depend on.
     #[error("Model depends on parameter '{}', but none of its functions use it. Each model parameter must occur in at least one function.",parameter)]
-    UnusedParameter { 
+    UnusedParameter {
         /// the unused parameter name
-        parameter: String
+        parameter: String,
     },
 
     /// This error indicates that the more or fewer string parameters where provided as function
@@ -99,7 +99,8 @@ pub enum ModelBuildError {
     /// `["tau,phi"]`, instead of actually `["tau","phi"]`. So this is forbidden in order to help spotting these
     /// hard to find errors.
     #[error("Parameter names may not contain comma separator: '{}'. Did you want to give two parameters?",param_name)]
-    CommaInParameterNameNotAllowed { 
-        /// the parameter name 
-        param_name: String },
+    CommaInParameterNameNotAllowed {
+        /// the parameter name
+        param_name: String,
+    },
 }

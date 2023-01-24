@@ -7,7 +7,7 @@
 //! parameters. These are called *separable models* and can be written as a linear combination
 //! of `$N_{basis}$` nonlinear model basis functions. The purpose of this crate is to fit linear
 //! models to data using fast and robust algorithms, while providing a simple interface.
-//! 
+//!
 //! Consider a data vector `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`, which
 //! is sampled at grid points `$\vec{x}=(x_1,\dots,x_{N_{data}})^T$`, both with `$N_{data}$` elements. Our goal is to fit a nonlinear,
 //! separable model `$f$` to the data. Because the model is separable we can write it as
@@ -27,14 +27,14 @@
 //!
 //! Note that we call `$\vec{\alpha}$` the _parameters_ and `$\vec{c}$` the _coefficients_ of the model.
 //! We do this do make the distincion between _nonlinear parameters_ and _linear coefficients_.
-//! Of course the model itself is parametrized on both `$\vec{\alpha}$` and `$\vec{c}$`. 
+//! Of course the model itself is parametrized on both `$\vec{\alpha}$` and `$\vec{c}$`.
 //!
 //! ## Model Parameters and Basis Functions
 //!
 //! The model itself is given as a linear combination of *nonlinear* basis functions `$\vec{f}_j$` with
 //! expansion coefficient `$c_j$`. The basis functions themselves only depend on the independent variable
 //! `$\vec{x}$` and on a subset `$S_j(\alpha)$` of the nonlinear model parameters `$\vec{\alpha}$`.
-//! Each basis function can depend on a different subset, but there is no restriction on which 
+//! Each basis function can depend on a different subset, but there is no restriction on which
 //! parameters a function can depend. Arbitrary functions might share some parameters. It's also
 //! fine for functions to depend on some (or only) parameters that are exclusive to them.
 //!

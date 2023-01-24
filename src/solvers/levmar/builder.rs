@@ -4,8 +4,8 @@ use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, DVector, Scalar};
 use num_traits::{Float, Zero};
-use thiserror::Error as ThisError;
 use std::ops::Mul;
+use thiserror::Error as ThisError;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]

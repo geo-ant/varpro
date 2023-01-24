@@ -5,7 +5,7 @@ use nalgebra::{DMatrix, DVector, Dynamic};
 use num_traits::Zero;
 
 mod detail;
-/// contains the error structure that belongs to a model 
+/// contains the error structure that belongs to a model
 pub mod errors;
 
 /// contains the builder code for model creation
@@ -151,7 +151,8 @@ where
         let ncols = self.basis_function_count();
         // this pattern is not great, but the trait bounds in copy_from still
         // prevent us from doing something better
-        let mut function_value_matrix = unsafe {DMatrix::uninit(Dynamic::new(nrows), Dynamic::new(ncols)).assume_init()};
+        let mut function_value_matrix =
+            unsafe { DMatrix::uninit(Dynamic::new(nrows), Dynamic::new(ncols)).assume_init() };
 
         for (basefunc, mut column) in self
             .basefunctions

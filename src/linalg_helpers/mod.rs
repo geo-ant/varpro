@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test;
 
-use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Scalar, Dynamic};
+use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Dynamic, Scalar};
 use std::ops::Mul;
 
 /// A square diagonal matrix with dynamic dimension. Off-diagonal entries are assumed zero.
@@ -74,8 +74,10 @@ where
         // with valid values below. Ideally we would first call the
         // copy_from functionality below, but we can't because the Scalar
         // trait bounds will screw us. See https://github.com/dimforge/nalgebra/pull/949
-        let mut result_matrix = unsafe{DMatrix::uninit( Dynamic::new(self.nrows()), Dynamic::new(rhs.ncols())).assume_init()};
-        
+        let mut result_matrix = unsafe {
+            DMatrix::uninit(Dynamic::new(self.nrows()), Dynamic::new(rhs.ncols())).assume_init()
+        };
+
         for (col_idx, mut col) in result_matrix.column_iter_mut().enumerate() {
             col.copy_from(&self.diagonal.component_mul(&rhs.column(col_idx)));
         }

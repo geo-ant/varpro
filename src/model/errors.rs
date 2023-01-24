@@ -19,24 +19,24 @@ pub enum ModelError {
 
     /// Indicates an evaluation for a parameter was requested that is not part of the model parameters
     #[error("Parameter '{}' is not in model", parameter)]
-    ParameterNotInModel { 
+    ParameterNotInModel {
         /// the parameter that was not part of the model
-        parameter: String 
+        parameter: String,
     },
 
     /// Indicates that the given derivative index is out of bounds.
     #[error("Index {} for derivative is out of bounds", index)]
-    DerivativeIndexOutOfBounds { 
+    DerivativeIndexOutOfBounds {
         /// the index of the derivative out of bounds
-        index: usize
+        index: usize,
     },
 
     /// It was tried to evaluate a model with an incorrect number of parameters
     #[error("Model takes {} parameters, but {} were provide.", required, actual)]
-    IncorrectParameterCount { 
+    IncorrectParameterCount {
         /// the number of parameters that are required for the model
         required: usize,
         /// the given number of parameters
-        actual: usize
+        actual: usize,
     },
 }
