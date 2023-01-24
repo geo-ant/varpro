@@ -31,7 +31,7 @@ impl DoubleExponentialDecayFittingWithOffset {
             "Wrong parameter count. The 5 Parameters are: tau1, tau2, c1, c2, c3"
         );
         assert_eq!(y.len(), x.len(), "x and y must have same length");
-        let parameters = Vector5::from_iterator(initial_guesses.to_vec().into_iter());
+        let parameters = Vector5::from_iterator(initial_guesses.iter().copied());
         let mut problem = Self {
             params: parameters,
             x: x.clone(),
