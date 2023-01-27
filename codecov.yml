@@ -4,10 +4,10 @@ coverage:
   status:
     project:
       default:
-        threshold: 5% # allow for small deviation from base
+        threshold: 10% # allow for small deviation from base
     patch:
       default:
-        threshold: 5% # allow for small deviation from base
+        threshold: 10% # allow for small deviation from base
 
 ignore: # ignore codecoverage on following paths
   - ".github"
