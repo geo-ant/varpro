@@ -2,6 +2,10 @@
 
 This is the changelog for the `varpro` library. See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.5.0
+- Upgrade nalgebra and levenberg_marquardt dependencies to current versions
+- Fix deprecation warnings and expand test coverage slightly
+
 ## 0.4.1
 - Remove snafu dependency and replace by `thiserror`
 - Use uninitialized matrices instead of zero initialisation for places where contents will be overwritten anyways
