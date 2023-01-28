@@ -6,6 +6,7 @@ This is the changelog for the `varpro` library. See also here for a [version his
 - Remove snafu dependency and replace by `thiserror`
 - Use uninitialized matrices instead of zero initialisation for places where contents will be overwritten anyways
 - Fix new clippy lints
+- Redo the code coverage workflow and switch to coveralls from codecov
 
 ## 0.3.0, 0.4.0
 Upgrade dependencies
