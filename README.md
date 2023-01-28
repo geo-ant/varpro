@@ -3,7 +3,7 @@
 ![build](https://github.com/geo-ant/varpro/workflows/build/badge.svg?branch=main)
 ![tests](https://github.com/geo-ant/varpro/workflows/tests/badge.svg?branch=main)
 ![lints](https://github.com/geo-ant/varpro/workflows/lints/badge.svg?branch=main)
-[![coverage](https://codecov.io/gh/geo-ant/varpro/branch/main/graph/badge.svg?token=1L2PEJFMXP)](https://codecov.io/gh/geo-ant/varpro)
+[![coverage](https://coveralls.io/repos/github/geo-ant/varpro/badge.svg?branch=)](https://coveralls.io/github/geo-ant/varpro?branch=)
 
 This library enables robust and fast least-squares fitting of nonlinear, separable model functions to observations. It uses the VarPro algorithm to achieve this.
 

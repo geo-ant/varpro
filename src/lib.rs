@@ -1,31 +1,42 @@
+#![deny(missing_docs)]
 //! The varpro crate enables nonlinear least squares fitting for separable models using the Variable Projection (VarPro) algorithm.
 //!
 //! # Introduction
-//! A large class of nonlinear models consists of a mixture of truly nonlinear as well as linear model
-//! parameters. These are called *separable models* which can be written as a linear combination
-//! of `$N_{basis}$` nonlinear model basis functions. The purpose of this crate provide a simple interface to
-//! robust and fast routines to fit separable models to data. Consider a data vector `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`, which
+//!
+//! A large class of nonlinear models consists of a mixture of both truly nonlinear and _linear_ model
+//! parameters. These are called *separable models* and can be written as a linear combination
+//! of `$N_{basis}$` nonlinear model basis functions. The purpose of this crate is to fit linear
+//! models to data using fast and robust algorithms, while providing a simple interface.
+//!
+//! Consider a data vector `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`, which
 //! is sampled at grid points `$\vec{x}=(x_1,\dots,x_{N_{data}})^T$`, both with `$N_{data}$` elements. Our goal is to fit a nonlinear,
-//! separable model to the data. Because the model is separable we can write it as
+//! separable model `$f$` to the data. Because the model is separable we can write it as
 //!
 //! ```math
 //! \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(\vec{x},S_j(\alpha))
 //! ```
+//!
 //! Lets look at the components of this equation in more detail. The vector valued function
 //! `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` is the actual model we want to fit. It depends on
 //! three arguments:
-//! * `$\vec{x}$` is the independent variable which corresponds to the grid points. It can be a time,
-//! location or anything else.
+//! * `$\vec{x}$` is the independent variable which corresponds to the grid points. Those can be a time,
+//! location or anything at all, really.
 //! * `$\vec{\alpha}=(\alpha_1,\dots,\alpha_{N_{params}})^T$` is the vector of nonlinear model parameters.
 //! We will get back to these later.
 //! * `$\vec{c}=(c_1,\dots,c_{N_{basis}})^T$` is the vector of coefficients for the basis functions.
+//!
+//! Note that we call `$\vec{\alpha}$` the _parameters_ and `$\vec{c}$` the _coefficients_ of the model.
+//! We do this do make the distincion between _nonlinear parameters_ and _linear coefficients_.
+//! Of course the model itself is parametrized on both `$\vec{\alpha}$` and `$\vec{c}$`.
 //!
 //! ## Model Parameters and Basis Functions
 //!
 //! The model itself is given as a linear combination of *nonlinear* basis functions `$\vec{f}_j$` with
 //! expansion coefficient `$c_j$`. The basis functions themselves only depend on the independent variable
 //! `$\vec{x}$` and on a subset `$S_j(\alpha)$` of the nonlinear model parameters `$\vec{\alpha}$`.
-//! Each basis function can depend on a different subset.
+//! Each basis function can depend on a different subset, but there is no restriction on which
+//! parameters a function can depend. Arbitrary functions might share some parameters. It's also
+//! fine for functions to depend on some (or only) parameters that are exclusive to them.
 //!
 //! ## What VarPro Computes
 //! This crate finds the parameters `$\vec{\alpha}$` and `$\vec{c}$` that
@@ -61,7 +72,7 @@
 //! 3. Cast the fitting problem into a [LevMarProblem](crate::solvers::levmar::LevMarProblem) using
 //! the [LevMarProblemBuilder](crate::solvers::levmar::builder::LevMarProblemBuilder).
 //! 4. Solve the fitting problem using the [LevMarSolver](crate::solvers::levmar::LevMarSolver), which
-//! is an alias for the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt) and allows to set
+//! is an alias for the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt) struct and allows to set
 //! additional parameters of the algorithm before performing the minimization.
 //! 5. Check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
 //! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
@@ -75,7 +86,7 @@
 //! function with the same number of elements as `$\vec{x}$` and `$\vec{y}$`. The component at index
 //! `k` is given by
 //! ```math
-//! f_k(\vec{x},\vec{\alpha},\vec{c})= c_1 \exp\left(-x_k/\tau_1\right)+c_2 \exp\left(-x_k/\tau_2\right)+c_3,
+//! (\vec{f}(\vec{x},\vec{\alpha},\vec{c}))_k= c_1 \exp\left(-x_k/\tau_1\right)+c_2 \exp\left(-x_k/\tau_2\right)+c_3,
 //! ```
 //! which is just a fancy way of saying that the exponential functions are applied element-wise to the vector `$\vec{x}$`.
 //!
@@ -168,9 +179,14 @@
 //! **attention**: the O'Leary paper contains errors that are fixed in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) of mine.
 //!
 //! (Golub2003) Golub, G. , Pereyra, V Separable nonlinear least squares: the variable projection method and its applications. Inverse Problems **19** R1 (2003) [https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201](https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201)
+
+/// helper implementation to make working with basis functions more seamless
 pub mod basis_function;
+/// code pertaining to building and working with separable models
 pub mod model;
+/// commonly useful imports
 pub mod prelude;
+/// solvers for the nonlinear minimization problem
 pub mod solvers;
 
 /// private module that contains helper functionality for linear algebra that is not yet

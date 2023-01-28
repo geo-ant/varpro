@@ -1,12 +1,14 @@
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector};
+use nalgebra::{DMatrix, DVector, Dynamic};
 use num_traits::Zero;
 
 mod detail;
+/// contains the error structure that belongs to a model
 pub mod errors;
 
+/// contains the builder code for model creation
 pub mod builder;
 mod model_basis_function;
 #[cfg(test)]
@@ -147,7 +149,10 @@ where
 
         let nrows = location.len();
         let ncols = self.basis_function_count();
-        let mut function_value_matrix = DMatrix::<ScalarType>::zeros(nrows, ncols);
+        // this pattern is not great, but the trait bounds in copy_from still
+        // prevent us from doing something better
+        let mut function_value_matrix =
+            unsafe { DMatrix::uninit(Dynamic::new(nrows), Dynamic::new(ncols)).assume_init() };
 
         for (basefunc, mut column) in self
             .basefunctions

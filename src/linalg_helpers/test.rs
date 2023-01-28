@@ -13,7 +13,7 @@ fn diagonal_matrix_matrix_and_matrix_vector_product_produces_correct_results() {
 
     let v = DVector::from(vec![5., 8., 6., 2., 5.]);
 
-    let mut A = DMatrix::from_element(ndiag, 2, 0.);
+    let mut A = DMatrix::zeros(ndiag, 2);
     A.set_column(0, &DVector::from(vec![2., 6., 4., 9., 5.]));
     A.set_column(1, &DVector::from(vec![3., 9., 2., 1., 0.]));
 

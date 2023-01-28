@@ -1,6 +1,6 @@
 [package]
 name = "varpro"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["geo-ant"]
 edition = "2021"
 license = "MIT"
@@ -14,7 +14,7 @@ keywords = ["nonlinear","least","squares","fitting","regression"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-snafu = "0.7"
+thiserror = "1"
 levenberg-marquardt = "0.12"
 nalgebra = "0.30"
 num-traits = "0.2"

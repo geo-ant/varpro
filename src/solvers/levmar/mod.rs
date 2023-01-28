@@ -165,8 +165,15 @@ where
             linear_coefficients,
         }) = self.cached.as_ref()
         {
-            let mut jacobian_matrix =
-                DMatrix::<ScalarType>::zeros(self.y_w.len(), self.model.parameter_count());
+            // this is not a great pattern, but the trait bounds on copy_from
+            // as of now prevent us from doing something more idiomatic
+            let mut jacobian_matrix = unsafe {
+                DMatrix::uninit(
+                    Dynamic::new(self.y_w.len()),
+                    Dynamic::new(self.model.parameter_count()),
+                )
+                .assume_init()
+            };
 
             let U = current_svd.u.as_ref()?; // will return None if this was not calculated
             let U_t = U.transpose();
