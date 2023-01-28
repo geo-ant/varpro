@@ -22,10 +22,16 @@ jobs:
 
       - name:                   Generate code coverage
         run: |
-          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
+          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Lcov
 
-      - name:                   Upload to codecov.io
-        uses:                   codecov/codecov-action@v2
+      - name: upload to Coveralls
+        uses: coverallsapp/github-action@master
         with:
-          token:                ${{secrets.CODECOV_TOKEN}} # not required for public repos
-          fail_ci_if_error:     true 
+          github-token: ${{ secrets.COVERALLS_TOKEN }}
+          path-to-lcov: './lcov.info'
+
+#       - name:                   Upload to codecov.io
+#         uses:                   codecov/codecov-action@v2
+#         with:
+#           token:                ${{secrets.CODECOV_TOKEN}} # not required for public repos
+#           fail_ci_if_error:     true 
