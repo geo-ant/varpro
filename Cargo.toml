@@ -1,6 +1,6 @@
 [package]
 name = "varpro"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["geo-ant"]
 edition = "2021"
 license = "MIT"
@@ -15,12 +15,13 @@ keywords = ["nonlinear","least","squares","fitting","regression"]
 
 [dependencies]
 thiserror = "1"
-levenberg-marquardt = "0.12"
-nalgebra = "0.30"
+levenberg-marquardt = "0.13"
+nalgebra = "0.32"
 num-traits = "0.2"
 
 [dev-dependencies]
 approx = "0.5"
+num-complex = "0.4"
 
 [package.metadata.docs.rs]
 # To build locally use

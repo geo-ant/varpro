@@ -1,7 +1,7 @@
 use crate::common::linspace;
 use levenberg_marquardt::{differentiate_numerically, LeastSquaresProblem};
 use nalgebra::storage::Owned;
-use nalgebra::{DVector, Dynamic, Matrix, Vector, Vector5, U5};
+use nalgebra::{DVector, Dyn, Matrix, Vector, Vector5, U5};
 
 use approx::assert_relative_eq;
 
@@ -44,10 +44,10 @@ impl DoubleExponentialDecayFittingWithOffset {
     }
 }
 
-impl LeastSquaresProblem<f64, Dynamic, U5> for DoubleExponentialDecayFittingWithOffset {
+impl LeastSquaresProblem<f64, Dyn, U5> for DoubleExponentialDecayFittingWithOffset {
     type ParameterStorage = Owned<f64, U5>;
-    type ResidualStorage = Owned<f64, Dynamic>;
-    type JacobianStorage = Owned<f64, Dynamic, U5>;
+    type ResidualStorage = Owned<f64, Dyn>;
+    type JacobianStorage = Owned<f64, Dyn, U5>;
 
     fn set_params(&mut self, params: &Vector<f64, U5, Self::ParameterStorage>) {
         self.params = *params;
@@ -80,7 +80,7 @@ impl LeastSquaresProblem<f64, Dynamic, U5> for DoubleExponentialDecayFittingWith
         Some(&f - &self.y)
     }
 
-    fn jacobian(&self) -> Option<Matrix<f64, Dynamic, U5, Self::JacobianStorage>> {
+    fn jacobian(&self) -> Option<Matrix<f64, Dyn, U5, Self::JacobianStorage>> {
         // get parameters from internal param storage
         let tau1 = self.params[0];
         let tau2 = self.params[1];
@@ -89,7 +89,7 @@ impl LeastSquaresProblem<f64, Dynamic, U5> for DoubleExponentialDecayFittingWith
         // populate jacobian
         //let ncols = 5;
         let nrows = self.x.len();
-        let mut jacobian = Matrix::<f64, Dynamic, U5, Self::JacobianStorage>::zeros(nrows);
+        let mut jacobian = Matrix::<f64, Dyn, U5, Self::JacobianStorage>::zeros(nrows);
 
         jacobian.set_column(
             0,

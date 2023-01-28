@@ -1,7 +1,7 @@
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector, Dynamic};
+use nalgebra::{DMatrix, DVector, Dyn};
 use num_traits::Zero;
 
 mod detail;
@@ -152,7 +152,7 @@ where
         // this pattern is not great, but the trait bounds in copy_from still
         // prevent us from doing something better
         let mut function_value_matrix =
-            unsafe { DMatrix::uninit(Dynamic::new(nrows), Dynamic::new(ncols)).assume_init() };
+            unsafe { DMatrix::uninit(Dyn(nrows), Dyn(ncols)).assume_init() };
 
         for (basefunc, mut column) in self
             .basefunctions

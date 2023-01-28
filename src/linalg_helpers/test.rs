@@ -1,5 +1,6 @@
 use crate::linalg_helpers::DiagDMatrix;
-use nalgebra::{DMatrix, DVector};
+use approx::assert_relative_eq;
+use nalgebra::{ComplexField, DMatrix, DVector};
 
 #[test]
 #[allow(non_snake_case)]
@@ -73,4 +74,27 @@ fn diagonal_matrix_multiplication_must_panic_for_rhs_dimensions_too_large() {
     let D = DiagDMatrix::from(diagonal);
     let A = DMatrix::from_element(ndiag - 1, 1, 1.);
     let _ = &D * &A;
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn diagonal_matrix_test_from_real_field() {
+    use num_complex::Complex;
+    let diagonal = DVector::from(vec![1., 2., 3.]);
+    let D = DiagDMatrix::<Complex<f64>>::from_real_field(&diagonal);
+    let ones = DVector::from(vec![
+        Complex::new(1., 5.),
+        Complex::new(1., 5.),
+        Complex::new(1., 5.),
+    ]);
+    let result = &D * &ones;
+
+    assert_relative_eq!(
+        result.map(ComplexField::real),
+        DVector::from(vec![1., 2., 3.])
+    );
+    assert_relative_eq!(
+        result.map(ComplexField::imaginary),
+        DVector::from(vec![5., 10., 15.])
+    );
 }
