@@ -11,14 +11,27 @@ env:
 
 jobs:
   test:
-    name:      coverage
-    runs-on:   ubuntu-latest
+    name:                       coverage
+    runs-on:                    ubuntu-latest
     container:
-      image:   xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
+      image:                    xd009642/tarpaulin:develop-nightly
+      options:                  --security-opt seccomp=unconfined
     steps:
-      - name:  Checkout repository
-        uses:  actions/checkout@v2
+      - name:                   Checkout repository
+        uses:                   actions/checkout@v2
 
-      - name:  Generate code coverage
-        run: cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --coveralls ${{ secrets.COVERALLS_TOKEN }}
+      - name:                   Generate code coverage
+        run: |
+          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Lcov
+
+      - name: upload to Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: './lcov.info'
+
+#       - name:                   Upload to codecov.io
+#         uses:                   codecov/codecov-action@v2
+#         with:
+#           token:                ${{secrets.CODECOV_TOKEN}} # not required for public repos
+#           fail_ci_if_error:     true 
