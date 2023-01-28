@@ -25,4 +25,5 @@ jobs:
         with:
           toolchain: ${{ matrix.version }}
       - name: coverage
-        run: cargo run --release -- tarpaulin --engine llvm --follow-exec --post-test-delay 10 --coveralls ${{ secrets.COVERALLS_TOKEN }} 
+        run: cargo install cargo-tarpaulin
+        run: cargo tarpaulin --engine llvm --follow-exec --post-test-delay 10 --coveralls ${{ secrets.COVERALLS_TOKEN }} 
