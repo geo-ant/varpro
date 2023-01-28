@@ -1,7 +1,7 @@
 use crate::model::SeparableModel;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::storage::Owned;
-use nalgebra::{ComplexField, DMatrix, DVector, Dynamic, Matrix, Scalar, Vector, SVD};
+use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD};
 
 mod builder;
 #[cfg(test)]
@@ -21,7 +21,7 @@ struct CachedCalculations<ScalarType: Scalar + ComplexField> {
     /// The current residual of model function values belonging to the current parameters
     current_residuals: DVector<ScalarType>,
     /// Singular value decomposition of the current function value matrix
-    current_svd: SVD<ScalarType, Dynamic, Dynamic>,
+    current_svd: SVD<ScalarType, Dyn, Dyn>,
     /// the linear coefficients `$\vec{c}$` providing the current best fit
     linear_coefficients: DVector<ScalarType>,
 }
@@ -80,22 +80,22 @@ impl<'a, ScalarType: Scalar + ComplexField + Copy> LevMarProblem<'a, ScalarType>
     }
 }
 
-impl<'a, ScalarType> LeastSquaresProblem<ScalarType, Dynamic, Dynamic>
+impl<'a, ScalarType> LeastSquaresProblem<ScalarType, Dyn, Dyn>
     for LevMarProblem<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
 {
-    type ResidualStorage = Owned<ScalarType, Dynamic>;
-    type JacobianStorage = Owned<ScalarType, Dynamic, Dynamic>;
-    type ParameterStorage = Owned<ScalarType, Dynamic>;
+    type ResidualStorage = Owned<ScalarType, Dyn>;
+    type JacobianStorage = Owned<ScalarType, Dyn, Dyn>;
+    type ParameterStorage = Owned<ScalarType, Dyn>;
 
     #[allow(non_snake_case)]
     /// Set the (nonlinear) model parameters `$\vec{\alpha}$` and update the internal state of the
     /// problem accordingly. The parameters are expected in the same order that the parameter
     /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
     /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
-    fn set_params(&mut self, params: &Vector<ScalarType, Dynamic, Self::ParameterStorage>) {
+    fn set_params(&mut self, params: &Vector<ScalarType, Dyn, Self::ParameterStorage>) {
         self.model_parameters = params.iter().cloned().collect();
         // matrix of weighted model function values
         let Phi_w = self
@@ -135,7 +135,7 @@ where
     /// names given on model creation. E.g. if the parameters at model creation where given as
     /// `&["tau","beta"]`, then the returned vector is `$\vec{\alpha} = (\tau,\beta)^T$`, i.e.
     /// the value of parameter `$\tau$` is at index `0` and the value of `$\beta$` at index `1`.
-    fn params(&self) -> Vector<ScalarType, Dynamic, Self::ParameterStorage> {
+    fn params(&self) -> Vector<ScalarType, Dyn, Self::ParameterStorage> {
         DVector::from(self.model_parameters.clone())
     }
 
@@ -146,7 +146,7 @@ where
     /// algorithm calculates `$\vec{c}(\vec{\alpha})$` as the coefficients that provide the best linear least squares
     /// fit, given the current `$\vec{\alpha}$`. For more info on the math of VarPro, see
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
-    fn residuals(&self) -> Option<Vector<ScalarType, Dynamic, Self::ResidualStorage>> {
+    fn residuals(&self) -> Option<Vector<ScalarType, Dyn, Self::ResidualStorage>> {
         self.cached
             .as_ref()
             .map(|cached| cached.current_residuals.clone())
@@ -156,7 +156,7 @@ where
     /// Calculate the Jacobian matrix of the *weighted* residuals `$\vec{r}_w(\vec{\alpha})$`.
     /// For more info on how the Jacobian is calculated in the VarPro algorithm, see
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
-    fn jacobian(&self) -> Option<Matrix<ScalarType, Dynamic, Dynamic, Self::JacobianStorage>> {
+    fn jacobian(&self) -> Option<Matrix<ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
 
         if let Some(CachedCalculations {
@@ -169,8 +169,8 @@ where
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
                 DMatrix::uninit(
-                    Dynamic::new(self.y_w.len()),
-                    Dynamic::new(self.model.parameter_count()),
+                    Dyn(self.y_w.len()),
+                    Dyn(self.model.parameter_count()),
                 )
                 .assume_init()
             };

@@ -1,5 +1,3 @@
-#![deny(missing_docs)]
-//! The varpro crate enables nonlinear least squares fitting for separable models using the Variable Projection (VarPro) algorithm.
 //!
 //! # Introduction
 //!
