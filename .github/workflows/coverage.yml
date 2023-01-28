@@ -21,4 +21,4 @@ jobs:
         uses:  actions/checkout@v2
 
       - name:  Generate code coverage
-        run: cargo tarpaulin --engine llvm --follow-exec --post-test-delay 10 --coveralls ${{ secrets.COVERALLS_TOKEN }} 
+        run: cargo clean && cargo tarpaulin --engine llvm --follow-exec --post-test-delay 10 --coveralls ${{ secrets.COVERALLS_TOKEN }} 
