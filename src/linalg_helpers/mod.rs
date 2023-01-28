@@ -74,9 +74,8 @@ where
         // with valid values below. Ideally we would first call the
         // copy_from functionality below, but we can't because the Scalar
         // trait bounds will screw us. See https://github.com/dimforge/nalgebra/pull/949
-        let mut result_matrix = unsafe {
-            DMatrix::uninit(Dyn(self.nrows()), Dyn(rhs.ncols())).assume_init()
-        };
+        let mut result_matrix =
+            unsafe { DMatrix::uninit(Dyn(self.nrows()), Dyn(rhs.ncols())).assume_init() };
 
         for (col_idx, mut col) in result_matrix.column_iter_mut().enumerate() {
             col.copy_from(&self.diagonal.component_mul(&rhs.column(col_idx)));

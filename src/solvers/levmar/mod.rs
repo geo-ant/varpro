@@ -80,8 +80,7 @@ impl<'a, ScalarType: Scalar + ComplexField + Copy> LevMarProblem<'a, ScalarType>
     }
 }
 
-impl<'a, ScalarType> LeastSquaresProblem<ScalarType, Dyn, Dyn>
-    for LevMarProblem<'a, ScalarType>
+impl<'a, ScalarType> LeastSquaresProblem<ScalarType, Dyn, Dyn> for LevMarProblem<'a, ScalarType>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
@@ -168,11 +167,8 @@ where
             // this is not a great pattern, but the trait bounds on copy_from
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
-                DMatrix::uninit(
-                    Dyn(self.y_w.len()),
-                    Dyn(self.model.parameter_count()),
-                )
-                .assume_init()
+                DMatrix::uninit(Dyn(self.y_w.len()), Dyn(self.model.parameter_count()))
+                    .assume_init()
             };
 
             let U = current_svd.u.as_ref()?; // will return None if this was not calculated
