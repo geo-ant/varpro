@@ -4,7 +4,7 @@ use nalgebra::DVector;
 
 use crate::model::builder::SeparableModelBuilder;
 use crate::model::errors::ModelError;
-
+use crate::prelude::*;
 use crate::test_helpers;
 
 #[test]

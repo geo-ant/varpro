@@ -287,12 +287,13 @@ where
 // private implementations
 impl<'a, ScalarType> LevMarProblemBuilder<'a, ScalarType>
 where
-    ScalarType: Scalar + ComplexField + Copy,
+    ScalarType: Scalar + ComplexField + Copy + Zero,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
 {
     /// helper function to check if all required fields have been set and pass the checks
     /// if so, this returns a destructured result of self
     fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType>, LevMarBuilderError> {
+        use crate::model::SeparableNonlinearModel;
         match self {
             // in this case all required fields are set to something
             LevMarProblemBuilder {

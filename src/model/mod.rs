@@ -14,6 +14,30 @@ mod model_basis_function;
 #[cfg(test)]
 mod test;
 
+
+/// TODO TODO TODO DOCUMENT
+pub trait SeparableNonlinearModel<ScalarType: Scalar> {
+    /// the associated error type that can possibly produce when the
+    /// model or the derivative is evaluated.
+    /// If this model does not need (or for performance reasons does not want)
+    /// to return an error, it is possible to specify [`std::convert::Infallible`]
+    /// as the associated `Error` type.
+    type Error : std::error::Error;
+    /// must return the number of *nonlinear* parameters that this model depends on.
+    /// This does not include the number of linear *coefficients*.
+    fn parameter_count(&self) -> usize;
+    
+    /// must return the number of basis functions that this model depends on.
+    /// This is equal to the number of *linear coefficients* of the model.
+    fn basis_function_count(&self) -> usize;
+    
+    ///TODO DOCUMENT
+    fn eval(&self, location : &DVector<ScalarType>, parameters : &[ScalarType])-> Result<DMatrix<ScalarType>, Self::Error>; 
+    
+    /// TODO DOCUMENT
+    fn eval_partial_deriv(&self, location: &DVector<ScalarType>, parameters : &[ScalarType],derivative_index : usize) -> Result<DMatrix<ScalarType>, Self::Error>;
+}
+
 /// This structure represents a separable nonlinear model.
 ///
 /// # Introduction
@@ -94,15 +118,6 @@ where
         &self.parameter_names
     }
 
-    /// Get the number of nonlinear parameters of the model
-    pub fn parameter_count(&self) -> usize {
-        self.parameter_names.len()
-    }
-
-    /// Get the number of basis functions of the model
-    pub fn basis_function_count(&self) -> usize {
-        self.basefunctions.len()
-    }
 }
 
 impl<ScalarType> SeparableModel<ScalarType>
@@ -113,8 +128,8 @@ where
     /// * `location`: the value of the independent location parameter `$\vec{x}$`
     /// * `parameters`: the parameter vector `$\vec{\alpha}$`
     /// # Result
-    /// Evaluates the model in matrix from for the given nonlinear parameters. This produces
-    /// a matrix where the columns of the matrix are given by the basis function, evaluated in
+    /// Evaluates the model in matrix form for the given nonlinear parameters. This produces
+    /// a matrix where the columns of the matrix are given by the basis functions, evaluated in
     /// the order that they were added to the model. Assume the model consists of `$f_1(\vec{x},\vec{\alpha})$`,
     /// `$f_2(\vec{x},\vec{\alpha})$`, and `$f_3(\vec{x},\vec{\alpha})$` and the functions where
     /// added to the model builder in this particular order. Then
@@ -218,6 +233,28 @@ where
             model_parameter_names: &self.parameter_names,
         }
     }
+}
+
+impl<ScalarType> SeparableNonlinearModel<ScalarType> for SeparableModel<ScalarType> 
+    where ScalarType : Scalar + Zero {
+    type Error = ModelError;
+
+    fn parameter_count(&self) -> usize {
+        self.parameter_names.len()
+    }
+
+    fn basis_function_count(&self) -> usize {
+        self.basefunctions.len()
+    }
+
+    fn eval(&self, location : &DVector<ScalarType>, parameters : &[ScalarType])-> Result<DMatrix<ScalarType>, Self::Error> {
+        self.eval(location,parameters)
+    }
+
+    fn eval_partial_deriv(&self, location: &DVector<ScalarType>, parameters : &[ScalarType],derivative_index : usize) -> Result<DMatrix<ScalarType>, Self::Error> {
+        self.eval_deriv(location,parameters).at(derivative_index)
+    }
+
 }
 
 /// A helper proxy that is used in conjuntion with the method to evalue the derivative of a

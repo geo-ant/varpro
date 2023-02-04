@@ -2,6 +2,7 @@ use crate::model::SeparableModel;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::storage::Owned;
 use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD};
+use crate::prelude::*;
 
 mod builder;
 #[cfg(test)]
