@@ -1,31 +1,40 @@
-use criterion::{criterion_group, criterion_main, Criterion};
 use common::*;
+use criterion::{criterion_group, criterion_main, Criterion};
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::DVector;
+use pprof::criterion::{Output, PProfProfiler};
 use varpro::model::SeparableModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
-use pprof::criterion::{Output, PProfProfiler};
 
 /// helper struct for the parameters of the double exponential
-#[derive(Copy,Clone,PartialEq,Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 struct DoubleExponentialParameters {
-    tau1 : f64,
-    tau2 : f64,
-    c1 : f64,
-    c2 : f64,
-    c3 : f64
+    tau1: f64,
+    tau2: f64,
+    c1: f64,
+    c2: f64,
+    c3: f64,
 }
 
-
-fn build_problem<'a>(true_parameters: DoubleExponentialParameters,(tau1_guess, tau2_guess): (f64,f64),model : &'a SeparableModel<f64>) -> LevMarProblem<'a,f64> {
-    let DoubleExponentialParameters {tau1, tau2,c1,c2,c3 } = true_parameters;
+fn build_problem(
+    true_parameters: DoubleExponentialParameters,
+    (tau1_guess, tau2_guess): (f64, f64),
+    model: &'_ SeparableModel<f64>,
+) -> LevMarProblem<'_, f64> {
+    let DoubleExponentialParameters {
+        tau1,
+        tau2,
+        c1,
+        c2,
+        c3,
+    } = true_parameters;
 
     let x = linspace(0., 12.5, 1024);
-    let y = evaluate_complete_model(&model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
+    let y = evaluate_complete_model(model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
     let problem = LevMarProblemBuilder::new()
-        .model(&model)
+        .model(model)
         .x(x)
         .y(y)
         .initial_guess(&[tau1_guess, tau2_guess])
@@ -34,7 +43,7 @@ fn build_problem<'a>(true_parameters: DoubleExponentialParameters,(tau1_guess, t
     problem
 }
 
-fn run_minimization<'a>(problem: LevMarProblem<'a,f64>) -> [f64;5] {
+fn run_minimization(problem: LevMarProblem<'_, f64>) -> [f64; 5] {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
         report.termination.was_successful(),
@@ -43,34 +52,33 @@ fn run_minimization<'a>(problem: LevMarProblem<'a,f64>) -> [f64;5] {
 
     let params = problem.params();
     let coeff = problem.linear_coefficients().unwrap();
-    [params[0],params[1],coeff[0],coeff[1],coeff[2]]
+    [params[0], params[1], coeff[0], coeff[1], coeff[2]]
 }
 
-
-fn bench_double_exp_no_noise(c : &mut Criterion) {
+fn bench_double_exp_no_noise(c: &mut Criterion) {
     let model = get_double_exponential_model_with_constant_offset();
     let true_parameters = DoubleExponentialParameters {
-        tau1 : 1., 
-        tau2 : 3.,
+        tau1: 1.,
+        tau2: 3.,
         c1: 4.,
-        c2 : 2.5,
-        c3 : 1.,
+        c2: 2.5,
+        c3: 1.,
     };
 
     c.bench_function("double exp w/o noise", move |bencher| {
         bencher.iter_batched(
-            ||build_problem(true_parameters,(2.,6.5), &model), 
-            |problem|run_minimization(problem),
-            criterion::BatchSize::SmallInput)
+            || build_problem(true_parameters, (2., 6.5), &model),
+            run_minimization,
+            criterion::BatchSize::SmallInput,
+        )
     });
- }
+}
 
 criterion_group!(
     name = benches;
     config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
     targets = bench_double_exp_no_noise);
 criterion_main!(benches);
-
 
 mod common {
     use nalgebra::{ComplexField, DVector, Scalar};
@@ -88,8 +96,8 @@ mod common {
         let lin: Vec<ScalarType> = (0..count)
             .map(|n| {
                 first
-                + (first - last) / (n_minus_one)
-                * ScalarType::from(n).expect("Could not convert usize to Float")
+                    + (first - last) / (n_minus_one)
+                        * ScalarType::from(n).expect("Could not convert usize to Float")
             })
             .collect();
         DVector::from(lin)
@@ -104,13 +112,13 @@ mod common {
         params: &[ScalarType],
         linear_coeffs: &DVector<ScalarType>,
     ) -> DVector<ScalarType>
-where
+    where
         ScalarType: Scalar + ComplexField,
     {
         (&model
             .eval(x, params)
             .expect("Evaluating model must not produce error"))
-        * linear_coeffs
+            * linear_coeffs
     }
 
     /// exponential decay f(t,tau) = exp(-t/tau)
