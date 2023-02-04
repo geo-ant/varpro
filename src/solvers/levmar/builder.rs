@@ -48,7 +48,6 @@ pub enum LevMarBuilderError {
     InvalidLengthOfWeights,
 }
 
-#[derive(Clone)]
 /// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
 /// fitting a separable model to data.
 /// # Example
@@ -109,6 +108,23 @@ where
     /// all weights were 1.
     /// Must have the same length as x and y.
     weights: Weights<ScalarType>,
+}
+
+impl<'a,ScalarType,Model> Clone for LevMarProblemBuilder<'a, ScalarType,Model> 
+    where
+    ScalarType: Scalar + ComplexField + Copy,
+    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
+    Model : SeparableNonlinearModel<ScalarType> {
+    fn clone(&self) -> Self {
+        Self {
+            x: self.x.clone(),
+            y: self.y.clone(),
+            separable_model: self.separable_model,
+            parameter_initial_guess: self.parameter_initial_guess.clone(),
+            epsilon: self.epsilon.clone(),
+            weights: self.weights.clone(),
+        }
+    }
 }
 
 impl<'a, ScalarType,Model> LevMarProblemBuilder<'a, ScalarType,Model>
@@ -353,7 +369,7 @@ mod test {
         let LevMarProblemBuilder {
             x,
             y,
-            separable_model: model,
+            separable_model: _model,
             parameter_initial_guess,
             epsilon,
             weights,
@@ -369,7 +385,7 @@ mod test {
     #[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
     #[allow(non_snake_case)]
     fn builder_assigns_fields_correctly() {
-        let model = DummySeparableModel::default();
+        let model = get_double_exponential_model_with_constant_offset();
         // octave x = linspace(0,10,11);
         let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
         //octave y = 2*exp(-t/2)+exp(-t/4)+1;
