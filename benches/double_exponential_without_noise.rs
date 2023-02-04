@@ -1,9 +1,14 @@
 use common::*;
 use criterion::{criterion_group, criterion_main, Criterion};
 use levenberg_marquardt::LeastSquaresProblem;
+use nalgebra::ComplexField;
 use nalgebra::DVector;
+use nalgebra::RealField;
+use nalgebra::Scalar;
+use num_traits::Float;
 use pprof::criterion::{Output, PProfProfiler};
 use varpro::model::SeparableModel;
+use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
@@ -22,7 +27,7 @@ fn build_problem(
     true_parameters: DoubleExponentialParameters,
     (tau1_guess, tau2_guess): (f64, f64),
     model: &'_ SeparableModel<f64>,
-) -> LevMarProblem<'_, f64> {
+) -> LevMarProblem<'_, f64,SeparableModel<f64>> {
     let DoubleExponentialParameters {
         tau1,
         tau2,
@@ -33,8 +38,7 @@ fn build_problem(
 
     let x = linspace(0., 12.5, 1024);
     let y = evaluate_complete_model(model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
-    let problem = LevMarProblemBuilder::new()
-        .model(model)
+    let problem = LevMarProblemBuilder::new(model)
         .x(x)
         .y(y)
         .initial_guess(&[tau1_guess, tau2_guess])
@@ -43,7 +47,8 @@ fn build_problem(
     problem
 }
 
-fn run_minimization(problem: LevMarProblem<'_, f64>) -> [f64; 5] {
+fn run_minimization<S,M>(problem: LevMarProblem<'_, S,M>) -> [S; 5]
+where S: Scalar + Copy + ComplexField + Float + RealField, M:SeparableNonlinearModel<S> {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
         report.termination.was_successful(),

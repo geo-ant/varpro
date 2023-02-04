@@ -7,6 +7,8 @@ use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
 
+
+
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 pub enum LevMarBuilderError {
@@ -17,10 +19,6 @@ pub enum LevMarBuilderError {
     /// the data for y variable was not given to the builder
     #[error("Data for vector y not provided.")]
     YDataMissing,
-
-    /// no model was provided to the builder
-    #[error("Model not provided.")]
-    ModelMissing,
 
     /// no model was provided to the builder
     #[error("Initial guess for parameters not provided.")]
@@ -98,7 +96,7 @@ where
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
     y: Option<DVector<ScalarType>>,
     /// Required: the model to be fitted to the data
-    separable_model: Option<&'a Model>,
+    separable_model: &'a Model,
     /// Required: the initial guess for the model parameters
     parameter_initial_guess: Option<Vec<ScalarType>>,
     /// Optional: set epsilon below which two singular values
@@ -113,30 +111,18 @@ where
     weights: Weights<ScalarType>,
 }
 
-/// Same as `Self::new()`.
-impl<'a, ScalarType,Model> Default for LevMarProblemBuilder<'a, ScalarType,Model>
-where
-    ScalarType: Scalar + ComplexField + Zero + Copy,
-    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model : SeparableNonlinearModel<ScalarType>
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<'a, ScalarType,Model> LevMarProblemBuilder<'a, ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField + Zero + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
     Model : SeparableNonlinearModel<ScalarType>
 {
-    /// Create a new builder with empty fields and unit weights
-    pub fn new() -> Self {
+    /// Create a new builder based on the given model
+    pub fn new(model : &'a Model) -> Self {
         Self {
             x: None,
             y: None,
-            separable_model: None,
+            separable_model: model,
             parameter_initial_guess: None,
             epsilon: None,
             weights: Weights::default(),
@@ -163,14 +149,6 @@ where
     {
         Self {
             y: Some(DVector::from(yvec)),
-            ..self
-        }
-    }
-
-    /// **Mandatory**: Set the actual model used for fitting
-    pub fn model(self, model: &'a Model) -> Self {
-        Self {
-            separable_model: Some(model),
             ..self
         }
     }
@@ -304,7 +282,7 @@ where
             LevMarProblemBuilder {
                 x: Some(x),
                 y: Some(y),
-                separable_model: Some(model),
+                separable_model: model,
                 parameter_initial_guess: Some(parameter_initial_guess),
                 epsilon,
                 weights,
@@ -339,7 +317,7 @@ where
             LevMarProblemBuilder {
                 x,
                 y,
-                separable_model: model,
+                separable_model: _model,
                 parameter_initial_guess,
                 epsilon: _,
                 weights: _,
@@ -348,8 +326,6 @@ where
                     Err(LevMarBuilderError::XDataMissing)
                 } else if y.is_none() {
                     Err(LevMarBuilderError::YDataMissing)
-                } else if model.is_none() {
-                    Err(LevMarBuilderError::ModelMissing)
                 } else if parameter_initial_guess.is_none() {
                     Err(LevMarBuilderError::InitialGuessMissing)
                 } else {
@@ -363,7 +339,7 @@ where
 #[cfg(test)]
 mod test {
 
-    use crate::linalg_helpers::DiagDMatrix;
+    use crate::{linalg_helpers::DiagDMatrix, model::test::DummySeparableModel};
     use crate::solvers::levmar::builder::LevMarBuilderError;
     use crate::solvers::levmar::weights::Weights;
     use crate::solvers::levmar::LevMarProblemBuilder;
@@ -372,7 +348,8 @@ mod test {
 
     #[test]
     fn new_builder_starts_with_empty_fields() {
-        let builder = LevMarProblemBuilder::<f64>::new();
+        let model = DummySeparableModel::default();
+        let builder = LevMarProblemBuilder::<f64,_>::new(&model);
         let LevMarProblemBuilder {
             x,
             y,
@@ -383,7 +360,6 @@ mod test {
         } = builder;
         assert!(x.is_none());
         assert!(y.is_none());
-        assert!(model.is_none());
         assert!(parameter_initial_guess.is_none());
         assert!(epsilon.is_none());
         assert_eq!(weights, Weights::Unit);
@@ -393,7 +369,7 @@ mod test {
     #[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
     #[allow(non_snake_case)]
     fn builder_assigns_fields_correctly() {
-        let model = get_double_exponential_model_with_constant_offset();
+        let model = DummySeparableModel::default();
         // octave x = linspace(0,10,11);
         let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
         //octave y = 2*exp(-t/2)+exp(-t/4)+1;
@@ -403,11 +379,10 @@ mod test {
         let initial_guess = vec![1., 2.];
 
         // build a problem with default epsilon
-        let builder = LevMarProblemBuilder::new()
+        let builder = LevMarProblemBuilder::new(&model)
             .x(x.clone())
             .y(y.clone())
-            .initial_guess(initial_guess.as_slice())
-            .model(&model);
+            .initial_guess(initial_guess.as_slice());
         let problem = builder
             .clone()
             .build()
@@ -465,43 +440,31 @@ mod test {
         ]);
         let initial_guess = vec![1., 2.];
 
-        let _builder = LevMarProblemBuilder::new()
+        let _builder = LevMarProblemBuilder::new(&model)
             .x(x.clone())
             .y(y.clone())
-            .initial_guess(initial_guess.as_slice())
-            .model(&model);
+            .initial_guess(initial_guess.as_slice());
 
         assert!(matches!(
-            LevMarProblemBuilder::new()
+            LevMarProblemBuilder::new(&model)
                 .y(y.clone())
                 .initial_guess(initial_guess.as_slice())
-                .model(&model)
                 .build(),
             Err(LevMarBuilderError::XDataMissing)
         ));
         assert!(matches!(
-            LevMarProblemBuilder::new()
+            LevMarProblemBuilder::new(&model)
                 .x(x.clone())
                 .initial_guess(initial_guess.as_slice())
-                .model(&model)
                 .build(),
             Err(LevMarBuilderError::YDataMissing)
         ));
         assert!(matches!(
-            LevMarProblemBuilder::new()
+            LevMarProblemBuilder::new(&model)
                 .x(x.clone())
                 .y(y.clone())
-                .model(&model)
                 .build(),
             Err(LevMarBuilderError::InitialGuessMissing)
-        ));
-        assert!(matches!(
-            LevMarProblemBuilder::new()
-                .x(x)
-                .y(y)
-                .initial_guess(initial_guess.as_slice())
-                .build(),
-            Err(LevMarBuilderError::ModelMissing)
         ));
     }
 
@@ -518,11 +481,10 @@ mod test {
 
         assert!(
             matches!(
-                LevMarProblemBuilder::new()
+                LevMarProblemBuilder::new(&model)
                     .x(x.clone())
                     .y(y.clone())
                     .initial_guess(&[1.])
-                    .model(&model)
                     .build(),
                 Err(LevMarBuilderError::InvalidParameterCount { .. })
             ),
@@ -531,11 +493,10 @@ mod test {
 
         assert!(
             matches!(
-                LevMarProblemBuilder::new()
+                LevMarProblemBuilder::new(&model)
                     .x(DVector::from(vec! {1.,2.,3.}))
                     .y(y.clone())
                     .initial_guess(&[1., 2.])
-                    .model(&model)
                     .build(),
                 Err(LevMarBuilderError::InvalidLengthOfData { .. })
             ),
@@ -544,11 +505,10 @@ mod test {
 
         assert!(
             matches!(
-                LevMarProblemBuilder::new()
+                LevMarProblemBuilder::new(&model)
                     .x(DVector::from(Vec::<f64>::new()))
                     .y(DVector::from(Vec::<f64>::new()))
                     .initial_guess(&[1., 2.])
-                    .model(&model)
                     .build(),
                 Err(LevMarBuilderError::ZeroLengthVector)
             ),
@@ -557,11 +517,10 @@ mod test {
 
         assert!(
             matches!(
-                LevMarProblemBuilder::new()
+                LevMarProblemBuilder::new(&model)
                     .x(x)
                     .y(y)
                     .initial_guess(&[1., 2.])
-                    .model(&model)
                     .weights(vec! {1.,2.,3.})
                     .build(),
                 Err(LevMarBuilderError::InvalidLengthOfWeights { .. })

@@ -7,6 +7,31 @@ use crate::model::errors::ModelError;
 use crate::prelude::*;
 use crate::test_helpers;
 
+/// a dummy structure that implements a separable nonlinear model trait
+/// but will panic when any of the methods is actually called
+#[derive(Default,Copy,Clone)]
+pub struct DummySeparableModel{}
+
+impl SeparableNonlinearModel<f64> for DummySeparableModel {
+    type Error = ModelError;
+
+    fn parameter_count(&self) -> usize {
+        todo!()
+    }
+
+    fn basis_function_count(&self) -> usize {
+        todo!()
+    }
+
+    fn eval(&self, location : &DVector<f64>, parameters : &[f64])-> Result<nalgebra::DMatrix<f64>, Self::Error> {
+        todo!()
+    }
+
+    fn eval_partial_deriv(&self, location: &DVector<f64>, parameters : &[f64],derivative_index : usize) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
+        todo!()
+    }
+}   
+
 #[test]
 fn model_gets_initialized_with_correct_parameter_names_and_count() {
     let model = test_helpers::get_double_exponential_model_with_constant_offset();

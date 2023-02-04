@@ -37,8 +37,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     );
 
     let tic = Instant::now();
-    let problem = LevMarProblemBuilder::new()
-        .model(&model)
+    let problem = LevMarProblemBuilder::new(&model)
         .x(x)
         .y(y)
         .initial_guess(&[tau1_guess, tau2_guess])

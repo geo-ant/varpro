@@ -12,7 +12,7 @@ pub mod errors;
 pub mod builder;
 mod model_basis_function;
 #[cfg(test)]
-mod test;
+pub mod test;
 
 
 /// TODO TODO TODO DOCUMENT
