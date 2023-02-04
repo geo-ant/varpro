@@ -23,11 +23,11 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
         todo!()
     }
 
-    fn eval(&self, location : &DVector<f64>, parameters : &[f64])-> Result<nalgebra::DMatrix<f64>, Self::Error> {
+    fn eval(&self, _location : &DVector<f64>, _parameters : &[f64])-> Result<nalgebra::DMatrix<f64>, Self::Error> {
         todo!()
     }
 
-    fn eval_partial_deriv(&self, location: &DVector<f64>, parameters : &[f64],derivative_index : usize) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
+    fn eval_partial_deriv(&self, _location: &DVector<f64>, _parameters : &[f64],_derivative_index : usize) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
         todo!()
     }
 }   
