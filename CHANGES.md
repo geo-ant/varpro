@@ -2,6 +2,9 @@
 
 This is the changelog for the `varpro` library. See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## XXX
+- Add benchtests
+
 ## 0.5.0
 - Upgrade nalgebra and levenberg_marquardt dependencies to current versions
 - Fix deprecation warnings and expand test coverage slightly
