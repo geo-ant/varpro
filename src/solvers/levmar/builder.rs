@@ -1,4 +1,4 @@
-use crate::model::SeparableModel;
+use crate::prelude::*;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
@@ -87,17 +87,18 @@ pub enum LevMarBuilderError {
 /// ## Additional Building blocks
 /// The other methods of the builder allow to manipulate further aspects, like adding weights to the data.
 /// The methods are marked as **Optional**.
-pub struct LevMarProblemBuilder<'a, ScalarType>
+pub struct LevMarProblemBuilder<'a, ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
+    Model : SeparableNonlinearModel<ScalarType>
 {
     /// Required: the independent variable `$\vec{x}$
     x: Option<DVector<ScalarType>>,
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
     y: Option<DVector<ScalarType>>,
     /// Required: the model to be fitted to the data
-    separable_model: Option<&'a SeparableModel<ScalarType>>,
+    separable_model: Option<&'a Model>,
     /// Required: the initial guess for the model parameters
     parameter_initial_guess: Option<Vec<ScalarType>>,
     /// Optional: set epsilon below which two singular values
@@ -113,20 +114,22 @@ where
 }
 
 /// Same as `Self::new()`.
-impl<'a, ScalarType> Default for LevMarProblemBuilder<'a, ScalarType>
+impl<'a, ScalarType,Model> Default for LevMarProblemBuilder<'a, ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField + Zero + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
+    Model : SeparableNonlinearModel<ScalarType>
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, ScalarType> LevMarProblemBuilder<'a, ScalarType>
+impl<'a, ScalarType,Model> LevMarProblemBuilder<'a, ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField + Zero + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
+    Model : SeparableNonlinearModel<ScalarType>
 {
     /// Create a new builder with empty fields and unit weights
     pub fn new() -> Self {
@@ -165,7 +168,7 @@ where
     }
 
     /// **Mandatory**: Set the actual model used for fitting
-    pub fn model(self, model: &'a SeparableModel<ScalarType>) -> Self {
+    pub fn model(self, model: &'a Model) -> Self {
         Self {
             separable_model: Some(model),
             ..self
@@ -225,7 +228,7 @@ where
     /// # Returns
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
-    pub fn build(self) -> Result<LevMarProblem<'a, ScalarType>, LevMarBuilderError> {
+    pub fn build(self) -> Result<LevMarProblem<'a, ScalarType,Model>, LevMarBuilderError> {
         let finalized_builder = self.finalize()?;
 
         Ok(LevMarProblem::from(finalized_builder))
@@ -235,14 +238,15 @@ where
 /// helper structure that has the same fields as the builder
 /// but all of them are valid
 #[doc(hidden)]
-struct FinalizedBuilder<'a, ScalarType>
+struct FinalizedBuilder<'a, ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField,
     ScalarType::RealField: Float,
+    Model : SeparableNonlinearModel<ScalarType>
 {
     x: DVector<ScalarType>,
     y: DVector<ScalarType>,
-    model: &'a SeparableModel<ScalarType>,
+    model: &'a Model,
     parameter_initial_guess: Vec<ScalarType>,
     epsilon: ScalarType::RealField,
     weights: Weights<ScalarType>,
@@ -253,12 +257,13 @@ where
 /// the initial parameters are set.
 #[doc(hidden)]
 #[allow(non_snake_case)]
-impl<'a, ScalarType> From<FinalizedBuilder<'a, ScalarType>> for LevMarProblem<'a, ScalarType>
+impl<'a, ScalarType,Model> From<FinalizedBuilder<'a, ScalarType,Model>> for LevMarProblem<'a, ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
+    Model : SeparableNonlinearModel<ScalarType>
 {
-    fn from(finalized_builder: FinalizedBuilder<'a, ScalarType>) -> Self {
+    fn from(finalized_builder: FinalizedBuilder<'a, ScalarType,Model>) -> Self {
         // 1) create weighted data
         let y_w = &finalized_builder.weights * finalized_builder.y;
 
@@ -285,15 +290,15 @@ where
 }
 
 // private implementations
-impl<'a, ScalarType> LevMarProblemBuilder<'a, ScalarType>
+impl<'a, ScalarType,Model> LevMarProblemBuilder<'a, ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField + Copy + Zero,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
+    Model : SeparableNonlinearModel<ScalarType>
 {
     /// helper function to check if all required fields have been set and pass the checks
     /// if so, this returns a destructured result of self
-    fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType>, LevMarBuilderError> {
-        use crate::model::SeparableNonlinearModel;
+    fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType,Model>, LevMarBuilderError> {
         match self {
             // in this case all required fields are set to something
             LevMarProblemBuilder {
