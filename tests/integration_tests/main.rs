@@ -28,9 +28,6 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let tau1_guess = 2.;
     let tau2_guess = 6.5;
 
-    println!("True params (tau1, tau2) = ({}, {})", tau1, tau2);
-    println!("True params (c1, c2, c3) = ({}, {}, {})", c1, c2, c3);
-
     // for solving the fitting problem using only the levenberg_marquardt crate                  the crate cannot deal with this:     &[tau1_guess,tau2_guess,c1,c2,c3]
     // we have to make the initial guesses closer to the true values for the Levenberg Marquart Algo
     let levenberg_marquart_problem = levmar::DoubleExponentialDecayFittingWithOffset::new(

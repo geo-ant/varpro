@@ -22,6 +22,12 @@ num-traits = "0.2"
 [dev-dependencies]
 approx = "0.5"
 num-complex = "0.4"
+criterion = "0.4"
+pprof = {version = "0.11",features = ["criterion","flamegraph"]}
+
+[[bench]]
+name = "double_exponential_without_noise"
+harness = false
 
 [package.metadata.docs.rs]
 # To build locally use
