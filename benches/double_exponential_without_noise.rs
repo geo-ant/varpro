@@ -1,5 +1,6 @@
 use common::*;
 use criterion::{criterion_group, criterion_main, Criterion};
+use detail::DoubleExpModelWithConstantOffset;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::ComplexField;
 use nalgebra::DVector;
@@ -12,6 +13,8 @@ use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
+
+mod detail;
 
 /// helper struct for the parameters of the double exponential
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -26,8 +29,8 @@ struct DoubleExponentialParameters {
 fn build_problem(
     true_parameters: DoubleExponentialParameters,
     (tau1_guess, tau2_guess): (f64, f64),
-    model: &'_ SeparableModel<f64>,
-) -> LevMarProblem<'_, f64,SeparableModel<f64>> {
+    model: &'_ impl SeparableNonlinearModel<f64>,
+) -> LevMarProblem<'_, f64,impl SeparableNonlinearModel<f64>> {
     let DoubleExponentialParameters {
         tau1,
         tau2,
@@ -61,7 +64,8 @@ where S: Scalar + Copy + ComplexField + Float + RealField, M:SeparableNonlinearM
 }
 
 fn bench_double_exp_no_noise(c: &mut Criterion) {
-    let model = get_double_exponential_model_with_constant_offset();
+    // let model = get_double_exponential_model_with_constant_offset();
+    let model = DoubleExpModelWithConstantOffset::default();
     let true_parameters = DoubleExponentialParameters {
         tau1: 1.,
         tau2: 3.,
@@ -90,6 +94,7 @@ mod common {
     use num_traits::Float;
     use varpro::model::builder::SeparableModelBuilder;
     use varpro::model::SeparableModel;
+    use varpro::prelude::SeparableNonlinearModel;
 
     /// create holding `count` the elements from range [first,last] with linear spacing. (equivalent to matlabs linspace)
     pub fn linspace<ScalarType: Float + Scalar>(
@@ -112,7 +117,7 @@ mod common {
     /// `x` with (nonlinear) parameters `params` and by calculating the linear superposition of the basisfunctions
     /// with the given linear coefficients `linear_coeffs`.
     pub fn evaluate_complete_model<ScalarType>(
-        model: &SeparableModel<ScalarType>,
+        model: &'_ impl SeparableNonlinearModel<ScalarType>,
         x: &DVector<ScalarType>,
         params: &[ScalarType],
         linear_coeffs: &DVector<ScalarType>,
