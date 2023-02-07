@@ -1,15 +1,38 @@
-mod common;
 mod levmar;
 
-use common::evaluate_complete_model;
-use common::get_double_exponential_model_with_constant_offset;
-use common::linspace;
+use shared_test_code::evaluate_complete_model;
+use shared_test_code::get_double_exponential_model_with_constant_offset;
+use shared_test_code::linspace;
 use nalgebra::DVector;
+use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use varpro::prelude::*;
 use varpro::solvers::levmar::*;
 
 use approx::assert_relative_eq;
 use std::time::Instant;
+
+#[test]
+// sanity check my calculations above
+fn sanity_check_jacobian_of_levenberg_marquardt_problem_is_correct() {
+    let x = linspace(0., 12.5, 20);
+    let tau1 = 2.;
+    let tau2 = 4.;
+    let c1 = 2.;
+    let c2 = 4.;
+    let c3 = 0.2;
+    let f = x.map(|x: f64| c1 * (-x / tau1).exp() + c2 * (-x / tau2).exp() + c3);
+
+    let mut problem = DoubleExponentialDecayFittingWithOffsetLevmar::new(
+        &[0.5 * tau1, 1.5 * tau2, 2. * c1, 3. * c2, 3. * c3],
+        &x,
+        &f,
+    );
+
+    // Let `problem` be an instance of `LeastSquaresProblem`
+    let jacobian_numerical = levenberg_marquardt::differentiate_numerically(&mut problem).unwrap();
+    let jacobian_trait = problem.jacobian().unwrap();
+    assert_relative_eq!(jacobian_numerical, jacobian_trait, epsilon = 1e-5);
+}
 
 #[test]
 fn double_exponential_fitting_without_noise_produces_accurate_results() {

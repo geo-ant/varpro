@@ -9,3 +9,4 @@ edition = "2021"
 varpro = {path = "../varpro"}
 nalgebra = "0.32"
 num-traits = "0.2"
+levenberg-marquardt = "0.13"

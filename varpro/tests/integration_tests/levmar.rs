@@ -1,4 +1,4 @@
-use crate::common::linspace;
+use shared_test_code::linspace;
 use levenberg_marquardt::{differentiate_numerically, LeastSquaresProblem};
 use nalgebra::storage::Owned;
 use nalgebra::{DVector, Dyn, Matrix, Vector, Vector5, U5};
