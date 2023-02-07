@@ -1,5 +1,3 @@
-mod levmar;
-
 use shared_test_code::evaluate_complete_model;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::linspace;
@@ -53,7 +51,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
 
     // for solving the fitting problem using only the levenberg_marquardt crate                  the crate cannot deal with this:     &[tau1_guess,tau2_guess,c1,c2,c3]
     // we have to make the initial guesses closer to the true values for the Levenberg Marquart Algo
-    let levenberg_marquart_problem = levmar::DoubleExponentialDecayFittingWithOffsetLevmar::new(
+    let levenberg_marquart_problem = DoubleExponentialDecayFittingWithOffsetLevmar::new(
         &[0.5 * tau1, 1.5 * tau2, c1, c2, c3],
         &x,
         &y,
