@@ -1,10 +1,15 @@
 #![warn(missing_docs)]
-
+//! a helper crate which carries common code used by the benchtests and the
+//! integration tests.
 use nalgebra::{ComplexField, DVector, Scalar};
 use num_traits::Float;
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
 use varpro::prelude::SeparableNonlinearModel;
+
+/// contains models both for the levmar crate as well as the
+/// varpro crate
+pub mod models;
 
 /// create holding `count` the elements from range [first,last] with linear spacing. (equivalent to matlabs linspace)
 pub fn linspace<ScalarType: Float + Scalar>(
@@ -73,3 +78,5 @@ pub fn get_double_exponential_model_with_constant_offset() -> SeparableModel<f64
         .build()
         .expect("double exponential model builder should produce a valid model")
 }
+
+
