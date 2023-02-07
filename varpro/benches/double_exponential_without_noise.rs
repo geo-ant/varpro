@@ -26,11 +26,11 @@ struct DoubleExponentialParameters {
     c3: f64,
 }
 
-fn build_problem(
+fn build_problem<Model:SeparableNonlinearModel<f64>>(
     true_parameters: DoubleExponentialParameters,
     (tau1_guess, tau2_guess): (f64, f64),
-    model: &'_ impl SeparableNonlinearModel<f64>,
-) -> LevMarProblem<'_, f64,impl SeparableNonlinearModel<f64>> {
+    model: &'_ Model,
+) -> LevMarProblem<'_, f64,Model> {
     let DoubleExponentialParameters {
         tau1,
         tau2,
@@ -116,14 +116,15 @@ mod common {
     /// evaluete the vector valued function of a model by evaluating the model at the given location
     /// `x` with (nonlinear) parameters `params` and by calculating the linear superposition of the basisfunctions
     /// with the given linear coefficients `linear_coeffs`.
-    pub fn evaluate_complete_model<ScalarType>(
-        model: &'_ impl SeparableNonlinearModel<ScalarType>,
+    pub fn evaluate_complete_model<ScalarType, Model>(
+        model: &'_ Model,
         x: &DVector<ScalarType>,
         params: &[ScalarType],
         linear_coeffs: &DVector<ScalarType>,
     ) -> DVector<ScalarType>
     where
         ScalarType: Scalar + ComplexField,
+        Model : SeparableNonlinearModel<ScalarType>
     {
         (&model
             .eval(x, params)

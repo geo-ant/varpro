@@ -8,7 +8,7 @@ use approx::assert_relative_eq;
 /// Implementation of double exponential decay with constant offset
 /// f(x) = c1*exp(-x/tau1)+c2*exp(-x/tau2)+c3
 /// using the levenberg_marquardt crate
-pub struct DoubleExponentialDecayFittingWithOffset {
+pub struct DoubleExponentialDecayFittingWithOffsetLevmar {
     /// current problem paramters with layout (tau1,tau2,c1,c2,c3)
     params: Vector5<f64>,
     /// current independent variable
@@ -22,7 +22,7 @@ pub struct DoubleExponentialDecayFittingWithOffset {
     precalc_exp_tau2: DVector<f64>,
 }
 
-impl DoubleExponentialDecayFittingWithOffset {
+impl DoubleExponentialDecayFittingWithOffsetLevmar {
     /// create new fitting problem with data and initial guesses
     pub fn new(initial_guesses: &[f64], x: &DVector<f64>, y: &DVector<f64>) -> Self {
         assert_eq!(
@@ -44,7 +44,7 @@ impl DoubleExponentialDecayFittingWithOffset {
     }
 }
 
-impl LeastSquaresProblem<f64, Dyn, U5> for DoubleExponentialDecayFittingWithOffset {
+impl LeastSquaresProblem<f64, Dyn, U5> for DoubleExponentialDecayFittingWithOffsetLevmar {
     type ParameterStorage = Owned<f64, U5>;
     type ResidualStorage = Owned<f64, Dyn>;
     type JacobianStorage = Owned<f64, Dyn, U5>;
@@ -118,7 +118,7 @@ fn sanity_check_jacobian_of_levenberg_marquardt_problem_is_correct() {
     let c3 = 0.2;
     let f = x.map(|x: f64| c1 * (-x / tau1).exp() + c2 * (-x / tau2).exp() + c3);
 
-    let mut problem = DoubleExponentialDecayFittingWithOffset::new(
+    let mut problem = DoubleExponentialDecayFittingWithOffsetLevmar::new(
         &[0.5 * tau1, 1.5 * tau2, 2. * c1, 3. * c2, 3. * c3],
         &x,
         &f,

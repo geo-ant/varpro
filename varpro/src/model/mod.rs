@@ -15,7 +15,6 @@ mod model_basis_function;
 pub mod test;
 
 
-/// TODO TODO TODO DOCUMENT
 pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// the associated error type that can possibly produce when the
     /// model or the derivative is evaluated.
@@ -31,10 +30,8 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// This is equal to the number of *linear coefficients* of the model.
     fn basis_function_count(&self) -> usize;
     
-    ///TODO DOCUMENT
     fn eval(&self, location : &DVector<ScalarType>, parameters : &[ScalarType])-> Result<DMatrix<ScalarType>, Self::Error>; 
     
-    /// TODO DOCUMENT
     fn eval_partial_deriv(&self, location: &DVector<ScalarType>, parameters : &[ScalarType],derivative_index : usize) -> Result<DMatrix<ScalarType>, Self::Error>;
 }
 
