@@ -61,8 +61,10 @@ where S: Scalar + Copy + ComplexField + Float + RealField, M:SeparableNonlinearM
 }
 
 fn bench_double_exp_no_noise(c: &mut Criterion) {
-    // let model = get_double_exponential_model_with_constant_offset();
-    let model = DoubleExpModelWithConstantOffsetSepModel::default();
+    // this model was generated using the model builder provided by this crate
+    let model_builder_model = get_double_exponential_model_with_constant_offset();
+    // this model was handcrafted using the trait interface
+    let handcrafted_model = DoubleExpModelWithConstantOffsetSepModel::default();
     let true_parameters = DoubleExponentialParameters {
         tau1: 1.,
         tau2: 3.,
@@ -70,10 +72,22 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
         c2: 2.5,
         c3: 1.,
     };
-
-    c.bench_function("double exp w/o noise", move |bencher| {
+    
+    // see here on comparing functions
+    // https://bheisler.github.io/criterion.rs/book/user_guide/comparing_functions.html
+    let mut group = c.benchmark_group("Double Exponential Without Noise");
+    
+    group.bench_function("Using Model Builder", move |bencher| {
         bencher.iter_batched(
-            || build_problem(true_parameters, (2., 6.5), &model),
+            || build_problem(true_parameters, (2., 6.5), &model_builder_model),
+            run_minimization,
+            criterion::BatchSize::SmallInput,
+        )
+    });
+
+    group.bench_function("Handcrafted Model", move |bencher| {
+        bencher.iter_batched(
+            || build_problem(true_parameters, (2., 6.5), &handcrafted_model),
             run_minimization,
             criterion::BatchSize::SmallInput,
         )

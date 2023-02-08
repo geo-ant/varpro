@@ -44,8 +44,8 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         // tau1, tau2). Since only one of the basis functions depends on 
         // tau_i, we can simplify calculations here
 
-        let tau = unsafe {parameters.get_unchecked(derivative_index)};
-        let df = location.map(|x| -x/(tau*tau)*f64::exp(-x/tau));
+        let tau = parameters[derivative_index];
+        let df = location.map(|x| x/(tau*tau)*f64::exp(-x/tau));
         
         let mut basefuncs = DMatrix::zeros(location.len(), 3);
 

@@ -55,10 +55,11 @@
 //! uses the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate as it's optimization backend. Other
 //! optimization backends are planned for future releases.
 //!
-//! The VarPro algorithm implemented here follows (O'Leary2013), but does use the Kaufman approximation
+//! The VarPro algorithm implemented here follows (O'Leary2013), but uses use the Kaufman approximation
 //! to calculate the Jacobian.
 //!
 //! # Usage and Workflow
+//!
 //! The workflow for solving a least squares fitting problem with varpro is consists of the following steps.
 //! 1. Create a [SeparableModel](crate::model::SeparableModel) which describes the model function using
 //! the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). This is done by
@@ -152,8 +153,7 @@
 //!     .build()
 //!     .unwrap();
 //! // 2.,3: Cast the fitting problem as a nonlinear least squares minimization problem
-//! let problem = LevMarProblemBuilder::new()
-//!     .model(&model)
+//! let problem = LevMarProblemBuilder::new(&model)
 //!     .x(x)
 //!     .y(y)
 //!     .initial_guess(&[1., 2.])
