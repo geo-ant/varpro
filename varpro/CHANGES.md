@@ -4,6 +4,8 @@ This is the changelog for the `varpro` library. See also here for a [version his
 
 ## XXX
 - Add benchtests
+- Change solver API to depend on separable model trait instead of concrete impl,
+which allows us to optimize our models for performance
 
 ## 0.5.0
 - Upgrade nalgebra and levenberg_marquardt dependencies to current versions
