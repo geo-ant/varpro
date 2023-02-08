@@ -19,7 +19,7 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
         todo!()
     }
 
-    fn basis_function_count(&self) -> usize {
+    fn base_function_count(&self) -> usize {
         todo!()
     }
 

@@ -17,7 +17,7 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
     }
 
     #[inline]
-    fn basis_function_count(&self) -> usize {
+    fn base_function_count(&self) -> usize {
         3
     }
 

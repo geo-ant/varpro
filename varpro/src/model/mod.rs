@@ -15,28 +15,8 @@ mod model_basis_function;
 pub mod test;
 
 
-pub trait SeparableNonlinearModel<ScalarType: Scalar> {
-    /// the associated error type that can possibly produce when the
-    /// model or the derivative is evaluated.
-    /// If this model does not need (or for performance reasons does not want)
-    /// to return an error, it is possible to specify [`std::convert::Infallible`]
-    /// as the associated `Error` type.
-    type Error : std::error::Error;
-    /// must return the number of *nonlinear* parameters that this model depends on.
-    /// This does not include the number of linear *coefficients*.
-    fn parameter_count(&self) -> usize;
-    
-    /// must return the number of basis functions that this model depends on.
-    /// This is equal to the number of *linear coefficients* of the model.
-    fn basis_function_count(&self) -> usize;
-    
-    fn eval(&self, location : &DVector<ScalarType>, parameters : &[ScalarType])-> Result<DMatrix<ScalarType>, Self::Error>; 
-    
-    fn eval_partial_deriv(&self, location: &DVector<ScalarType>, parameters : &[ScalarType],derivative_index : usize) -> Result<DMatrix<ScalarType>, Self::Error>;
-}
-
-/// This structure represents a separable nonlinear model.
-///
+/// Represents an abstraction for a separable nonlinear model
+/// 
 /// # Introduction
 /// A separable nonlinear model is
 /// a nonlinear, vector valued function function `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` which depends on
@@ -50,32 +30,37 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
 /// ```math
 /// f(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(\vec{x},S_j(\vec{\alpha})),
 /// ```
-/// where `$\vec{c}=(c_1,\dots,\c_M)$` are the coefficients of the model basis functions and
+/// where `$\vec{c}=(c_1,\dots,\c_M)$` are the coefficients of the model base functions and
 /// `$S_j(\vec{\alpha})$` is a subset of the nonlinear model parameters that may be different
-/// for each model function. The basis functions should depend on the model parameters nonlinearly.
+/// for each model function. The base functions should depend on the model parameters nonlinearly.
 /// Linear parameters should be in the coefficient vector `$\vec{c}$` only.
 ///
 /// ## Important Considerations for Basis Functions
-/// We have already stated that the basis functions should depend on their parameter subset
+/// 
+/// We have already stated that the base functions should depend on their parameter subset
 /// `$S_j(\vec{\alpha})$` in a non-linear manner. Linear dependencies should be rewritten in such a
 /// way that we can stick them into the coefficient vector `$\vec{c}$`. It is not strictly necessary
 /// to do that, but it will only make the fitting process slower and less robust. The great strength
 /// of varpro comes from treating the linear and nonlinear parameters differently.
 ///
-/// Another important thing is to ensure that the basis functions are not linearly dependent. That is,
+/// Another important thing is to ensure that the base functions are not linearly dependent. That is,
 /// at least not for all possible choices of `$\vec{alpha}$`. It is OK if model functions become linearly
 /// dependent for *some* combinations of model parameters. See also
 /// [LevMarProblemBuilder::epsilon](crate::solver::levmar::builder::LevMarProblemBuilder::epsilon).
 ///
-/// ## Base Functions
+/// ## Basis functions
+/// 
 /// It perfectly fine for a base function to depend on all or none of the model parameters or any
 /// subset of the model parameters.
 ///
 /// ### Invariant Functions
-/// We refer to functions `$\vec{f}_j(\vec{x})$` that do not depend on the model parameters as *invariant
-/// functions*. We offer special methods to add invariant functions during the model building process.
+/// 
+/// There may be functions that depend only on the location parameter `$\vec{x}$` but
+/// not on the nonlinear parameters. It's best to subsume all those functions under one
+/// _invariant_ base function.
 ///
 /// ### Base Functions
+/// 
 /// The varpro library expresses base function signatures as `$\vec{f}_j(\vec{x},p_1,...,p_{P_j}))$`, where
 /// `$p_1,...,p_{P_J}$` are the paramters that the basefunction with index `$j$` actually depends on.
 /// These are not given as a vector, but as a (variadic) list of arguments. The parameters must be
@@ -83,13 +68,53 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
 /// provide all partial derivatives (for parameters that the function explicitly depends on).
 ///
 /// Refer to the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
-/// to see how to construct a model with basis functions.
+/// to see how to construct a model with base functions.
 ///
 /// # Usage
-/// The is no reason to interface with the separable model directly. First, construct it using a
-/// [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder) and then pass the model
-/// to one of the problem builders (e.g. [LevMarProblemBuilder](crate::solvers::levmar::builder::LevMarProblemBuilder))
-/// to use it for nonlinear least squares fitting.
+///
+/// ## Simplified Use
+///
+/// The simplest way to build an instance of a model us to use the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+/// to create a model from a set of base functions and their derivatives. Then 
+/// pass this to a solver for solving for both the linear coefficients as well 
+/// as the nonlinear parameters. This is recommended for prototyping and should
+/// already run way faster and more stable than just using a least squares backend
+/// directly. For maximum performance, you can also write your own type
+/// that implements the [SeparableNonlinearModel] interface.
+///
+/// ## Implementing the Interface By Hand
+///
+/// A handrolled implementation allows us avoid some indirection that the model
+/// builder introduces. For that, write your own type that implements this
+/// trait and pay close attention to the documentation of the member functions
+/// below.
+pub trait SeparableNonlinearModel<ScalarType: Scalar> {
+    /// the associated error type that can occur when the
+    /// model or the derivative is evaluated.
+    /// If this model does not need (or for performance reasons does not want)
+    /// to return an error, it is possible to specify [`std::convert::Infallible`]
+    /// as the associated `Error` type.
+    type Error : std::error::Error;
+    
+    /// must return the number of *nonlinear* parameters that this model depends on.
+    /// This does not include the number of linear *coefficients*.
+    /// The parameters passed to `eval` and `eval_partial_deriv` must 
+    /// have this amount of elements.
+    fn parameter_count(&self) -> usize;
+    
+    /// must return the number of base functions that this model depends on.
+    /// This is equal to the number of *linear coefficients* of the model.
+    /// This is also equal to the number of _columns_ of the matrices returned
+    /// from the `eval` and `eval_partial_deriv` methods.
+    fn base_function_count(&self) -> usize;
+    
+    fn eval(&self, location : &DVector<ScalarType>, parameters : &[ScalarType])-> Result<DMatrix<ScalarType>, Self::Error>; 
+    
+    fn eval_partial_deriv(&self, location: &DVector<ScalarType>, parameters : &[ScalarType],derivative_index : usize) -> Result<DMatrix<ScalarType>, Self::Error>;
+}
+
+/// The type returned from building a model using the
+/// [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
 pub struct SeparableModel<ScalarType>
 where
     ScalarType: Scalar,
@@ -160,7 +185,7 @@ where
         }
 
         let nrows = location.len();
-        let ncols = self.basis_function_count();
+        let ncols = self.base_function_count();
         // this pattern is not great, but the trait bounds in copy_from still
         // prevent us from doing something better
         let mut function_value_matrix =
@@ -240,7 +265,7 @@ impl<ScalarType> SeparableNonlinearModel<ScalarType> for SeparableModel<ScalarTy
         self.parameter_names.len()
     }
 
-    fn basis_function_count(&self) -> usize {
+    fn base_function_count(&self) -> usize {
         self.basefunctions.len()
     }
 
