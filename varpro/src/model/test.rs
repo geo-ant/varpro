@@ -136,12 +136,10 @@ fn model_derivative_evaluation_produces_correct_result() {
     let params = &[tau, omega];
 
     let deriv_tau = model
-        .eval_deriv(&tvec, params)
-        .at_param_name("tau")
+        .eval_partial_deriv(&tvec, params,0)
         .expect("Derivative eval must not fail");
     let deriv_omega = model
-        .eval_deriv(&tvec, params)
-        .at_param_name("omega")
+        .eval_partial_deriv(&tvec, params,1)
         .expect("Derivative eval must not fail");
 
     // DERIVATIVE WITH RESPECT TO TAU
@@ -190,31 +188,6 @@ fn model_derivative_evaluation_produces_correct_result() {
 }
 
 #[test]
-fn requesting_derivative_by_name_and_index_produces_same_results() {
-    let model = test_helpers::get_double_exponential_model_with_constant_offset();
-    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
-    let params = &[2., 4.];
-
-    assert_eq!(
-        model.eval_deriv(&tvec, params).at(0).unwrap(),
-        model
-            .eval_deriv(&tvec, params)
-            .at_param_name("tau1")
-            .unwrap(),
-        "Evaluating derivative by name or index must produce same result"
-    );
-
-    assert_eq!(
-        model.eval_deriv(&tvec, params).at(1).unwrap(),
-        model
-            .eval_deriv(&tvec, params)
-            .at_param_name("tau2")
-            .unwrap(),
-        "Evaluating derivative by name or index must produce same result"
-    );
-}
-
-#[test]
 // check that the following error cases are covered and return the appropriate errors
 // * derivative is evaluated and includes a function that does not give the same length vector
 // back as the location (x) argument
@@ -236,7 +209,7 @@ fn model_derivative_evaluation_error_cases() {
     // deriv index 0 is tau1: this derivative is bad and should fail
     assert!(
         matches!(
-            model_with_bad_function.eval_deriv(&tvec, &[2., 4.]).at(0),
+            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.],0),
             Err(ModelError::UnexpectedFunctionOutput { .. })
         ),
         "Derivative for invalid function must fail with correct error"
@@ -245,8 +218,7 @@ fn model_derivative_evaluation_error_cases() {
     // deriv index 0 is tau1: this derivative is good and should return an ok result
     assert!(
         model_with_bad_function
-            .eval_deriv(&tvec, &[2., 4.])
-            .at(1)
+            .eval_partial_deriv(&tvec, &[2., 4.],1)
             .is_ok(),
         "Derivative eval for valid function should return Ok result"
     );
@@ -255,8 +227,7 @@ fn model_derivative_evaluation_error_cases() {
     assert!(
         matches!(
             model_with_bad_function
-                .eval_deriv(&tvec, &[2., 4., 2., 2.])
-                .at(1),
+                .eval_partial_deriv(&tvec, &[2., 4., 2., 2.],1),
             Err(ModelError::IncorrectParameterCount { .. })
         ),
         "Derivative for invalid function must fail with correct error"
@@ -265,7 +236,7 @@ fn model_derivative_evaluation_error_cases() {
     // check an out of bounds index for the derivative
     assert!(
         matches!(
-            model_with_bad_function.eval_deriv(&tvec, &[2., 4.]).at(100),
+            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.],100),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
         ),
         "Derivative for invalid function must fail with correct error"
@@ -275,9 +246,8 @@ fn model_derivative_evaluation_error_cases() {
     assert!(
         matches!(
             model_with_bad_function
-                .eval_deriv(&tvec, &[2., 4.])
-                .at_param_name("frankenstein"),
-            Err(ModelError::ParameterNotInModel { .. })
+                .eval_partial_deriv(&tvec, &[2., 4.],3),
+            Err(ModelError::DerivativeIndexOutOfBounds { .. })
         ),
         "Derivative for invalid function must fail with correct error"
     );
