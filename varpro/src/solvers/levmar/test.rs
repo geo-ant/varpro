@@ -23,7 +23,7 @@ fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unw
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
 
-    let mut problem = LevMarProblemBuilder::new(&model)
+    let mut problem = LevMarProblemBuilder::new(model)
         .x(tvec)
         .y(yvec)
         .initial_guess(&[2., 4.])
@@ -57,7 +57,7 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
     // generate some non-unit test weights (which have no physical meaning)
     let weights = yvec.map(|v: f64| v.sqrt() + v.sin());
 
-    let mut problem = LevMarProblemBuilder::new(&model)
+    let mut problem = LevMarProblemBuilder::new(model)
         .x(tvec)
         .y(yvec)
         .initial_guess(&[1., 2.]) // these initial params don't for this test
@@ -118,7 +118,7 @@ fn residuals_are_calculated_correctly_unweighted() {
 
     let data_length = tvec.len();
 
-    let mut problem = LevMarProblemBuilder::new(&model)
+    let mut problem = LevMarProblemBuilder::new(model)
         .x(tvec)
         .y(yvec)
         .initial_guess(&[2., 4.])
@@ -180,7 +180,7 @@ fn residuals_are_calculated_correctly_with_weights() {
     let tau1 = 0.5;
     let tau2 = 6.5;
 
-    let mut problem = LevMarProblemBuilder::new(&model)
+    let mut problem = LevMarProblemBuilder::new(model)
         .x(tvec)
         .y(yvec)
         .weights(weights)

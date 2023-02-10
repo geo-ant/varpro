@@ -26,8 +26,8 @@ struct DoubleExponentialParameters {
 fn build_problem<Model: SeparableNonlinearModel<f64>>(
     true_parameters: DoubleExponentialParameters,
     (tau1_guess, tau2_guess): (f64, f64),
-    model: &'_ Model,
-) -> LevMarProblem<'_, f64, Model> {
+    model: Model,
+) -> LevMarProblem<f64, Model> {
     let DoubleExponentialParameters {
         tau1,
         tau2,
@@ -37,7 +37,7 @@ fn build_problem<Model: SeparableNonlinearModel<f64>>(
     } = true_parameters;
 
     let x = linspace(0., 12.5, 1024);
-    let y = evaluate_complete_model(model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
+    let y = evaluate_complete_model(&model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
     let problem = LevMarProblemBuilder::new(model)
         .x(x)
         .y(y)
@@ -47,7 +47,7 @@ fn build_problem<Model: SeparableNonlinearModel<f64>>(
     problem
 }
 
-fn run_minimization<S, M>(problem: LevMarProblem<'_, S, M>) -> [S; 5]
+fn run_minimization<S, M>(problem: LevMarProblem<S, M>) -> [S; 5]
 where
     S: Scalar + Copy + ComplexField + Float + RealField,
     M: SeparableNonlinearModel<S>,
@@ -64,10 +64,6 @@ where
 }
 
 fn bench_double_exp_no_noise(c: &mut Criterion) {
-    // this model was generated using the model builder provided by this crate
-    let model_builder_model = get_double_exponential_model_with_constant_offset();
-    // this model was handcrafted using the trait interface
-    let handcrafted_model = DoubleExpModelWithConstantOffsetSepModel::default();
     let true_parameters = DoubleExponentialParameters {
         tau1: 1.,
         tau2: 3.,
@@ -82,7 +78,7 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
 
     group.bench_function("Using Model Builder", move |bencher| {
         bencher.iter_batched(
-            || build_problem(true_parameters, (2., 6.5), &model_builder_model),
+            || build_problem(true_parameters, (2., 6.5), get_double_exponential_model_with_constant_offset()),
             run_minimization,
             criterion::BatchSize::SmallInput,
         )
@@ -90,7 +86,7 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
 
     group.bench_function("Handcrafted Model", move |bencher| {
         bencher.iter_batched(
-            || build_problem(true_parameters, (2., 6.5), &handcrafted_model),
+            || build_problem(true_parameters, (2., 6.5), DoubleExpModelWithConstantOffsetSepModel::default()),
             run_minimization,
             criterion::BatchSize::SmallInput,
         )

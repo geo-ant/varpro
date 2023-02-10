@@ -39,7 +39,7 @@ struct CachedCalculations<ScalarType: Scalar + ComplexField> {
 /// is provided in this crate documentation as well. The [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
 /// solver is reexported by this module as [LevMarSolver](self::LevMarSolver) for naming consistency.
 #[derive(Clone)]
-pub struct LevMarProblem<'a, ScalarType, Model>
+pub struct LevMarProblem<ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>,
@@ -53,7 +53,7 @@ where
     /// current parameters that the optimizer is operating on
     model_parameters: Vec<ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
-    model: &'a Model,
+    model: Model,
     /// truncation epsilon for SVD below which all singular values are assumed zero
     svd_epsilon: ScalarType::RealField,
     /// the weights of the data. If none are given, the data is not weighted
@@ -67,7 +67,7 @@ where
     cached: Option<CachedCalculations<ScalarType>>,
 }
 
-impl<'a, ScalarType, Model> LevMarProblem<'a, ScalarType, Model>
+impl<ScalarType, Model> LevMarProblem<ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>,
@@ -85,8 +85,8 @@ where
     }
 }
 
-impl<'a, ScalarType, Model> LeastSquaresProblem<ScalarType, Dyn, Dyn>
-    for LevMarProblem<'a, ScalarType, Model>
+impl<ScalarType, Model> LeastSquaresProblem<ScalarType, Dyn, Dyn>
+    for LevMarProblem<ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
