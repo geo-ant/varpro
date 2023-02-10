@@ -1,7 +1,7 @@
+use crate::prelude::*;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::storage::Owned;
 use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD};
-use crate::prelude::*;
 
 mod builder;
 #[cfg(test)]
@@ -39,10 +39,10 @@ struct CachedCalculations<ScalarType: Scalar + ComplexField> {
 /// is provided in this crate documentation as well. The [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
 /// solver is reexported by this module as [LevMarSolver](self::LevMarSolver) for naming consistency.
 #[derive(Clone)]
-pub struct LevMarProblem<'a, ScalarType,Model>
+pub struct LevMarProblem<'a, ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
-    Model : SeparableNonlinearModel<ScalarType>
+    Model: SeparableNonlinearModel<ScalarType>,
 {
     /// the independent variable `\vec{x}` (location parameter)
     x: DVector<ScalarType>,
@@ -67,10 +67,11 @@ where
     cached: Option<CachedCalculations<ScalarType>>,
 }
 
-impl<'a, ScalarType,Model> LevMarProblem<'a, ScalarType,Model>
-    where ScalarType: Scalar + ComplexField + Copy ,
-    Model : SeparableNonlinearModel<ScalarType>
-    {
+impl<'a, ScalarType, Model> LevMarProblem<'a, ScalarType, Model>
+where
+    ScalarType: Scalar + ComplexField + Copy,
+    Model: SeparableNonlinearModel<ScalarType>,
+{
     /// Get the linear coefficients for the current problem. After a successful pass of the solver,
     /// this contains a value with the best fitting linear coefficients
     /// # Returns
@@ -84,11 +85,12 @@ impl<'a, ScalarType,Model> LevMarProblem<'a, ScalarType,Model>
     }
 }
 
-impl<'a, ScalarType,Model> LeastSquaresProblem<ScalarType, Dyn, Dyn> for LevMarProblem<'a, ScalarType,Model>
+impl<'a, ScalarType, Model> LeastSquaresProblem<ScalarType, Dyn, Dyn>
+    for LevMarProblem<'a, ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
-    Model : SeparableNonlinearModel<ScalarType>
+    Model: SeparableNonlinearModel<ScalarType>,
 {
     type ResidualStorage = Owned<ScalarType, Dyn>;
     type JacobianStorage = Owned<ScalarType, Dyn, Dyn>;
@@ -187,7 +189,7 @@ where
                 let Dk = &self.weights
                     * self
                         .model
-                        .eval_partial_deriv(&self.x, self.model_parameters.as_slice(),k)
+                        .eval_partial_deriv(&self.x, self.model_parameters.as_slice(), k)
                         .ok()?; // will return none if this could not be calculated
                 let Dk_c = &Dk * linear_coefficients;
                 let minus_ak: DVector<ScalarType> = U * (&U_t * (&Dk_c)) - Dk_c;

@@ -9,8 +9,8 @@ use crate::test_helpers;
 
 /// a dummy structure that implements a separable nonlinear model trait
 /// but will panic when any of the methods is actually called
-#[derive(Default,Copy,Clone)]
-pub struct DummySeparableModel{}
+#[derive(Default, Copy, Clone)]
+pub struct DummySeparableModel {}
 
 impl SeparableNonlinearModel<f64> for DummySeparableModel {
     type Error = ModelError;
@@ -23,14 +23,23 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
         todo!()
     }
 
-    fn eval(&self, _location : &DVector<f64>, _parameters : &[f64])-> Result<nalgebra::DMatrix<f64>, Self::Error> {
+    fn eval(
+        &self,
+        _location: &DVector<f64>,
+        _parameters: &[f64],
+    ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
         todo!()
     }
 
-    fn eval_partial_deriv(&self, _location: &DVector<f64>, _parameters : &[f64],_derivative_index : usize) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
+    fn eval_partial_deriv(
+        &self,
+        _location: &DVector<f64>,
+        _parameters: &[f64],
+        _derivative_index: usize,
+    ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
         todo!()
     }
-}   
+}
 
 #[test]
 fn model_gets_initialized_with_correct_parameter_names_and_count() {
@@ -136,10 +145,10 @@ fn model_derivative_evaluation_produces_correct_result() {
     let params = &[tau, omega];
 
     let deriv_tau = model
-        .eval_partial_deriv(&tvec, params,0)
+        .eval_partial_deriv(&tvec, params, 0)
         .expect("Derivative eval must not fail");
     let deriv_omega = model
-        .eval_partial_deriv(&tvec, params,1)
+        .eval_partial_deriv(&tvec, params, 1)
         .expect("Derivative eval must not fail");
 
     // DERIVATIVE WITH RESPECT TO TAU
@@ -209,7 +218,7 @@ fn model_derivative_evaluation_error_cases() {
     // deriv index 0 is tau1: this derivative is bad and should fail
     assert!(
         matches!(
-            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.],0),
+            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 0),
             Err(ModelError::UnexpectedFunctionOutput { .. })
         ),
         "Derivative for invalid function must fail with correct error"
@@ -218,7 +227,7 @@ fn model_derivative_evaluation_error_cases() {
     // deriv index 0 is tau1: this derivative is good and should return an ok result
     assert!(
         model_with_bad_function
-            .eval_partial_deriv(&tvec, &[2., 4.],1)
+            .eval_partial_deriv(&tvec, &[2., 4.], 1)
             .is_ok(),
         "Derivative eval for valid function should return Ok result"
     );
@@ -226,8 +235,7 @@ fn model_derivative_evaluation_error_cases() {
     // check that if an incorrect amount of parameters is provided, then the evaluation fails
     assert!(
         matches!(
-            model_with_bad_function
-                .eval_partial_deriv(&tvec, &[2., 4., 2., 2.],1),
+            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4., 2., 2.], 1),
             Err(ModelError::IncorrectParameterCount { .. })
         ),
         "Derivative for invalid function must fail with correct error"
@@ -236,7 +244,7 @@ fn model_derivative_evaluation_error_cases() {
     // check an out of bounds index for the derivative
     assert!(
         matches!(
-            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.],100),
+            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 100),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
         ),
         "Derivative for invalid function must fail with correct error"
@@ -245,8 +253,7 @@ fn model_derivative_evaluation_error_cases() {
     // check that if a nonexistent parameter is requested by name, then the derivative evaluation fails
     assert!(
         matches!(
-            model_with_bad_function
-                .eval_partial_deriv(&tvec, &[2., 4.],3),
+            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 3),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
         ),
         "Derivative for invalid function must fail with correct error"

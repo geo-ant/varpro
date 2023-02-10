@@ -21,8 +21,8 @@ pub fn linspace<ScalarType: Float + Scalar>(
     let lin: Vec<ScalarType> = (0..count)
         .map(|n| {
             first
-            + (first - last) / (n_minus_one)
-            * ScalarType::from(n).expect("Could not convert usize to Float")
+                + (first - last) / (n_minus_one)
+                    * ScalarType::from(n).expect("Could not convert usize to Float")
         })
         .collect();
     DVector::from(lin)
@@ -37,14 +37,14 @@ pub fn evaluate_complete_model<ScalarType, Model>(
     params: &[ScalarType],
     linear_coeffs: &DVector<ScalarType>,
 ) -> DVector<ScalarType>
-    where
+where
     ScalarType: Scalar + ComplexField,
-    Model : SeparableNonlinearModel<ScalarType>
+    Model: SeparableNonlinearModel<ScalarType>,
 {
     (&model
         .eval(x, params)
         .expect("Evaluating model must not produce error"))
-    * linear_coeffs
+        * linear_coeffs
 }
 
 /// exponential decay f(t,tau) = exp(-t/tau)
@@ -78,5 +78,3 @@ pub fn get_double_exponential_model_with_constant_offset() -> SeparableModel<f64
         .build()
         .expect("double exponential model builder should produce a valid model")
 }
-
-

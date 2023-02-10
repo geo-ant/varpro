@@ -1,7 +1,7 @@
+use nalgebra::DVector;
 use shared_test_code::evaluate_complete_model;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::linspace;
-use nalgebra::DVector;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use varpro::prelude::*;

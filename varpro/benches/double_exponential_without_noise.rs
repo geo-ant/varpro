@@ -1,6 +1,4 @@
-use shared_test_code::*;
 use criterion::{criterion_group, criterion_main, Criterion};
-use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::ComplexField;
 use nalgebra::DVector;
@@ -8,6 +6,8 @@ use nalgebra::RealField;
 use nalgebra::Scalar;
 use num_traits::Float;
 use pprof::criterion::{Output, PProfProfiler};
+use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
+use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
@@ -23,11 +23,11 @@ struct DoubleExponentialParameters {
     c3: f64,
 }
 
-fn build_problem<Model:SeparableNonlinearModel<f64>>(
+fn build_problem<Model: SeparableNonlinearModel<f64>>(
     true_parameters: DoubleExponentialParameters,
     (tau1_guess, tau2_guess): (f64, f64),
     model: &'_ Model,
-) -> LevMarProblem<'_, f64,Model> {
+) -> LevMarProblem<'_, f64, Model> {
     let DoubleExponentialParameters {
         tau1,
         tau2,
@@ -47,8 +47,11 @@ fn build_problem<Model:SeparableNonlinearModel<f64>>(
     problem
 }
 
-fn run_minimization<S,M>(problem: LevMarProblem<'_, S,M>) -> [S; 5]
-where S: Scalar + Copy + ComplexField + Float + RealField, M:SeparableNonlinearModel<S> {
+fn run_minimization<S, M>(problem: LevMarProblem<'_, S, M>) -> [S; 5]
+where
+    S: Scalar + Copy + ComplexField + Float + RealField,
+    M: SeparableNonlinearModel<S>,
+{
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
         report.termination.was_successful(),
@@ -72,11 +75,11 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
         c2: 2.5,
         c3: 1.,
     };
-    
+
     // see here on comparing functions
     // https://bheisler.github.io/criterion.rs/book/user_guide/comparing_functions.html
     let mut group = c.benchmark_group("Double Exponential Without Noise");
-    
+
     group.bench_function("Using Model Builder", move |bencher| {
         bencher.iter_batched(
             || build_problem(true_parameters, (2., 6.5), &model_builder_model),

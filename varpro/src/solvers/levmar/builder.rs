@@ -7,8 +7,6 @@ use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
 
-
-
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 pub enum LevMarBuilderError {
@@ -83,11 +81,11 @@ pub enum LevMarBuilderError {
 /// ## Additional Building blocks
 /// The other methods of the builder allow to manipulate further aspects, like adding weights to the data.
 /// The methods are marked as **Optional**.
-pub struct LevMarProblemBuilder<'a, ScalarType,Model>
+pub struct LevMarProblemBuilder<'a, ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model : SeparableNonlinearModel<ScalarType>
+    Model: SeparableNonlinearModel<ScalarType>,
 {
     /// Required: the independent variable `$\vec{x}$
     x: Option<DVector<ScalarType>>,
@@ -109,31 +107,32 @@ where
     weights: Weights<ScalarType>,
 }
 
-impl<'a,ScalarType,Model> Clone for LevMarProblemBuilder<'a, ScalarType,Model> 
-    where
+impl<'a, ScalarType, Model> Clone for LevMarProblemBuilder<'a, ScalarType, Model>
+where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model : SeparableNonlinearModel<ScalarType> {
+    Model: SeparableNonlinearModel<ScalarType>,
+{
     fn clone(&self) -> Self {
         Self {
             x: self.x.clone(),
             y: self.y.clone(),
             separable_model: self.separable_model,
             parameter_initial_guess: self.parameter_initial_guess.clone(),
-            epsilon: self.epsilon.clone(),
+            epsilon: self.epsilon,
             weights: self.weights.clone(),
         }
     }
 }
 
-impl<'a, ScalarType,Model> LevMarProblemBuilder<'a, ScalarType,Model>
+impl<'a, ScalarType, Model> LevMarProblemBuilder<'a, ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Zero + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model : SeparableNonlinearModel<ScalarType>
+    Model: SeparableNonlinearModel<ScalarType>,
 {
     /// Create a new builder based on the given model
-    pub fn new(model : &'a Model) -> Self {
+    pub fn new(model: &'a Model) -> Self {
         Self {
             x: None,
             y: None,
@@ -221,7 +220,7 @@ where
     /// # Returns
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
-    pub fn build(self) -> Result<LevMarProblem<'a, ScalarType,Model>, LevMarBuilderError> {
+    pub fn build(self) -> Result<LevMarProblem<'a, ScalarType, Model>, LevMarBuilderError> {
         let finalized_builder = self.finalize()?;
 
         Ok(LevMarProblem::from(finalized_builder))
@@ -231,11 +230,11 @@ where
 /// helper structure that has the same fields as the builder
 /// but all of them are valid
 #[doc(hidden)]
-struct FinalizedBuilder<'a, ScalarType,Model>
+struct FinalizedBuilder<'a, ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField,
     ScalarType::RealField: Float,
-    Model : SeparableNonlinearModel<ScalarType>
+    Model: SeparableNonlinearModel<ScalarType>,
 {
     x: DVector<ScalarType>,
     y: DVector<ScalarType>,
@@ -250,13 +249,14 @@ where
 /// the initial parameters are set.
 #[doc(hidden)]
 #[allow(non_snake_case)]
-impl<'a, ScalarType,Model> From<FinalizedBuilder<'a, ScalarType,Model>> for LevMarProblem<'a, ScalarType,Model>
+impl<'a, ScalarType, Model> From<FinalizedBuilder<'a, ScalarType, Model>>
+    for LevMarProblem<'a, ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
-    Model : SeparableNonlinearModel<ScalarType>
+    Model: SeparableNonlinearModel<ScalarType>,
 {
-    fn from(finalized_builder: FinalizedBuilder<'a, ScalarType,Model>) -> Self {
+    fn from(finalized_builder: FinalizedBuilder<'a, ScalarType, Model>) -> Self {
         // 1) create weighted data
         let y_w = &finalized_builder.weights * finalized_builder.y;
 
@@ -283,15 +283,15 @@ where
 }
 
 // private implementations
-impl<'a, ScalarType,Model> LevMarProblemBuilder<'a, ScalarType,Model>
+impl<'a, ScalarType, Model> LevMarProblemBuilder<'a, ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy + Zero,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model : SeparableNonlinearModel<ScalarType>
+    Model: SeparableNonlinearModel<ScalarType>,
 {
     /// helper function to check if all required fields have been set and pass the checks
     /// if so, this returns a destructured result of self
-    fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType,Model>, LevMarBuilderError> {
+    fn finalize(self) -> Result<FinalizedBuilder<'a, ScalarType, Model>, LevMarBuilderError> {
         match self {
             // in this case all required fields are set to something
             LevMarProblemBuilder {
@@ -354,17 +354,17 @@ where
 #[cfg(test)]
 mod test {
 
-    use crate::{linalg_helpers::DiagDMatrix, model::test::DummySeparableModel};
     use crate::solvers::levmar::builder::LevMarBuilderError;
     use crate::solvers::levmar::weights::Weights;
     use crate::solvers::levmar::LevMarProblemBuilder;
     use crate::test_helpers::get_double_exponential_model_with_constant_offset;
+    use crate::{linalg_helpers::DiagDMatrix, model::test::DummySeparableModel};
     use nalgebra::{DMatrix, DVector};
 
     #[test]
     fn new_builder_starts_with_empty_fields() {
         let model = DummySeparableModel::default();
-        let builder = LevMarProblemBuilder::<f64,_>::new(&model);
+        let builder = LevMarProblemBuilder::<f64, _>::new(&model);
         let LevMarProblemBuilder {
             x,
             y,
@@ -475,10 +475,7 @@ mod test {
             Err(LevMarBuilderError::YDataMissing)
         ));
         assert!(matches!(
-            LevMarProblemBuilder::new(&model)
-                .x(x.clone())
-                .y(y.clone())
-                .build(),
+            LevMarProblemBuilder::new(&model).x(x).y(y).build(),
             Err(LevMarBuilderError::InitialGuessMissing)
         ));
     }

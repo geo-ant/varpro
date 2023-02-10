@@ -14,9 +14,8 @@ mod model_basis_function;
 #[cfg(test)]
 pub mod test;
 
-
 /// Represents an abstraction for a separable nonlinear model
-/// 
+///
 /// # Introduction
 /// A separable nonlinear model is
 /// a nonlinear, vector valued function function `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` which depends on
@@ -36,7 +35,7 @@ pub mod test;
 /// Linear parameters should be in the coefficient vector `$\vec{c}$` only.
 ///
 /// ## Important Considerations for Basis Functions
-/// 
+///
 /// We have already stated that the base functions should depend on their parameter subset
 /// `$S_j(\vec{\alpha})$` in a non-linear manner. Linear dependencies should be rewritten in such a
 /// way that we can stick them into the coefficient vector `$\vec{c}$`. It is not strictly necessary
@@ -49,18 +48,18 @@ pub mod test;
 /// [LevMarProblemBuilder::epsilon](crate::solver::levmar::builder::LevMarProblemBuilder::epsilon).
 ///
 /// ## Basis functions
-/// 
+///
 /// It perfectly fine for a base function to depend on all or none of the model parameters or any
 /// subset of the model parameters.
 ///
 /// ### Invariant Functions
-/// 
+///
 /// There may be functions that depend only on the location parameter `$\vec{x}$` but
 /// not on the nonlinear parameters. It's best to subsume all those functions under one
 /// _invariant_ base function.
 ///
 /// ### Base Functions
-/// 
+///
 /// The varpro library expresses base function signatures as `$\vec{f}_j(\vec{x},p_1,...,p_{P_j}))$`, where
 /// `$p_1,...,p_{P_J}$` are the paramters that the basefunction with index `$j$` actually depends on.
 /// These are not given as a vector, but as a (variadic) list of arguments. The parameters must be
@@ -71,16 +70,16 @@ pub mod test;
 /// to see how to construct a model with base functions.
 ///
 /// # Usage
-/// 
+///
 /// There is two ways to describe a separable nonlinear model. Firstly, you can
 /// use the builder in this crate or you can implement this trait on your own
-/// type. 
+/// type.
 ///
 /// ## Using the Builder
 ///
 /// The simplest way to build an instance of a model us to use the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
-/// to create a model from a set of base functions and their derivatives. Then 
-/// pass this to a solver for solving for both the linear coefficients as well 
+/// to create a model from a set of base functions and their derivatives. Then
+/// pass this to a solver for solving for both the linear coefficients as well
 /// as the nonlinear parameters. This is recommended for prototyping and should
 /// already run way faster and more stable than just using a least squares backend
 /// directly. For maximum performance, you can also write your own type
@@ -98,20 +97,20 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// If this model does not need (or for performance reasons does not want)
     /// to return an error, it is possible to specify [`std::convert::Infallible`]
     /// as the associated `Error` type.
-    type Error : std::error::Error;
-    
+    type Error: std::error::Error;
+
     /// must return the number of *nonlinear* parameters that this model depends on.
     /// This does not include the number of linear *coefficients*.
-    /// The parameters passed to `eval` and `eval_partial_deriv` must 
+    /// The parameters passed to `eval` and `eval_partial_deriv` must
     /// have this amount of elements.
     fn parameter_count(&self) -> usize;
-    
+
     /// must return the number of base functions that this model depends on.
     /// This is equal to the number of *linear coefficients* of the model.
     /// This is also equal to the number of _columns_ of the matrices returned
     /// from the `eval` and `eval_partial_deriv` methods.
     fn base_function_count(&self) -> usize;
-    
+
     /// Evaluate the base functions of the model at the given location `$\vec{x}$`
     /// and parameters `$\vec{\alpha}$` and return them in matrix form.
     /// The columns of this matrix are the evaluated base functions.
@@ -123,7 +122,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// * `parameters`: the parameter vector `$\vec{\alpha}$`
     ///
     /// # Result
-    /// 
+    ///
     /// As explained above, this method returns a matrix, whose columns are the
     /// base functions evaluated at the given parameters and location. More formally,
     /// if the model is written as a superposition of `$M$` base functions like so:
@@ -142,7 +141,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     ///   \vert & \dots & \vert \\
     ///   \end{pmatrix},
     /// ```
-    /// 
+    ///
     /// The ordering of the function must not change between function calls
     /// and it must also be the same as for the evaluation of the derivatives.
     /// The j-th base function must be at the j-th column. The one thing to remember
@@ -155,8 +154,12 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`,
     /// which indicates a programming error
     /// * ...
-    fn eval(&self, location : &DVector<ScalarType>, parameters : &[ScalarType])-> Result<DMatrix<ScalarType>, Self::Error>; 
-    
+    fn eval(
+        &self,
+        location: &DVector<ScalarType>,
+        parameters: &[ScalarType],
+    ) -> Result<DMatrix<ScalarType>, Self::Error>;
+
     /// Evaluate the partial derivatives for the base function at for the
     /// given location and parameters and return them in matrix form.
     ///
@@ -166,11 +169,11 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// * `parameters`: the parameter vector `$\vec{\alpha}$`
     /// * `derivative_index`: The index of the nonlinear parameter with respect to which
     /// partial derivative should be evaluated. We use _zero based indexing_
-    /// here! Put in more simple terms, say your model has three nonlinear parameters 
+    /// here! Put in more simple terms, say your model has three nonlinear parameters
     /// `a,b,c`, so your vector of nonlinear parameters is `$\vec{\alpha} = (a,b,c)$`.
     /// Then index 0 requests `$\partial/\partial_a$`, index 1 requests `$\partial/\partial_b$`
     /// and index 2 requests `$\partial/\partial_c$`.
-    /// 
+    ///
     /// # Result
     ///
     /// Like the `eval` method, this method returns a matrix, whose columns are the
@@ -182,10 +185,10 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// ```math
     /// \vec{f}(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(\vec{x},S_j(\vec{\alpha})),
     /// ```
-    /// 
+    ///
     /// Further assume that our vector of nonlinear parameters looks like
     /// `$\vec{\alpha} = (\alpha_1,...,\alpha_N)$` and that the partial derivative
-    /// with respect to `$\alpha_\ell$` (so the given `derivative_index` was 
+    /// with respect to `$\alpha_\ell$` (so the given `derivative_index` was
     /// `$\ell-1$`, since it is zero-based).
     ///
     /// then the matrix must look like this:
@@ -199,7 +202,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     ///   \end{pmatrix},
     /// ```
     ///
-    /// The order of the derivatives must be the same as in the model evaluation 
+    /// The order of the derivatives must be the same as in the model evaluation
     /// and must not change between method calls.
     ///
     /// ## Errors
@@ -209,7 +212,12 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
     /// * the given parameter index is out of bounds
     /// * ...
-    fn eval_partial_deriv(&self, location: &DVector<ScalarType>, parameters : &[ScalarType],derivative_index : usize) -> Result<DMatrix<ScalarType>, Self::Error>;
+    fn eval_partial_deriv(
+        &self,
+        location: &DVector<ScalarType>,
+        parameters: &[ScalarType],
+        derivative_index: usize,
+    ) -> Result<DMatrix<ScalarType>, Self::Error>;
 }
 
 /// The type returned from building a model using the
@@ -238,11 +246,12 @@ where
     pub fn parameters(&self) -> &[String] {
         &self.parameter_names
     }
-
 }
 
-impl<ScalarType> SeparableNonlinearModel<ScalarType> for SeparableModel<ScalarType> 
-    where ScalarType : Scalar + Zero {
+impl<ScalarType> SeparableNonlinearModel<ScalarType> for SeparableModel<ScalarType>
+where
+    ScalarType: Scalar + Zero,
+{
     type Error = ModelError;
 
     fn parameter_count(&self) -> usize {
@@ -284,7 +293,12 @@ impl<ScalarType> SeparableNonlinearModel<ScalarType> for SeparableModel<ScalarTy
         Ok(function_value_matrix)
     }
 
-    fn eval_partial_deriv(&self, location: &DVector<ScalarType>, parameters : &[ScalarType],derivative_index : usize) -> Result<DMatrix<ScalarType>, Self::Error> {
+    fn eval_partial_deriv(
+        &self,
+        location: &DVector<ScalarType>,
+        parameters: &[ScalarType],
+        derivative_index: usize,
+    ) -> Result<DMatrix<ScalarType>, Self::Error> {
         if parameters.len() != self.parameter_names.len() {
             return Err(ModelError::IncorrectParameterCount {
                 required: self.parameter_names.len(),
@@ -293,7 +307,9 @@ impl<ScalarType> SeparableNonlinearModel<ScalarType> for SeparableModel<ScalarTy
         }
 
         if derivative_index >= self.parameter_names.len() {
-            return Err(ModelError::DerivativeIndexOutOfBounds { index: derivative_index });
+            return Err(ModelError::DerivativeIndexOutOfBounds {
+                index: derivative_index,
+            });
         }
 
         let nrows = location.len();
@@ -307,11 +323,8 @@ impl<ScalarType> SeparableNonlinearModel<ScalarType> for SeparableModel<ScalarTy
             .zip(derivative_function_value_matrix.column_iter_mut())
         {
             if let Some(derivative) = basefunc.derivatives.get(&derivative_index) {
-                let deriv_value = model_basis_function::evaluate_and_check(
-                    derivative,
-                    location,
-                    parameters,
-                )?;
+                let deriv_value =
+                    model_basis_function::evaluate_and_check(derivative, location, parameters)?;
                 column.copy_from(&deriv_value);
             }
         }
