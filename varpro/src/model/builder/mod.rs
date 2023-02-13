@@ -198,7 +198,18 @@ pub struct SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
-    model_result: Result<SeparableModel<ScalarType>, ModelBuildError>,
+    model_result: Result<UnfinishedModel<ScalarType>, ModelBuildError>,
+}
+
+/// a helper structure that represents an unfinished separable model
+#[derive(Default)]
+struct UnfinishedModel<ScalarType: Scalar>{
+    /// the parameter names 
+    parameter_names : Vec<String>,
+    /// the base functions
+    basefunctions : Vec<ModelBasisFunction<ScalarType>>, 
+    /// the x-vector (independent variable associated with the model)
+    independent_variable : Option<DVector<ScalarType>>
 }
 
 /// create a SeparableModelBuilder which contains an error variant
@@ -214,12 +225,12 @@ where
 }
 
 /// create a SeparableModelBuilder with the given result variant
-impl<ScalarType> From<Result<SeparableModel<ScalarType>, ModelBuildError>>
+impl<ScalarType> From<Result<UnfinishedModel<ScalarType>, ModelBuildError>>
     for SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
-    fn from(model_result: Result<SeparableModel<ScalarType>, ModelBuildError>) -> Self {
+    fn from(model_result: Result<UnfinishedModel<ScalarType>, ModelBuildError>) -> Self {
         Self { model_result }
     }
 }
@@ -254,9 +265,10 @@ where
                 model_result: Err(parameter_error),
             }
         } else {
-            let model_result = Ok(SeparableModel {
+            let model_result = Ok(UnfinishedModel {
                 parameter_names,
-                basefunctions: Vec::default(),
+                basefunctions: Default::default(),
+                independent_variable : Default::default(),
             });
             Self { model_result }
         }
@@ -313,53 +325,58 @@ where
     /// where provided during the builder stage. That means the first basis functions gets index `0` in
     /// the model, the second gets index `1` and so on.
     pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
-        self.model_result.and_then(check_validity)
+        self.model_result.and_then(|unfinished_model|unfinished_model.try_into())
     }
 }
 
-/// a helper function that checks a model for validity.
+
+
+/// try to convert an unfinished model into a valid model
 /// # Returns
 /// If the model is valid, then the model is returned as an ok variant, otherwise an error variant
 /// A model is valid, when
 ///  * the model has at least one modelfunction, and
 ///  * for each model parameter we have at least one function that depends on this
 ///    parameter.
-fn check_validity<ScalarType>(
-    model: SeparableModel<ScalarType>,
-) -> Result<SeparableModel<ScalarType>, ModelBuildError>
-where
-    ScalarType: Scalar,
-{
-    if model.basefunctions.is_empty() {
-        Err(ModelBuildError::EmptyModel)
-    } else {
-        // now check that all model parameters are referenced in at least one parameter of one
-        // of the given model functions. We do this by checking the indices of the derivatives
-        // because each model parameter must occur at least once as a key in at least one of the
-        // modelfunctions derivatives
-        for (param_index, parameter_name) in model.parameter_names.iter().enumerate() {
-            if !model
-                .basefunctions
-                .iter()
-                .any(|function| function.derivatives.contains_key(&param_index))
-            {
-                return Err(ModelBuildError::UnusedParameter {
-                    parameter: parameter_name.clone(),
-                });
+impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel<ScalarType> {
+    type Error = ModelBuildError;
+    fn try_into(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
+        
+
+        if self.basefunctions.is_empty() {
+            Err(ModelBuildError::EmptyModel)
+        } else if self.parameter_names.is_empty() {
+            Err(ModelBuildError::EmptyParameters)
+        }else {
+            // now check that all model parameters are referenced in at least one parameter of one
+            // of the given model functions. We do this by checking the indices of the derivatives
+            // because each model parameter must occur at least once as a key in at least one of the
+            // modelfunctions derivatives
+            for (param_index, parameter_name) in self.parameter_names.iter().enumerate() {
+                if !self
+                    .basefunctions
+                    .iter()
+                    .any(|function| function.derivatives.contains_key(&param_index))
+                {
+                    return Err(ModelBuildError::UnusedParameter {
+                        parameter: parameter_name.clone(),
+                    });
+                }
             }
+            // otherwise return this model
+            Ok(SeparableModel { 
+                parameter_names : self.parameter_names, 
+                basefunctions: self.basefunctions })
         }
-        // otherwise return this model
-        Ok(model)
     }
 }
-
 /// helper struct that contains a seperable model as well as a model function builder
 /// used inside the SeparableModelBuilderProxyWithDerivatives.
 struct ModelAndModelBasisFunctionBuilderPair<ScalarType>
 where
     ScalarType: Scalar,
 {
-    model: SeparableModel<ScalarType>,
+    model: UnfinishedModel<ScalarType>,
     builder: ModelBasisFunctionBuilder<ScalarType>,
 }
 
@@ -368,7 +385,7 @@ where
     ScalarType: Scalar,
 {
     fn new(
-        model: SeparableModel<ScalarType>,
+        model: UnfinishedModel<ScalarType>,
         builder: ModelBasisFunctionBuilder<ScalarType>,
     ) -> Self {
         Self { model, builder }
@@ -412,7 +429,7 @@ where
     /// * `function_parameters`: the given list of nonlinear function parameters
     /// * `function`: the function
     fn new<F, StrCollection, ArgList>(
-        model_result: Result<SeparableModel<ScalarType>, ModelBuildError>,
+        model_result: Result<UnfinishedModel<ScalarType>, ModelBuildError>,
         function_parameters: StrCollection,
         function: F,
     ) -> Self
@@ -423,7 +440,7 @@ where
     {
         match model_result {
             Ok(model) => {
-                let model_parameters = model.parameters().to_vec();
+                let model_parameters = model.parameter_names.clone();
                 Self {
                     current_result: Ok(ModelAndModelBasisFunctionBuilderPair::new(
                         model,
