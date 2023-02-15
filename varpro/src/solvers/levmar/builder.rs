@@ -292,62 +292,48 @@ where
     /// helper function to check if all required fields have been set and pass the checks
     /// if so, this returns a destructured result of self
     fn finalize(self) -> Result<FinalizedBuilder<ScalarType, Model>, LevMarBuilderError> {
-        match self {
-            // in this case all required fields are set to something
-            LevMarProblemBuilder {
-                x: Some(x),
-                y: Some(y),
-                separable_model: model,
-                parameter_initial_guess: Some(parameter_initial_guess),
-                epsilon,
-                weights,
-            } => {
-                if x.len() != y.len() {
-                    Err(LevMarBuilderError::InvalidLengthOfData {
-                        x_length: x.len(),
-                        y_length: y.len(),
-                    })
-                } else if x.is_empty() || y.is_empty() {
-                    Err(LevMarBuilderError::ZeroLengthVector)
-                } else if model.parameter_count() != parameter_initial_guess.len() {
-                    Err(LevMarBuilderError::InvalidParameterCount {
-                        model_count: model.parameter_count(),
-                        provided_count: parameter_initial_guess.len(),
-                    })
-                } else if !weights.is_size_correct_for_data_length(y.len()) {
-                    //check that weights have correct length if they were given
-                    Err(LevMarBuilderError::InvalidLengthOfWeights)
-                } else {
-                    Ok(FinalizedBuilder {
-                        x,
-                        y,
-                        model,
-                        parameter_initial_guess,
-                        epsilon: epsilon.unwrap_or_else(Float::epsilon),
-                        weights,
-                    })
-                }
-            }
-            // not all required fields are set, report missing parameters
-            LevMarProblemBuilder {
-                x,
-                y,
-                separable_model: _model,
-                parameter_initial_guess,
-                epsilon: _,
-                weights: _,
-            } => {
-                if x.is_none() {
-                    Err(LevMarBuilderError::XDataMissing)
-                } else if y.is_none() {
-                    Err(LevMarBuilderError::YDataMissing)
-                } else if parameter_initial_guess.is_none() {
-                    Err(LevMarBuilderError::InitialGuessMissing)
-                } else {
-                    unreachable!("Error in the library.")
-                }
-            }
+        
+        // make sure all the values we require are there
+        // and assign the defaults to the values we don't have
+        let x = self.x.ok_or(LevMarBuilderError::XDataMissing)?;
+        let y = self.y.ok_or(LevMarBuilderError::YDataMissing)?;
+        let model = self.separable_model;
+        let parameter_initial_guess = self.parameter_initial_guess.ok_or(LevMarBuilderError::InitialGuessMissing)?;
+        let epsilon = self.epsilon.unwrap_or_else(Float::epsilon);
+        let weights = self.weights;
+
+        // now do some sanity checks for the values and return
+        // an error if they do not pass the test
+
+        if x.len() != y.len() {
+            return Err(LevMarBuilderError::InvalidLengthOfData {
+                x_length: x.len(),
+                y_length: y.len(),
+            });
         }
+
+        if x.is_empty() || y.is_empty() {
+            return Err(LevMarBuilderError::ZeroLengthVector);
+        }   
+        if model.parameter_count() != parameter_initial_guess.len() {
+            return Err(LevMarBuilderError::InvalidParameterCount {
+                model_count: model.parameter_count(),
+                provided_count: parameter_initial_guess.len(),
+            });
+        }
+        if !weights.is_size_correct_for_data_length(y.len()) {
+            //check that weights have correct length if they were given
+            return Err(LevMarBuilderError::InvalidLengthOfWeights);
+        }
+
+        Ok(FinalizedBuilder {
+            x,
+            y,
+            model,
+            parameter_initial_guess,
+            epsilon,
+            weights,
+        })
     }
 }
 
