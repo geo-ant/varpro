@@ -221,79 +221,6 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     pub fn build(self) -> Result<LevMarProblem<ScalarType, Model>, LevMarBuilderError> {
-        let finalized_builder = self.finalize()?;
-
-        Ok(LevMarProblem::from(finalized_builder))
-    }
-}
-
-/// helper structure that has the same fields as the builder
-/// but all of them are valid
-#[doc(hidden)]
-struct FinalizedBuilder<ScalarType, Model>
-where
-    ScalarType: Scalar + ComplexField,
-    ScalarType::RealField: Float,
-    Model: SeparableNonlinearModel<ScalarType>,
-{
-    x: DVector<ScalarType>,
-    y: DVector<ScalarType>,
-    model: Model,
-    parameter_initial_guess: Vec<ScalarType>,
-    epsilon: ScalarType::RealField,
-    weights: Weights<ScalarType>,
-}
-
-/// helper to create a [LevMarProblem] from a finalized builder. This initializes all fields
-/// with valid values. Most importantly, the data is weighted with the weight matrix and
-/// the initial parameters are set.
-#[doc(hidden)]
-#[allow(non_snake_case)]
-impl<ScalarType, Model> From<FinalizedBuilder<ScalarType, Model>>
-    for LevMarProblem<ScalarType, Model>
-where
-    ScalarType: Scalar + ComplexField + Copy,
-    ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
-    Model: SeparableNonlinearModel<ScalarType>,
-{
-    fn from(finalized_builder: FinalizedBuilder<ScalarType, Model>) -> Self {
-        // 1) create weighted data
-        let y_w = &finalized_builder.weights * finalized_builder.y;
-
-        // 2) initialize the levmar problem. Some field values are dummy initialized
-        // (like the SVD) because they are calculated in step 3 as part of set_params
-        let mut problem = LevMarProblem {
-            // these parameters all come from the builder
-            x: finalized_builder.x,
-            y_w,
-            model: finalized_builder.model,
-            svd_epsilon: finalized_builder.epsilon,
-            // these parameters are dummies and they will be overwritten immediately
-            // by the call to set_params
-            model_parameters: Vec::new(),
-            cached: None,
-            weights: finalized_builder.weights,
-        };
-        // 3) step 3: overwrite the dummy values with the correct results for the given
-        // parameters, such that the problem is in a valid state
-        problem.set_params(&DVector::from(finalized_builder.parameter_initial_guess));
-
-        problem
-    }
-}
-
-// private implementations
-impl<ScalarType, Model> LevMarProblemBuilder<ScalarType, Model>
-where
-    ScalarType: Scalar + ComplexField + Copy + Zero,
-    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model: SeparableNonlinearModel<ScalarType>,
-{
-    /// helper function to check if all required fields have been set and pass the checks
-    /// if so, this returns a destructured result of self
-    fn finalize(self) -> Result<FinalizedBuilder<ScalarType, Model>, LevMarBuilderError> {
-        
-        // make sure all the values we require are there
         // and assign the defaults to the values we don't have
         let x = self.x.ok_or(LevMarBuilderError::XDataMissing)?;
         let y = self.y.ok_or(LevMarBuilderError::YDataMissing)?;
@@ -325,15 +252,30 @@ where
             //check that weights have correct length if they were given
             return Err(LevMarBuilderError::InvalidLengthOfWeights);
         }
+        
+        //now that we have valid inputs, construct the levmar problem
+        // 1) create weighted data
+        let y_w = &weights * y;
 
-        Ok(FinalizedBuilder {
+        // 2) initialize the levmar problem. Some field values are dummy initialized
+        // (like the SVD) because they are calculated in step 3 as part of set_params
+        let mut problem = LevMarProblem {
+            // these parameters all come from the builder
             x,
-            y,
+            y_w,
             model,
-            parameter_initial_guess,
-            epsilon,
+            svd_epsilon: epsilon,
+            // these parameters are dummies and they will be overwritten immediately
+            // by the call to set_params
+            model_parameters: Vec::new(),
+            cached: None,
             weights,
-        })
+        };
+        // 3) step 3: overwrite the dummy values with the correct results for the given
+        // parameters, such that the problem is in a valid state
+        problem.set_params(&DVector::from(parameter_initial_guess));
+
+        Ok(problem)
     }
 }
 
