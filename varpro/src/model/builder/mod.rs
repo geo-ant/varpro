@@ -488,12 +488,9 @@ where
         F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
         match self.current_result {
-            Ok(ModelAndModelBasisFunctionBuilderPair { mut model, builder }) => {
-                let intermediate_result = builder.build().map(|func| {
-                    model.basefunctions.push(func);
-                    model
-                });
-                SeparableModelBuilder::from(intermediate_result).invariant_function(function)
+            Ok(pair) => {
+                let model_result = extend_model(pair.model, pair.builder);
+                SeparableModelBuilder::from(model_result).invariant_function(function)
             }
             Err(err) => SeparableModelBuilder::from(err),
         }
@@ -513,17 +510,9 @@ where
         StrCollection::Item: AsRef<str>,
     {
         match self.current_result {
-            Ok(result) => {
-                let ModelAndModelBasisFunctionBuilderPair { mut model, builder } = result;
-                if let Err(err) = builder.build().map(|func| model.basefunctions.push(func)) {
-                    SeparableModelBuilderProxyWithDerivatives::from(err)
-                } else {
-                    SeparableModelBuilderProxyWithDerivatives::new(
-                        Ok(model),
-                        function_params,
-                        function,
-                    )
-                }
+            Ok(pair) => {
+                let model_result = extend_model(pair.model, pair.builder);
+                Self::new(model_result,function_params,function)
             }
             Err(err) => SeparableModelBuilderProxyWithDerivatives::from(err),
         }
@@ -536,15 +525,20 @@ where
         // this method converts the internal results into a separable model and uses its
         // facilities to check for completion and the like
         match self.current_result {
-            Ok(result) => {
-                let ModelAndModelBasisFunctionBuilderPair { mut model, builder } = result;
-                let intermediate_result = builder.build().map(|func| {
-                    model.basefunctions.push(func);
-                    model
-                });
-                SeparableModelBuilder::from(intermediate_result).build()
+            Ok(pair) => {
+                let model_result = extend_model(pair.model, pair.builder);
+                SeparableModelBuilder::from(model_result).build()
             }
             Err(err) => SeparableModelBuilder::from(err).build(),
         }
     }
+}
+
+/// try and extend a model with the given function in the builder 
+/// if building the function in the builder fails, an error is returned,
+/// otherwise the extended model is returned
+fn extend_model<ScalarType:Scalar>(mut model : UnfinishedModel<ScalarType>, builder : ModelBasisFunctionBuilder<ScalarType>) -> Result<UnfinishedModel<ScalarType>,ModelBuildError> {
+    let function = builder.build()?;
+    model.basefunctions.push(function);
+    Ok(model)
 }
