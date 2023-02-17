@@ -309,6 +309,10 @@ where
         SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
 
+    pub fn independent_variable(self, x : DVector<ScalarType>) -> Self {
+        todo!()
+    }
+
     /// Build a separable model from the contents of this builder.
     /// # Result
     /// A valid separable model or an error indicating why a valid model could not be constructed.
@@ -325,7 +329,7 @@ where
     /// where provided during the builder stage. That means the first basis functions gets index `0` in
     /// the model, the second gets index `1` and so on.
     pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
-        self.model_result.and_then(|unfinished_model|unfinished_model.try_into())
+        self.model_result.and_then(TryInto::try_into)
     }
 }
 
