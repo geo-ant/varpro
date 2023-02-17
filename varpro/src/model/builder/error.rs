@@ -103,4 +103,7 @@ pub enum ModelBuildError {
         /// the parameter name
         param_name: String,
     },
+
+    #[error("Missing vector for independent variable x")]
+    MissingX,
 }

@@ -1,7 +1,5 @@
-//use crate::model::SeparableModel;
-
 use nalgebra::DVector;
-
+use assert_matches::assert_matches;
 use crate::model::builder::SeparableModelBuilder;
 use crate::model::errors::ModelError;
 use crate::prelude::*;
@@ -103,7 +101,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
 
-    assert!(matches!(model_with_bad_function.eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:4,..})),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
+    assert_matches!(model_with_bad_function.eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:4,..}),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
 }
 
 #[test]
@@ -118,10 +116,10 @@ fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     // now deliberately provide a wrong number of params to eval
     let params = &[1., 2., 3., 4., 5.];
-    assert!(matches!(
+    assert_matches!(
         model.eval(&tvec, params),
         Err(ModelError::IncorrectParameterCount { .. })
-    ));
+    );
 }
 
 #[test]
@@ -216,11 +214,10 @@ fn model_derivative_evaluation_error_cases() {
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
 
     // deriv index 0 is tau1: this derivative is bad and should fail
-    assert!(
-        matches!(
+    assert_matches!(
             model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 0),
             Err(ModelError::UnexpectedFunctionOutput { .. })
-        ),
+        ,
         "Derivative for invalid function must fail with correct error"
     );
 
@@ -233,29 +230,26 @@ fn model_derivative_evaluation_error_cases() {
     );
 
     // check that if an incorrect amount of parameters is provided, then the evaluation fails
-    assert!(
-        matches!(
+    assert_matches!(
             model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4., 2., 2.], 1),
             Err(ModelError::IncorrectParameterCount { .. })
-        ),
+        ,
         "Derivative for invalid function must fail with correct error"
     );
 
     // check an out of bounds index for the derivative
-    assert!(
-        matches!(
+    assert_matches!(
             model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 100),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
-        ),
+        ,
         "Derivative for invalid function must fail with correct error"
     );
 
     // check that if a nonexistent parameter is requested by name, then the derivative evaluation fails
-    assert!(
-        matches!(
+    assert_matches!(
             model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 3),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
-        ),
+        ,
         "Derivative for invalid function must fail with correct error"
     );
 }

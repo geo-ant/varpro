@@ -236,6 +236,15 @@ where
     /// which are wrapped inside a lambda function so that they can take the whole
     /// parameter space of the model as an argument
     basefunctions: Vec<ModelBasisFunction<ScalarType>>,
+    /// the independent variable `$\vec{x}$`
+    x_vector : DVector<ScalarType>
+}
+
+impl<ScalarType> std::fmt::Debug for SeparableModel<ScalarType>
+where ScalarType : Scalar{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SeparableModel").field("parameter_names", &self.parameter_names).field("basefunctions", &"/* omitted */").field("x_vector", &self.x_vector).finish()
+    }
 }
 
 impl<ScalarType> SeparableModel<ScalarType>

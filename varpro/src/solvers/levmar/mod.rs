@@ -67,6 +67,15 @@ where
     cached: Option<CachedCalculations<ScalarType>>,
 }
 
+impl<ScalarType,Model> std::fmt::Debug for LevMarProblem<ScalarType,Model>
+where
+    ScalarType: Scalar + ComplexField + Copy,
+    Model: SeparableNonlinearModel<ScalarType>, {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LevMarProblem").field("x", &self.x).field("y_w", &self.y_w).field("model_parameters", &self.model_parameters).field("model", &"/* omitted */").field("svd_epsilon", &self.svd_epsilon).field("weights", &self.weights).field("cached", &self.cached).finish()
+    }
+}   
+
 impl<ScalarType, Model> LevMarProblem<ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,

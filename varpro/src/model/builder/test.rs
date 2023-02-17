@@ -1,5 +1,5 @@
 use nalgebra::DVector;
-
+use assert_matches::assert_matches;
 use super::*;
 
 #[test]
@@ -11,22 +11,22 @@ fn builder_fails_for_invalid_model_parameters() {
     let result =
         SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "b".to_string()])
             .build();
-    assert!(
-        matches! {result, Err(ModelBuildError::DuplicateParameterNames {..})},
+    assert_matches!(
+         result, Err(ModelBuildError::DuplicateParameterNames {..}),
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 
     let result = SeparableModelBuilder::<f64>::new(&Vec::<String>::default()).build();
-    assert!(
-        matches! {result, Err(ModelBuildError::EmptyParameters {..})},
+    assert_matches!(
+        result, Err(ModelBuildError::EmptyParameters {..}),
         "Creating model with empty parameters must fail with correct error"
     );
 
     let result =
         SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "c".to_string()])
             .build();
-    assert!(
-        matches! {result, Err(ModelBuildError::EmptyModel {..})},
+    assert_matches!(
+        result, Err(ModelBuildError::EmptyModel {..}),
         "Creating model without functions must fail with correct error"
     );
 }
@@ -44,8 +44,8 @@ fn builder_fails_when_not_all_model_parameters_are_depended_on_by_the_modelfunct
             )
             .partial_deriv("a", |_: &DVector<f64>, _: f64| unimplemented!())
             .build();
-    assert!(
-        matches! {result, Err(ModelBuildError::UnusedParameter {..})},
+    assert_matches!(
+        result, Err(ModelBuildError::UnusedParameter {..}),
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 }
@@ -60,8 +60,8 @@ fn builder_fails_when_not_all_required_partial_derivatives_are_given_for_functio
         )
         .partial_deriv("a", |_: &DVector<f64>, _: f64, _: f64| unimplemented!())
         .build();
-    assert!(
-        matches! {result, Err(ModelBuildError::MissingDerivative {..})},
+    assert_matches!(
+        result, Err(ModelBuildError::MissingDerivative {..}),
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 }

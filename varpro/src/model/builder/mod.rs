@@ -209,7 +209,7 @@ struct UnfinishedModel<ScalarType: Scalar>{
     /// the base functions
     basefunctions : Vec<ModelBasisFunction<ScalarType>>, 
     /// the x-vector (independent variable associated with the model)
-    independent_variable : Option<DVector<ScalarType>>
+    x_vector : Option<DVector<ScalarType>>,
 }
 
 /// create a SeparableModelBuilder which contains an error variant
@@ -268,7 +268,7 @@ where
             let model_result = Ok(UnfinishedModel {
                 parameter_names,
                 basefunctions: Default::default(),
-                independent_variable : Default::default(),
+                x_vector : Default::default(),
             });
             Self { model_result }
         }
@@ -309,8 +309,11 @@ where
         SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
 
-    pub fn independent_variable(self, x : DVector<ScalarType>) -> Self {
-        todo!()
+    pub fn independent_variable(mut self, x : DVector<ScalarType>) -> Self {
+        if let Ok(model) = self.model_result.as_mut() {
+            model.x_vector = Some(x);
+        }
+        self
     }
 
     /// Build a separable model from the contents of this builder.
@@ -345,13 +348,13 @@ where
 impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel<ScalarType> {
     type Error = ModelBuildError;
     fn try_into(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
-        
+        let x_vector = self.x_vector.ok_or_else(||ModelBuildError::MissingX)?;
 
         if self.basefunctions.is_empty() {
             Err(ModelBuildError::EmptyModel)
         } else if self.parameter_names.is_empty() {
             Err(ModelBuildError::EmptyParameters)
-        }else {
+        } else {
             // now check that all model parameters are referenced in at least one parameter of one
             // of the given model functions. We do this by checking the indices of the derivatives
             // because each model parameter must occur at least once as a key in at least one of the
@@ -370,7 +373,9 @@ impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel
             // otherwise return this model
             Ok(SeparableModel { 
                 parameter_names : self.parameter_names, 
-                basefunctions: self.basefunctions })
+                basefunctions: self.basefunctions,
+                x_vector
+            })
         }
     }
 }
