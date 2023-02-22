@@ -114,6 +114,7 @@ where
         self.model_parameters = params.iter().cloned().collect();
 
         todo!("set model parameters");
+        self.model.set_params(params.as_slice());
         // matrix of weighted model function values
         let Phi_w = self
             .model

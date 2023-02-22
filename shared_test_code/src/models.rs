@@ -75,6 +75,12 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         basefuncs.set_column(derivative_index, &df);
         Ok(basefuncs)
     }
+
+    fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
+        self.params[0] = parameters[0];
+        self.params[1] = parameters[1];
+        Ok(())
+    }
 }
 
 use levenberg_marquardt::LeastSquaresProblem;

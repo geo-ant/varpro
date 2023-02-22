@@ -1,3 +1,5 @@
+use std::thread::available_parallelism;
+
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
@@ -110,6 +112,8 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// This is also equal to the number of _columns_ of the matrices returned
     /// from the `eval` and `eval_partial_deriv` methods.
     fn base_function_count(&self) -> usize;
+
+    fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error>;
 
     /// Evaluate the base functions of the model at the given location `$\vec{x}$`
     /// and parameters `$\vec{\alpha}$` and return them in matrix form.
@@ -338,5 +342,10 @@ where
             }
         }
         Ok(derivative_function_value_matrix)
+    }
+
+    fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error> {
+        self.current_parameters = parameters.to_vec();
+        Ok(())
     }
 }

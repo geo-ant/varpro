@@ -33,6 +33,10 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
     ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
         todo!()
     }
+
+    fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
+        todo!()
+    }
 }
 
 #[test]
