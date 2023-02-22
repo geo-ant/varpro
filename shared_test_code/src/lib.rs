@@ -33,8 +33,6 @@ pub fn linspace<ScalarType: Float + Scalar>(
 /// with the given linear coefficients `linear_coeffs`.
 pub fn evaluate_complete_model<ScalarType, Model>(
     model: &'_ Model,
-    x: &DVector<ScalarType>,
-    params: &[ScalarType],
     linear_coeffs: &DVector<ScalarType>,
 ) -> DVector<ScalarType>
 where
@@ -42,7 +40,7 @@ where
     Model: SeparableNonlinearModel<ScalarType>,
 {
     (&model
-        .eval(x, params)
+        .eval()
         .expect("Evaluating model must not produce error"))
         * linear_coeffs
 }
@@ -66,7 +64,7 @@ pub fn exp_decay_dtau<ScalarType: Scalar + Float>(
 /// A helper function that returns a double exponential decay model
 /// f(x,tau1,tau2) = c1*exp(-x/tau1)+c2*exp(-x/tau2)+c3
 /// Model parameters are: tau1, tau2
-pub fn get_double_exponential_model_with_constant_offset() -> SeparableModel<f64> {
+pub fn get_double_exponential_model_with_constant_offset(x : DVector<f64>) -> SeparableModel<f64> {
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
     SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])

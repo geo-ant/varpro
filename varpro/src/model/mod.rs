@@ -156,8 +156,6 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// * ...
     fn eval(
         &self,
-        location: &DVector<ScalarType>,
-        parameters: &[ScalarType],
     ) -> Result<DMatrix<ScalarType>, Self::Error>;
 
     /// Evaluate the partial derivatives for the base function at for the
@@ -214,8 +212,6 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// * ...
     fn eval_partial_deriv(
         &self,
-        location: &DVector<ScalarType>,
-        parameters: &[ScalarType],
         derivative_index: usize,
     ) -> Result<DMatrix<ScalarType>, Self::Error>;
 }
@@ -237,7 +233,11 @@ where
     /// parameter space of the model as an argument
     basefunctions: Vec<ModelBasisFunction<ScalarType>>,
     /// the independent variable `$\vec{x}$`
-    x_vector : DVector<ScalarType>
+    x_vector : DVector<ScalarType>,
+    /// the current parameters with which this model (and its derivatives)
+    /// are evaluated
+    current_parameters : Vec<ScalarType>,
+
 }
 
 impl<ScalarType> std::fmt::Debug for SeparableModel<ScalarType>
@@ -273,9 +273,9 @@ where
 
     fn eval(
         &self,
-        location: &DVector<ScalarType>,
-        parameters: &[ScalarType],
     ) -> Result<DMatrix<ScalarType>, ModelError> {
+        let location = &self.x_vector;
+        let parameters = &self.current_parameters;
         if parameters.len() != self.parameter_count() {
             return Err(ModelError::IncorrectParameterCount {
                 required: self.parameter_count(),
@@ -304,10 +304,10 @@ where
 
     fn eval_partial_deriv(
         &self,
-        location: &DVector<ScalarType>,
-        parameters: &[ScalarType],
         derivative_index: usize,
     ) -> Result<DMatrix<ScalarType>, Self::Error> {
+        let location = &self.x_vector;
+        let parameters = &self.current_parameters;
         if parameters.len() != self.parameter_names.len() {
             return Err(ModelError::IncorrectParameterCount {
                 required: self.parameter_names.len(),

@@ -37,7 +37,7 @@ fn build_problem<Model: SeparableNonlinearModel<f64>>(
     } = true_parameters;
 
     let x = linspace(0., 12.5, 1024);
-    let y = evaluate_complete_model(&model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
+    let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
     let problem = LevMarProblemBuilder::new(model)
         .x(x)
         .y(y)
@@ -75,18 +75,22 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
     // see here on comparing functions
     // https://bheisler.github.io/criterion.rs/book/user_guide/comparing_functions.html
     let mut group = c.benchmark_group("Double Exponential Without Noise");
+    // the support points for the model (moved into the closures separately)
+    let x = linspace(0., 12.5, 1024);
+    // initial guess for tau 
+    let tau_guess  = (2., 6.5);
 
-    group.bench_function("Using Model Builder", move |bencher| {
+    group.bench_function("Using Model Builder", |bencher| {
         bencher.iter_batched(
-            || build_problem(true_parameters, (2., 6.5), get_double_exponential_model_with_constant_offset()),
+            || build_problem(true_parameters, tau_guess, get_double_exponential_model_with_constant_offset(x.clone())),
             run_minimization,
             criterion::BatchSize::SmallInput,
         )
     });
 
-    group.bench_function("Handcrafted Model", move |bencher| {
+    group.bench_function("Handcrafted Model", |bencher| {
         bencher.iter_batched(
-            || build_problem(true_parameters, (2., 6.5), DoubleExpModelWithConstantOffsetSepModel::default()),
+            || build_problem(true_parameters, tau_guess, DoubleExpModelWithConstantOffsetSepModel::new(x.clone(),tau_guess)),
             run_minimization,
             criterion::BatchSize::SmallInput,
         )

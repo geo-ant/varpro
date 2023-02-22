@@ -35,9 +35,9 @@ fn sanity_check_jacobian_of_levenberg_marquardt_problem_is_correct() {
 
 #[test]
 fn double_exponential_fitting_without_noise_produces_accurate_results() {
-    let model = get_double_exponential_model_with_constant_offset();
     // the independent variable
     let x = linspace(0., 12.5, 1024);
+    let model = get_double_exponential_model_with_constant_offset(x.clone());
     // true parameters
     let tau1 = 1.;
     let tau2 = 3.;
@@ -46,7 +46,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
                  // generate some data without noise
-    let y = evaluate_complete_model(&model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
+    let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
     let tau1_guess = 2.;
     let tau2_guess = 6.5;
 
@@ -131,9 +131,12 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
 
 #[test]
 fn double_exponential_fitting_without_noise_produces_accurate_results_with_handrolled_model() {
-    let model = DoubleExpModelWithConstantOffsetSepModel::default();
+    // guess for nonlinear params
+    let tau1_guess = 2.;
+    let tau2_guess = 6.5;
     // the independent variable
     let x = linspace(0., 12.5, 1024);
+    let model = DoubleExpModelWithConstantOffsetSepModel::new(x.clone(),(tau1_guess,tau2_guess));
     // true parameters
     let tau1 = 1.;
     let tau2 = 3.;
@@ -142,9 +145,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
                  // generate some data without noise
-    let y = evaluate_complete_model(&model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
-    let tau1_guess = 2.;
-    let tau2_guess = 6.5;
+    let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
 
     let problem = LevMarProblemBuilder::new(model)
         .x(x)

@@ -112,10 +112,12 @@ where
     /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
     fn set_params(&mut self, params: &Vector<ScalarType, Dyn, Self::ParameterStorage>) {
         self.model_parameters = params.iter().cloned().collect();
+
+        todo!("set model parameters");
         // matrix of weighted model function values
         let Phi_w = self
             .model
-            .eval(&self.x, self.model_parameters.as_slice())
+            .eval()
             .ok()
             .map(|Phi| &self.weights * Phi);
 
@@ -198,7 +200,7 @@ where
                 let Dk = &self.weights
                     * self
                         .model
-                        .eval_partial_deriv(&self.x, self.model_parameters.as_slice(), k)
+                        .eval_partial_deriv(k)
                         .ok()?; // will return none if this could not be calculated
                 let Dk_c = &Dk * linear_coefficients;
                 let minus_ak: DVector<ScalarType> = U * (&U_t * (&Dk_c)) - Dk_c;

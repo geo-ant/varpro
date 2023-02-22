@@ -23,16 +23,12 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
 
     fn eval(
         &self,
-        _location: &DVector<f64>,
-        _parameters: &[f64],
     ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
         todo!()
     }
 
     fn eval_partial_deriv(
         &self,
-        _location: &DVector<f64>,
-        _parameters: &[f64],
         _derivative_index: usize,
     ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
         todo!()
@@ -65,7 +61,7 @@ fn model_function_eval_produces_correct_result() {
 
     let params = &[tau1, tau2];
     let eval_matrix = model
-        .eval(&tvec, params)
+        .eval()
         .expect("Model evaluation should not fail");
 
     assert_eq!(
@@ -101,7 +97,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
 
-    assert_matches!(model_with_bad_function.eval(&tvec,&[2.,4.]),Err(ModelError::UnexpectedFunctionOutput{actual_length:4,..}),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
+    assert_matches!(model_with_bad_function.eval(),Err(ModelError::UnexpectedFunctionOutput{actual_length:4,..}),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
 }
 
 #[test]
@@ -117,7 +113,7 @@ fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
     // now deliberately provide a wrong number of params to eval
     let params = &[1., 2., 3., 4., 5.];
     assert_matches!(
-        model.eval(&tvec, params),
+        model.eval(),
         Err(ModelError::IncorrectParameterCount { .. })
     );
 }
@@ -143,10 +139,10 @@ fn model_derivative_evaluation_produces_correct_result() {
     let params = &[tau, omega];
 
     let deriv_tau = model
-        .eval_partial_deriv(&tvec, params, 0)
+        .eval_partial_deriv(0)
         .expect("Derivative eval must not fail");
     let deriv_omega = model
-        .eval_partial_deriv(&tvec, params, 1)
+        .eval_partial_deriv(1)
         .expect("Derivative eval must not fail");
 
     // DERIVATIVE WITH RESPECT TO TAU
@@ -215,7 +211,7 @@ fn model_derivative_evaluation_error_cases() {
 
     // deriv index 0 is tau1: this derivative is bad and should fail
     assert_matches!(
-            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 0),
+            model_with_bad_function.eval_partial_deriv(  0),
             Err(ModelError::UnexpectedFunctionOutput { .. })
         ,
         "Derivative for invalid function must fail with correct error"
@@ -224,14 +220,14 @@ fn model_derivative_evaluation_error_cases() {
     // deriv index 0 is tau1: this derivative is good and should return an ok result
     assert!(
         model_with_bad_function
-            .eval_partial_deriv(&tvec, &[2., 4.], 1)
+            .eval_partial_deriv(  1)
             .is_ok(),
         "Derivative eval for valid function should return Ok result"
     );
 
     // check that if an incorrect amount of parameters is provided, then the evaluation fails
     assert_matches!(
-            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4., 2., 2.], 1),
+            model_with_bad_function.eval_partial_deriv( 1),
             Err(ModelError::IncorrectParameterCount { .. })
         ,
         "Derivative for invalid function must fail with correct error"
@@ -239,7 +235,7 @@ fn model_derivative_evaluation_error_cases() {
 
     // check an out of bounds index for the derivative
     assert_matches!(
-            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 100),
+            model_with_bad_function.eval_partial_deriv( 100),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
         ,
         "Derivative for invalid function must fail with correct error"
@@ -247,7 +243,7 @@ fn model_derivative_evaluation_error_cases() {
 
     // check that if a nonexistent parameter is requested by name, then the derivative evaluation fails
     assert_matches!(
-            model_with_bad_function.eval_partial_deriv(&tvec, &[2., 4.], 3),
+            model_with_bad_function.eval_partial_deriv( 3),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
         ,
         "Derivative for invalid function must fail with correct error"

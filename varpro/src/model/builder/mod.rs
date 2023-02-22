@@ -374,7 +374,8 @@ impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel
             Ok(SeparableModel { 
                 parameter_names : self.parameter_names, 
                 basefunctions: self.basefunctions,
-                x_vector
+                x_vector,
+                current_parameters:todo!("bring current parameters into model builder!")
             })
         }
     }

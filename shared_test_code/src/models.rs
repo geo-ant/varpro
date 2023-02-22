@@ -1,11 +1,25 @@
 use nalgebra::{DMatrix, DVector, Dyn};
 use varpro::{model::errors::ModelError, prelude::*};
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 /// A separable model for double exponential decay
 /// with a constant offset
 /// f_j = c1*exp(-x_j/tau1) + c2*exp(-x_j/tau2) + c3
-pub struct DoubleExpModelWithConstantOffsetSepModel {}
+pub struct DoubleExpModelWithConstantOffsetSepModel {
+    /// the x vector associated with this model
+    x_vector : DVector<f64>,
+    /// current parameters [tau1,tau2]
+    params : [f64;2]
+}
+
+impl DoubleExpModelWithConstantOffsetSepModel {
+    pub fn new(x_vector : DVector<f64>,(tau1_guess,tau2_guess):(f64,f64)) -> Self {
+        Self {
+            x_vector, 
+            params : [tau1_guess,tau2_guess],
+        }
+    }
+}
 
 impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
     type Error = ModelError;
@@ -22,9 +36,9 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
 
     fn eval(
         &self,
-        location: &nalgebra::DVector<f64>,
-        parameters: &[f64],
     ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
+        let location = &self.x_vector;
+        let parameters = &self.params;
         // parameters expected in this order
         // use unsafe to avoid bounds checks
         let tau1 = unsafe { parameters.get_unchecked(0) };
@@ -45,10 +59,10 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
 
     fn eval_partial_deriv(
         &self,
-        location: &nalgebra::DVector<f64>,
-        parameters: &[f64],
         derivative_index: usize,
     ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
+        let location = &self.x_vector;
+        let parameters = &self.params;
         // derivative index can be either 0,1 (corresponding to the linear parameters
         // tau1, tau2). Since only one of the basis functions depends on
         // tau_i, we can simplify calculations here

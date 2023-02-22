@@ -105,5 +105,6 @@ pub enum ModelBuildError {
     },
 
     #[error("Missing vector for independent variable x")]
+    /// x-vector (independent variable) was not supplied to the model builder
     MissingX,
 }
