@@ -210,6 +210,8 @@ struct UnfinishedModel<ScalarType: Scalar>{
     basefunctions : Vec<ModelBasisFunction<ScalarType>>, 
     /// the x-vector (independent variable associated with the model)
     x_vector : Option<DVector<ScalarType>>,
+    /// the initial guesses for the parameters
+    initial_parameters : Option<Vec<ScalarType>>,
 }
 
 /// create a SeparableModelBuilder which contains an error variant
@@ -267,12 +269,13 @@ where
         } else {
             let model_result = Ok(UnfinishedModel {
                 parameter_names,
-                basefunctions: Default::default(),
-                x_vector : Default::default(),
+                basefunctions: Vec::new(),
+                x_vector : None,
+                initial_parameters : None,
             });
             Self { model_result }
         }
-    }
+    } 
 
     /// Add a function `$\vec{f}(\vec{x})$` to the model. In the `varpro` library this is called
     /// an *invariant* function because the model function is independent of the model parameters
@@ -316,6 +319,13 @@ where
         self
     }
 
+    pub fn initial_parameters(mut self, initial_parameters: Vec<ScalarType>) -> Self {
+        if let Ok(model) = self.model_result.as_mut() {
+            model.initial_parameters = Some(initial_parameters);
+        }
+        self
+    }
+
     /// Build a separable model from the contents of this builder.
     /// # Result
     /// A valid separable model or an error indicating why a valid model could not be constructed.
@@ -348,7 +358,6 @@ where
 impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel<ScalarType> {
     type Error = ModelBuildError;
     fn try_into(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
-        let x_vector = self.x_vector.ok_or_else(||ModelBuildError::MissingX)?;
 
         if self.basefunctions.is_empty() {
             Err(ModelBuildError::EmptyModel)
@@ -370,12 +379,14 @@ impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel
                     });
                 }
             }
+            let x_vector = self.x_vector.ok_or_else(||ModelBuildError::MissingX)?;
+            let initial_parameters = self.initial_parameters.ok_or_else(||ModelBuildError::MissingInitialParameters)?;
             // otherwise return this model
             Ok(SeparableModel { 
                 parameter_names : self.parameter_names, 
                 basefunctions: self.basefunctions,
                 x_vector,
-                current_parameters:todo!("bring current parameters into model builder!")
+                current_parameters:initial_parameters
             })
         }
     }
@@ -525,6 +536,26 @@ where
                 Self::new(model_result,function_params,function)
             }
             Err(err) => SeparableModelBuilderProxyWithDerivatives::from(err),
+        }
+    }
+
+    pub fn independent_variable(mut self, x: DVector<ScalarType>) -> SeparableModelBuilder<ScalarType> {
+        match self.current_result {
+            Ok(pair) => {
+                let model_result = extend_model(pair.model, pair.builder);
+                SeparableModelBuilder::from(model_result).independent_variable(x)
+            },
+            Err(err) => SeparableModelBuilder::from(err),
+        }
+    }
+
+    pub fn initial_parameters(mut self, initial_parameters: Vec<ScalarType>) -> SeparableModelBuilder<ScalarType> {
+        match self.current_result {
+            Ok(pair) => {
+                let model_result = extend_model(pair.model, pair.builder);
+                SeparableModelBuilder::from(model_result).initial_parameters(initial_parameters)
+            },
+            Err(err) => SeparableModelBuilder::from(err),
         }
     }
 

@@ -15,13 +15,13 @@ use levenberg_marquardt::differentiate_numerically;
 // exactly why it stalls though. This seems like bad behavior.
 #[test]
 fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unweighted() {
-    let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1
     let yvec = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
+    let model = get_double_exponential_model_with_constant_offset(tvec.clone());
 
     let mut problem = LevMarProblemBuilder::new(model)
         .x(tvec)
@@ -46,7 +46,6 @@ fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unw
 // [my post](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) on varpro
 // (found between numbered formulas 8 and 9).
 fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squares_weighted() {
-    let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1
@@ -54,6 +53,7 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
 
+    let model = get_double_exponential_model_with_constant_offset(tvec.clone());
     // generate some non-unit test weights (which have no physical meaning)
     let weights = yvec.map(|v: f64| v.sqrt() + v.sin());
 
@@ -108,13 +108,13 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
 
 #[test]
 fn residuals_are_calculated_correctly_unweighted() {
-    let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1
     let yvec = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
+    let model = get_double_exponential_model_with_constant_offset(tvec.clone());
 
     let data_length = tvec.len();
 
@@ -163,7 +163,6 @@ fn residuals_are_calculated_correctly_unweighted() {
 
 #[test]
 fn residuals_are_calculated_correctly_with_weights() {
-    let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1
@@ -171,6 +170,7 @@ fn residuals_are_calculated_correctly_with_weights() {
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
 
+    let model = get_double_exponential_model_with_constant_offset(tvec.clone());
     // generate some non-unit test weights (which have no physical meaning)
     let weights = yvec.map(|v: f64| v.sqrt() + 2. * v.sin());
 

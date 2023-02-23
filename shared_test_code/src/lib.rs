@@ -67,12 +67,13 @@ pub fn exp_decay_dtau<ScalarType: Scalar + Float>(
 pub fn get_double_exponential_model_with_constant_offset(x : DVector<f64>) -> SeparableModel<f64> {
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
-    SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
+    SeparableModelBuilder::new(&["tau1", "tau2"])
         .function(&["tau1"], exp_decay)
         .partial_deriv("tau1", exp_decay_dtau)
         .function(&["tau2"], exp_decay)
         .partial_deriv("tau2", exp_decay_dtau)
         .invariant_function(ones)
+        .independent_variable(x)
         .build()
         .expect("double exponential model builder should produce a valid model")
 }

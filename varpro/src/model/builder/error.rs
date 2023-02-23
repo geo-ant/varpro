@@ -107,4 +107,8 @@ pub enum ModelBuildError {
     #[error("Missing vector for independent variable x")]
     /// x-vector (independent variable) was not supplied to the model builder
     MissingX,
+
+    #[error("Missing initial guesses for model parameters")]
+    /// missing initial guesses for parameters
+    MissingInitialParameters,
 }

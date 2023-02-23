@@ -41,7 +41,7 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
 
 #[test]
 fn model_gets_initialized_with_correct_parameter_names_and_count() {
-    let model = test_helpers::get_double_exponential_model_with_constant_offset();
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10));
     assert_eq!(
         model.parameter_count(),
         2,
@@ -57,7 +57,7 @@ fn model_gets_initialized_with_correct_parameter_names_and_count() {
 #[test]
 // test that the eval method produces correct results and gives a matrix that is ordered correctly
 fn model_function_eval_produces_correct_result() {
-    let model = test_helpers::get_double_exponential_model_with_constant_offset();
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10));
 
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let tau1 = 1.;
@@ -106,7 +106,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 
 #[test]
 fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
-    let model = test_helpers::get_double_exponential_model_with_constant_offset();
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10));
 
     assert_eq!(
         model.parameter_count(),
