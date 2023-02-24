@@ -60,9 +60,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
 
     let tic = Instant::now();
     let problem = LevMarProblemBuilder::new(model)
-        .x(x)
         .y(y)
-        .initial_guess(&[tau1_guess, tau2_guess])
         .build()
         .expect("Building valid problem should not panic");
 
@@ -148,9 +146,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
 
     let problem = LevMarProblemBuilder::new(model)
-        .x(x)
         .y(y)
-        .initial_guess(&[tau1_guess, tau2_guess])
         .build()
         .expect("Building valid problem should not panic");
 

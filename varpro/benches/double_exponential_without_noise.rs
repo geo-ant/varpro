@@ -36,12 +36,9 @@ fn build_problem<Model: SeparableNonlinearModel<f64>>(
         c3,
     } = true_parameters;
 
-    let x = linspace(0., 12.5, 1024);
     let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
     let problem = LevMarProblemBuilder::new(model)
-        .x(x)
         .y(y)
-        .initial_guess(&[tau1_guess, tau2_guess])
         .build()
         .expect("Building valid problem should not panic");
     problem

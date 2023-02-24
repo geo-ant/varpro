@@ -115,6 +115,8 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
 
     fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error>;
 
+    fn params(&self) -> DVector<ScalarType>;
+
     /// Evaluate the base functions of the model at the given location `$\vec{x}$`
     /// and parameters `$\vec{\alpha}$` and return them in matrix form.
     /// The columns of this matrix are the evaluated base functions.
@@ -241,7 +243,6 @@ where
     /// the current parameters with which this model (and its derivatives)
     /// are evaluated
     current_parameters : Vec<ScalarType>,
-
 }
 
 impl<ScalarType> std::fmt::Debug for SeparableModel<ScalarType>
@@ -347,5 +348,9 @@ where
     fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error> {
         self.current_parameters = parameters.to_vec();
         Ok(())
+    }
+
+    fn params(&self) -> DVector<ScalarType> {
+        DVector::from(self.current_parameters.clone())
     }
 }

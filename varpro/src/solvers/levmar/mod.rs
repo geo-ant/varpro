@@ -44,14 +44,10 @@ where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>,
 {
-    /// the independent variable `\vec{x}` (location parameter)
-    x: DVector<ScalarType>,
     /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
     /// where provided (otherwise it is unweighted)
     y_w: DVector<ScalarType>,
-    /// current parameters that the optimizer is operating on
-    model_parameters: Vec<ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
     model: Model,
     /// truncation epsilon for SVD below which all singular values are assumed zero
@@ -72,7 +68,7 @@ where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>, {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LevMarProblem").field("x", &self.x).field("y_w", &self.y_w).field("model_parameters", &self.model_parameters).field("model", &"/* omitted */").field("svd_epsilon", &self.svd_epsilon).field("weights", &self.weights).field("cached", &self.cached).finish()
+        f.debug_struct("LevMarProblem").field("y_w", &self.y_w).field("model", &"/* omitted */").field("svd_epsilon", &self.svd_epsilon).field("weights", &self.weights).field("cached", &self.cached).finish()
     }
 }   
 
@@ -111,9 +107,6 @@ where
     /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
     /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
     fn set_params(&mut self, params: &Vector<ScalarType, Dyn, Self::ParameterStorage>) {
-        self.model_parameters = params.iter().cloned().collect();
-
-        todo!("set model parameters");
         self.model.set_params(params.as_slice());
         // matrix of weighted model function values
         let Phi_w = self
@@ -154,7 +147,7 @@ where
     /// `&["tau","beta"]`, then the returned vector is `$\vec{\alpha} = (\tau,\beta)^T$`, i.e.
     /// the value of parameter `$\tau$` is at index `0` and the value of `$\beta$` at index `1`.
     fn params(&self) -> Vector<ScalarType, Dyn, Self::ParameterStorage> {
-        DVector::from(self.model_parameters.clone())
+        self.model.params()
     }
 
     /// Calculate the residual vector `$\vec{r}_w$` of *weighted* residuals at every location `$\vec{x}$`.

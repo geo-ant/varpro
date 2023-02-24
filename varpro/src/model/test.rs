@@ -37,11 +37,15 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
     fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
         todo!()
     }
+
+    fn params(&self) -> DVector<f64> {
+        todo!()
+    }
 }
 
 #[test]
 fn model_gets_initialized_with_correct_parameter_names_and_count() {
-    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10));
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10),vec![1.,2.]);
     assert_eq!(
         model.parameter_count(),
         2,
@@ -57,13 +61,13 @@ fn model_gets_initialized_with_correct_parameter_names_and_count() {
 #[test]
 // test that the eval method produces correct results and gives a matrix that is ordered correctly
 fn model_function_eval_produces_correct_result() {
-    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10));
 
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let tau1 = 1.;
     let tau2 = 3.;
 
     let params = &[tau1, tau2];
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10),params.to_vec());
     let eval_matrix = model
         .eval()
         .expect("Model evaluation should not fail");
@@ -106,8 +110,9 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 
 #[test]
 fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
-    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10));
 
+    let params = vec![1., 2., 3., 4., 5.];
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10),params);
     assert_eq!(
         model.parameter_count(),
         2,
@@ -115,7 +120,6 @@ fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
     );
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     // now deliberately provide a wrong number of params to eval
-    let params = &[1., 2., 3., 4., 5.];
     assert_matches!(
         model.eval(),
         Err(ModelError::IncorrectParameterCount { .. })

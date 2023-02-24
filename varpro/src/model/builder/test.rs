@@ -182,6 +182,21 @@ fn builder_produces_correct_model_from_functions() {
     );
 }
 
+#[test]
+fn test_model_builder_fails_when_x_data_is_missing() {
+    todo!()
+}
+
+#[test]
+fn test_model_builder_fails_when_initial_parameters_are_missing() {
+    todo!()
+}
+
+#[test] 
+fn test_model_builder_fails_when_initial_parameters_have_incorrect_parameter_count() {
+    todo!()
+}
+
 /// a function that calculates exp( -(t-t0)/tau)) for every location t
 /// **ATTENTION** for this kind of exponential function the shift will
 /// just be a linear multiplier exp(t0/tau), so it might not a good idea to include it in the fitting

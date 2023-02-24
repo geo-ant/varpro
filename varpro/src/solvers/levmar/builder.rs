@@ -10,17 +10,9 @@ use thiserror::Error as ThisError;
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 pub enum LevMarBuilderError {
-    /// the data for the independent variable was not given to the builder
-    #[error("Data for vector x not provided.")]
-    XDataMissing,
-
     /// the data for y variable was not given to the builder
     #[error("Data for vector y not provided.")]
     YDataMissing,
-
-    /// no model was provided to the builder
-    #[error("Initial guess for parameters not provided.")]
-    InitialGuessMissing,
 
     /// x and y vector have different lengths
     #[error(
@@ -87,14 +79,10 @@ where
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
     Model: SeparableNonlinearModel<ScalarType>,
 {
-    /// Required: the independent variable `$\vec{x}$
-    x: Option<DVector<ScalarType>>,
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
     y: Option<DVector<ScalarType>>,
     /// Required: the model to be fitted to the data
     separable_model: Model,
-    /// Required: the initial guess for the model parameters
-    parameter_initial_guess: Option<Vec<ScalarType>>,
     /// Optional: set epsilon below which two singular values
     /// are considered zero.
     /// if this is not given, when building the builder,
@@ -115,10 +103,8 @@ where
 {
     fn clone(&self) -> Self {
         Self {
-            x: self.x.clone(),
             y: self.y.clone(),
             separable_model: self.separable_model.clone(),
-            parameter_initial_guess: self.parameter_initial_guess.clone(),
             epsilon: self.epsilon,
             weights: self.weights.clone(),
         }
@@ -134,24 +120,10 @@ where
     /// Create a new builder based on the given model
     pub fn new(model: Model) -> Self {
         Self {
-            x: None,
             y: None,
             separable_model: model,
-            parameter_initial_guess: None,
             epsilon: None,
             weights: Weights::default(),
-        }
-    }
-
-    /// **Mandatory**: Set the value of the independent variable `$\vec{x}$` of the problem.
-    /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn x<VectorType>(self, xvec: VectorType) -> Self
-    where
-        DVector<ScalarType>: From<VectorType>,
-    {
-        Self {
-            x: Some(DVector::from(xvec)),
-            ..self
         }
     }
 
@@ -163,15 +135,6 @@ where
     {
         Self {
             y: Some(DVector::from(yvec)),
-            ..self
-        }
-    }
-
-    /// **Mandatory**: provide initial guess for the parameters.
-    /// The number of values in the initial guess  must match the number of model parameters
-    pub fn initial_guess(self, params: &[ScalarType]) -> Self {
-        Self {
-            parameter_initial_guess: Some(params.to_vec()),
             ..self
         }
     }
@@ -222,32 +185,24 @@ where
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     pub fn build(self) -> Result<LevMarProblem<ScalarType, Model>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
-        let x = self.x.ok_or(LevMarBuilderError::XDataMissing)?;
         let y = self.y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;
-        let parameter_initial_guess = self.parameter_initial_guess.ok_or(LevMarBuilderError::InitialGuessMissing)?;
         let epsilon = self.epsilon.unwrap_or_else(Float::epsilon);
         let weights = self.weights;
 
         // now do some sanity checks for the values and return
         // an error if they do not pass the test
-
-        if x.len() != y.len() {
+        let x_len : usize  = todo!("make a test for model output size and y size");
+        if x_len != y.len() {
             return Err(LevMarBuilderError::InvalidLengthOfData {
-                x_length: x.len(),
+                x_length: x_len,
                 y_length: y.len(),
             });
         }
 
-        if x.is_empty() || y.is_empty() {
+        if x_len == 0 || y.is_empty() {
             return Err(LevMarBuilderError::ZeroLengthVector);
         }   
-        if model.parameter_count() != parameter_initial_guess.len() {
-            return Err(LevMarBuilderError::InvalidParameterCount {
-                model_count: model.parameter_count(),
-                provided_count: parameter_initial_guess.len(),
-            });
-        }
         if !weights.is_size_correct_for_data_length(y.len()) {
             //check that weights have correct length if they were given
             return Err(LevMarBuilderError::InvalidLengthOfWeights);
@@ -261,19 +216,12 @@ where
         // (like the SVD) because they are calculated in step 3 as part of set_params
         let mut problem = LevMarProblem {
             // these parameters all come from the builder
-            x,
             y_w,
             model,
             svd_epsilon: epsilon,
-            // these parameters are dummies and they will be overwritten immediately
-            // by the call to set_params
-            model_parameters: Vec::new(),
             cached: None,
             weights,
         };
-        // 3) step 3: overwrite the dummy values with the correct results for the given
-        // parameters, such that the problem is in a valid state
-        problem.set_params(&DVector::from(parameter_initial_guess));
 
         Ok(problem)
     }

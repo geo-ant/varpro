@@ -346,8 +346,6 @@ where
     }
 }
 
-
-
 /// try to convert an unfinished model into a valid model
 /// # Returns
 /// If the model is valid, then the model is returned as an ok variant, otherwise an error variant

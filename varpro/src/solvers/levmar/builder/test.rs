@@ -10,16 +10,12 @@ fn new_builder_starts_with_empty_fields() {
     let model = DummySeparableModel::default();
     let builder = LevMarProblemBuilder::<f64, _>::new(model);
     let LevMarProblemBuilder {
-        x,
         y,
         separable_model: _model,
-        parameter_initial_guess,
         epsilon,
         weights,
     } = builder;
-    assert!(x.is_none());
     assert!(y.is_none());
-    assert!(parameter_initial_guess.is_none());
     assert!(epsilon.is_none());
     assert_eq!(weights, Weights::Unit);
 }
@@ -39,17 +35,13 @@ fn builder_assigns_fields_correctly() {
 
     // build a problem with default epsilon
     let builder = LevMarProblemBuilder::new(model)
-        .x(x.clone())
-        .y(y.clone())
-        .initial_guess(initial_guess.as_slice());
+        .y(y.clone());
     let problem = builder
         .clone()
         .build()
         .expect("Valid builder should not fail build");
 
-    assert_eq!(problem.x, x);
     assert_eq!(problem.y_w, y);
-    assert_eq!(problem.model_parameters, initial_guess);
     //assert!(problem.model.as_ref().as_ptr()== model.as_ptr()); // this don't work, boss
     assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
     assert!(
@@ -99,28 +91,10 @@ fn builder_gives_errors_for_missing_mandatory_parameters() {
     ]);
     let initial_guess = vec![1., 2.];
 
-    let _builder = LevMarProblemBuilder::new(model)
-        .x(x.clone())
-        .y(y.clone())
-        .initial_guess(initial_guess.as_slice());
-
     assert_matches!(
         LevMarProblemBuilder::new(model)
-            .y(y.clone())
-            .initial_guess(initial_guess.as_slice())
-            .build(),
-        Err(LevMarBuilderError::XDataMissing)
-    );
-    assert_matches!(
-        LevMarProblemBuilder::new(model)
-            .x(x.clone())
-            .initial_guess(initial_guess.as_slice())
             .build(),
         Err(LevMarBuilderError::YDataMissing)
-    );
-    assert_matches!(
-        LevMarProblemBuilder::new(model).x(x).y(y).build(),
-        Err(LevMarBuilderError::InitialGuessMissing)
     );
 }
 
@@ -137,9 +111,7 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
 
     assert_matches!(
             LevMarProblemBuilder::new(model)
-                .x(x.clone())
                 .y(y.clone())
-                .initial_guess(&[1.])
                 .build(),
             Err(LevMarBuilderError::InvalidParameterCount { .. })
         ,
@@ -148,9 +120,7 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
 
     assert_matches!(
             LevMarProblemBuilder::new(model)
-                .x(DVector::from(vec! {1.,2.,3.}))
                 .y(y.clone())
-                .initial_guess(&[1., 2.])
                 .build(),
             Err(LevMarBuilderError::InvalidLengthOfData { .. })
         ,
@@ -159,9 +129,7 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
 
     assert_matches!(
             LevMarProblemBuilder::new(model)
-                .x(DVector::from(Vec::<f64>::new()))
                 .y(DVector::from(Vec::<f64>::new()))
-                .initial_guess(&[1., 2.])
                 .build(),
             Err(LevMarBuilderError::ZeroLengthVector)
         ,
@@ -170,9 +138,7 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
 
     assert_matches!(
             LevMarProblemBuilder::new(model)
-                .x(x)
                 .y(y)
-                .initial_guess(&[1., 2.])
                 .weights(vec! {1.,2.,3.})
                 .build(),
             Err(LevMarBuilderError::InvalidLengthOfWeights { .. })

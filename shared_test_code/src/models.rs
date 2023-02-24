@@ -81,6 +81,10 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         self.params[1] = parameters[1];
         Ok(())
     }
+
+    fn params(&self) -> DVector<f64> {
+        DVector::from_iterator(2, self.params.clone().into_iter())
+    }
 }
 
 use levenberg_marquardt::LeastSquaresProblem;
