@@ -37,7 +37,9 @@ fn sanity_check_jacobian_of_levenberg_marquardt_problem_is_correct() {
 fn double_exponential_fitting_without_noise_produces_accurate_results() {
     // the independent variable
     let x = linspace(0., 12.5, 1024);
-    let model = get_double_exponential_model_with_constant_offset(x.clone());
+    let tau1_guess = 2.;
+    let tau2_guess = 6.5;
+    let model = get_double_exponential_model_with_constant_offset(x.clone(),vec![tau1_guess,tau2_guess]);
     // true parameters
     let tau1 = 1.;
     let tau2 = 3.;
@@ -47,8 +49,6 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let c3 = 1.; //<- coefficient of constant offset
                  // generate some data without noise
     let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
-    let tau1_guess = 2.;
-    let tau2_guess = 6.5;
 
     // for solving the fitting problem using only the levenberg_marquardt crate                  the crate cannot deal with this:     &[tau1_guess,tau2_guess,c1,c2,c3]
     // we have to make the initial guesses closer to the true values for the Levenberg Marquart Algo

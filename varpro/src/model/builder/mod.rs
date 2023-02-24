@@ -537,7 +537,7 @@ where
         }
     }
 
-    pub fn independent_variable(mut self, x: DVector<ScalarType>) -> SeparableModelBuilder<ScalarType> {
+    pub fn independent_variable(self, x: DVector<ScalarType>) -> SeparableModelBuilder<ScalarType> {
         match self.current_result {
             Ok(pair) => {
                 let model_result = extend_model(pair.model, pair.builder);
@@ -547,7 +547,7 @@ where
         }
     }
 
-    pub fn initial_parameters(mut self, initial_parameters: Vec<ScalarType>) -> SeparableModelBuilder<ScalarType> {
+    pub fn initial_parameters(self, initial_parameters: Vec<ScalarType>) -> SeparableModelBuilder<ScalarType> {
         match self.current_result {
             Ok(pair) => {
                 let model_result = extend_model(pair.model, pair.builder);

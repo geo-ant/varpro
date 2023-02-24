@@ -25,8 +25,7 @@ struct DoubleExponentialParameters {
 
 fn build_problem<Model: SeparableNonlinearModel<f64>>(
     true_parameters: DoubleExponentialParameters,
-    (tau1_guess, tau2_guess): (f64, f64),
-    model: Model,
+    mut model: Model,
 ) -> LevMarProblem<f64, Model> {
     let DoubleExponentialParameters {
         tau1,
@@ -35,12 +34,23 @@ fn build_problem<Model: SeparableNonlinearModel<f64>>(
         c2,
         c3,
     } = true_parameters;
+    
+    // save the initial guess so that we can reset the model to those
+    let initial_guess = model.params();
+    model.set_params(&[tau1,tau2]).expect("setting the model parameters must not fail");
 
     let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
-    let problem = LevMarProblemBuilder::new(model)
+    let mut problem = LevMarProblemBuilder::new(model)
         .y(y)
         .build()
         .expect("Building valid problem should not panic");
+    
+    // now reset the model parameters to the initial guesses
+    // that the model had before
+    // we have to do that through the levmar problem beause the
+    // model was moved into it
+    problem.set_params(&initial_guess);
+
     problem
 }
 
@@ -79,7 +89,7 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
 
     group.bench_function("Using Model Builder", |bencher| {
         bencher.iter_batched(
-            || build_problem(true_parameters, tau_guess, get_double_exponential_model_with_constant_offset(x.clone())),
+            || build_problem(true_parameters, get_double_exponential_model_with_constant_offset(x.clone(),vec![tau_guess.0,tau_guess.1])),
             run_minimization,
             criterion::BatchSize::SmallInput,
         )
@@ -87,7 +97,7 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
 
     group.bench_function("Handcrafted Model", |bencher| {
         bencher.iter_batched(
-            || build_problem(true_parameters, tau_guess, DoubleExpModelWithConstantOffsetSepModel::new(x.clone(),tau_guess)),
+            || build_problem(true_parameters, DoubleExpModelWithConstantOffsetSepModel::new(x.clone(),tau_guess)),
             run_minimization,
             criterion::BatchSize::SmallInput,
         )

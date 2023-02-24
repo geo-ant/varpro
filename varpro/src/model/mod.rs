@@ -1,5 +1,3 @@
-use std::thread::available_parallelism;
-
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
