@@ -34,7 +34,7 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
         todo!()
     }
 
-    fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
+    fn set_params(&mut self, _parameters : &[f64]) -> Result<(),Self::Error> {
         todo!()
     }
 
@@ -93,6 +93,7 @@ fn model_function_eval_produces_correct_result() {
 // test that when a base function does not return the same length result as its location argument,
 // then the eval method fails
 fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function() {
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
         .function(&["tau2"], test_helpers::exp_decay)
         .partial_deriv("tau2", test_helpers::exp_decay_dtau)
@@ -100,25 +101,24 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
             DVector::from(vec![1., 3., 3., 7.])
         })
         .partial_deriv("tau1", test_helpers::exp_decay_dtau)
+        .initial_parameters(vec![2.,4.])
+        .independent_variable(tvec)
         .build()
         .expect("Model function creation should not fail, although function is bad");
-
-    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
 
     assert_matches!(model_with_bad_function.eval(),Err(ModelError::UnexpectedFunctionOutput{actual_length:4,..}),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
 }
 
 #[test]
 fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
-
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let params = vec![1., 2., 3., 4., 5.];
-    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10),params);
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(tvec,params);
     assert_eq!(
         model.parameter_count(),
         2,
         "double exponential model should have 2 params"
     );
-    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     // now deliberately provide a wrong number of params to eval
     assert_matches!(
         model.eval(),
@@ -131,7 +131,14 @@ fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
 fn model_derivative_evaluation_produces_correct_result() {
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
+    let tau = 3.;
+    let omega = 1.5;
+    let params = &[tau, omega];
+
     let model = SeparableModelBuilder::<f64>::new(&["tau", "omega"])
+        .independent_variable(tvec.clone())
+        .initial_parameters(params.to_vec())
         .function(&["tau"], test_helpers::exp_decay)
         .partial_deriv("tau", test_helpers::exp_decay_dtau)
         .invariant_function(ones)
@@ -141,10 +148,6 @@ fn model_derivative_evaluation_produces_correct_result() {
         .build()
         .expect("Valid model creation should not fail");
 
-    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
-    let tau = 3.;
-    let omega = 1.5;
-    let params = &[tau, omega];
 
     let deriv_tau = model
         .eval_partial_deriv(0)
