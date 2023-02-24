@@ -208,21 +208,23 @@ fn model_derivative_evaluation_produces_correct_result() {
 // * a derivative for a parameter that is not in the model is requested (by index or by name)
 // * the derivative is requested for a wrong number of parameter arguments
 fn model_derivative_evaluation_error_cases() {
-    let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
+    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
+    let mut model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
+        .independent_variable(tvec)
         .function(&["tau2"], test_helpers::exp_decay)
         .partial_deriv("tau2", test_helpers::exp_decay_dtau)
         .function(&["tau1"], test_helpers::exp_decay)
         .partial_deriv("tau1", |_t: &DVector<_>, _tau| {
             DVector::from(vec![1., 3., 3., 7.])
         })
+        .initial_parameters(vec![2.,4.])
         .build()
         .expect("Model function creation should not fail, although function is bad");
 
-    let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
 
     // deriv index 0 is tau1: this derivative is bad and should fail
     assert_matches!(
-            model_with_bad_function.eval_partial_deriv(  0),
+            model_with_bad_function.eval_partial_deriv( 0),
             Err(ModelError::UnexpectedFunctionOutput { .. })
         ,
         "Derivative for invalid function must fail with correct error"
@@ -236,14 +238,6 @@ fn model_derivative_evaluation_error_cases() {
         "Derivative eval for valid function should return Ok result"
     );
 
-    // check that if an incorrect amount of parameters is provided, then the evaluation fails
-    assert_matches!(
-            model_with_bad_function.eval_partial_deriv( 1),
-            Err(ModelError::IncorrectParameterCount { .. })
-        ,
-        "Derivative for invalid function must fail with correct error"
-    );
-
     // check an out of bounds index for the derivative
     assert_matches!(
             model_with_bad_function.eval_partial_deriv( 100),
@@ -252,10 +246,18 @@ fn model_derivative_evaluation_error_cases() {
         "Derivative for invalid function must fail with correct error"
     );
 
-    // check that if a nonexistent parameter is requested by name, then the derivative evaluation fails
     assert_matches!(
             model_with_bad_function.eval_partial_deriv( 3),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
+        ,
+        "Derivative for invalid function must fail with correct error"
+    );
+
+    // check that if an incorrect amount of parameters is provided, then the evaluation fails
+    let _ = model_with_bad_function.set_params(&[1.,2.,3.,4.]);
+    assert_matches!(
+            model_with_bad_function.eval_partial_deriv( 1),
+            Err(ModelError::IncorrectParameterCount { .. })
         ,
         "Derivative for invalid function must fail with correct error"
     );
