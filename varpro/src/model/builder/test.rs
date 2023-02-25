@@ -74,25 +74,6 @@ fn identity_function<T: Clone>(x: &T) -> T {
 // test that the builder correctly produces a model with functions with and without derivatives,
 // when the parameters and functions are valid
 fn builder_produces_correct_model_from_functions() {
-    let model = SeparableModelBuilder::<f64>::new(&[
-        "t0".to_string(),
-        "tau".to_string(),
-        "omega1".to_string(),
-        "omega2".to_string(),
-    ])
-    .invariant_function(|x| 2. * identity_function(x)) // double the x value
-    .function(&["t0".to_string(), "tau".to_string()], exponential_decay)
-    .partial_deriv("tau", exponential_decay_dtau)
-    .partial_deriv("t0", exponential_decay_dt0)
-    .invariant_function(identity_function)
-    .function(&["omega1".to_string()], sinusoid_omega)
-    .partial_deriv("omega1", sinusoid_omega_domega)
-    .function(&["omega2".to_string()], sinusoid_omega)
-    .partial_deriv("omega2", sinusoid_omega_domega)
-    .build()
-    .expect("Valid builder calls should produce a valid model function.");
-
-    // now check that each function behaves as expected given the model parameters
     let ts = DVector::<f64>::from(vec![
         1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14.,
     ]);
@@ -100,8 +81,30 @@ fn builder_produces_correct_model_from_functions() {
     let tau = 2.;
     let omega1 = std::f64::consts::FRAC_1_PI * 3.;
     let omega2 = std::f64::consts::FRAC_1_PI * 2.;
-
     let params = vec![t0, tau, omega1, omega2];
+
+    let model = SeparableModelBuilder::<f64>::new(&[
+        "t0".to_string(),
+        "tau".to_string(),
+        "omega1".to_string(),
+        "omega2".to_string(),
+    ])
+        .invariant_function(|x| 2. * identity_function(x)) // double the x value
+        .function(&["t0".to_string(), "tau".to_string()], exponential_decay)
+        .partial_deriv("tau", exponential_decay_dtau)
+        .partial_deriv("t0", exponential_decay_dt0)
+        .invariant_function(identity_function)
+        .function(&["omega1".to_string()], sinusoid_omega)
+        .partial_deriv("omega1", sinusoid_omega_domega)
+        .function(&["omega2".to_string()], sinusoid_omega)
+        .partial_deriv("omega2", sinusoid_omega_domega)
+        .independent_variable(ts.clone())
+        .initial_parameters(params.to_vec())
+        .build()
+        .expect("Valid builder calls should produce a valid model function.");
+
+    // now check that each function behaves as expected given the model parameters
+
 
     // assert that the correct number of functions is in the set
     assert_eq!(
