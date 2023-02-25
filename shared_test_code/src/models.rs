@@ -34,6 +34,16 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         3
     }
 
+    fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
+        self.params[0] = parameters[0];
+        self.params[1] = parameters[1];
+        Ok(())
+    }
+
+    fn params(&self) -> DVector<f64> {
+        DVector::from_iterator(2, self.params.clone().into_iter())
+    }
+
     fn eval(
         &self,
     ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
@@ -76,14 +86,8 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         Ok(basefuncs)
     }
 
-    fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
-        self.params[0] = parameters[0];
-        self.params[1] = parameters[1];
-        Ok(())
-    }
-
-    fn params(&self) -> DVector<f64> {
-        DVector::from_iterator(2, self.params.clone().into_iter())
+    fn output_len(&self) -> usize {
+        self.x_vector.len()
     }
 }
 

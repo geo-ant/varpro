@@ -22,6 +22,14 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
         todo!()
     }
 
+    fn set_params(&mut self, _parameters : &[f64]) -> Result<(),Self::Error> {
+        todo!()
+    }
+
+    fn params(&self) -> DVector<f64> {
+        todo!()
+    }
+
     fn eval(
         &self,
     ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
@@ -35,11 +43,7 @@ impl SeparableNonlinearModel<f64> for DummySeparableModel {
         todo!()
     }
 
-    fn set_params(&mut self, _parameters : &[f64]) -> Result<(),Self::Error> {
-        todo!()
-    }
-
-    fn params(&self) -> DVector<f64> {
+    fn output_len(&self) -> usize {
         todo!()
     }
 }

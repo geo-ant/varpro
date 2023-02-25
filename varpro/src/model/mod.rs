@@ -110,6 +110,8 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// This is also equal to the number of _columns_ of the matrices returned
     /// from the `eval` and `eval_partial_deriv` methods.
     fn base_function_count(&self) -> usize;
+    
+    fn output_len(&self) -> usize;
 
     fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error>;
 
@@ -274,6 +276,15 @@ where
         self.basefunctions.len()
     }
 
+    fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error> {
+        self.current_parameters = parameters.to_vec();
+        Ok(())
+    }
+
+    fn params(&self) -> DVector<ScalarType> {
+        DVector::from(self.current_parameters.clone())
+    }
+
     fn eval(
         &self,
     ) -> Result<DMatrix<ScalarType>, ModelError> {
@@ -343,12 +354,7 @@ where
         Ok(derivative_function_value_matrix)
     }
 
-    fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error> {
-        self.current_parameters = parameters.to_vec();
-        Ok(())
-    }
-
-    fn params(&self) -> DVector<ScalarType> {
-        DVector::from(self.current_parameters.clone())
+    fn output_len(&self) -> usize {
+        self.x_vector.len()
     }
 }

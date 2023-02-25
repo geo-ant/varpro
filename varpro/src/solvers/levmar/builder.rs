@@ -192,7 +192,7 @@ where
 
         // now do some sanity checks for the values and return
         // an error if they do not pass the test
-        let x_len : usize  = todo!("make a test for model output size and y size");
+        let x_len : usize  = model.output_len();
         if x_len != y.len() {
             return Err(LevMarBuilderError::InvalidLengthOfData {
                 x_length: x_len,
