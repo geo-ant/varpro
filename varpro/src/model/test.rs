@@ -1,3 +1,4 @@
+use nalgebra::DMatrix;
 use nalgebra::DVector;
 use assert_matches::assert_matches;
 use crate::model::builder::SeparableModelBuilder;
@@ -67,25 +68,24 @@ fn model_function_eval_produces_correct_result() {
     let tau2 = 3.;
 
     let params = &[tau1, tau2];
-    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10),params.to_vec());
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(tvec.clone(),params.to_vec());
     let eval_matrix = model
         .eval()
         .expect("Model evaluation should not fail");
 
+    let mut expected_eval_matrix = DMatrix::zeros(eval_matrix.nrows(),eval_matrix.ncols());
+    
+    expected_eval_matrix.set_column(0,
+        &test_helpers::exp_decay(&tvec, tau2));
+    expected_eval_matrix.set_column(1, 
+        &test_helpers::exp_decay(&tvec, tau1));
+    expected_eval_matrix.set_column(2,
+        &DVector::from_element(tvec.len(), 1.));
+
     assert_eq!(
-        DVector::from(eval_matrix.column(0)),
-        test_helpers::exp_decay(&tvec, tau2),
-        "first column must correspond to first model function: exp(-t/tau2)"
-    );
-    assert_eq!(
-        DVector::from(eval_matrix.column(1)),
-        test_helpers::exp_decay(&tvec, tau1),
-        "second column must correspond to second model function: exp(-t/tau1)"
-    );
-    assert_eq!(
-        DVector::from(eval_matrix.column(2)),
-        DVector::from_element(tvec.len(), 1.),
-        "third column must be vector of ones"
+        eval_matrix,
+        expected_eval_matrix,
+        "Model evaluation should produce the expected evaluation"
     );
 }
 
