@@ -1,13 +1,14 @@
+use crate::model::test::MockSeparableNonlinearModel;
 use crate::solvers::levmar::builder::LevMarBuilderError;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblemBuilder;
-use crate::{linalg_helpers::DiagDMatrix, model::test::DummySeparableModel};
+use crate::{linalg_helpers::DiagDMatrix};
 use nalgebra::{DMatrix, DVector};
 use assert_matches::assert_matches;
 
 #[test]
 fn new_builder_starts_with_empty_fields() {
-    let model = DummySeparableModel::default();
+    let model = MockSeparableNonlinearModel::default();
     let builder = LevMarProblemBuilder::<f64, _>::new(model);
     let LevMarProblemBuilder {
         y,
@@ -24,7 +25,7 @@ fn new_builder_starts_with_empty_fields() {
 #[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
 #[allow(non_snake_case)]
 fn builder_assigns_fields_correctly() {
-    let model = DummySeparableModel::default();
+    let model = MockSeparableNonlinearModel::default();
     // octave x = linspace(0,10,11);
     let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1;
@@ -82,7 +83,7 @@ fn builder_assigns_fields_correctly() {
 
 #[test]
 fn builder_gives_errors_for_missing_mandatory_parameters() {
-    let model = DummySeparableModel::default();
+    let model = MockSeparableNonlinearModel::default();
     // octave x = linspace(0,10,11);
     let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1;
@@ -100,7 +101,7 @@ fn builder_gives_errors_for_missing_mandatory_parameters() {
 
 #[test]
 fn builder_gives_errors_for_semantically_wrong_parameters() {
-    let model = DummySeparableModel::default();
+    let model = MockSeparableNonlinearModel::default();
     // octave x = linspace(0,10,11);
     let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1;
@@ -110,7 +111,7 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
     let _initial_guess = vec![1., 2.];
 
     assert_matches!(
-            LevMarProblemBuilder::new(model)
+            LevMarProblemBuilder::new(model.clone())
                 .y(y.clone())
                 .build(),
             Err(LevMarBuilderError::InvalidParameterCount { .. })
@@ -119,7 +120,7 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
     );
 
     assert_matches!(
-            LevMarProblemBuilder::new(model)
+            LevMarProblemBuilder::new(model.clone())
                 .y(y.clone())
                 .build(),
             Err(LevMarBuilderError::InvalidLengthOfData { .. })
@@ -128,7 +129,7 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
     );
 
     assert_matches!(
-            LevMarProblemBuilder::new(model)
+            LevMarProblemBuilder::new(model.clone())
                 .y(DVector::from(Vec::<f64>::new()))
                 .build(),
             Err(LevMarBuilderError::ZeroLengthVector)
@@ -137,7 +138,7 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
     );
 
     assert_matches!(
-            LevMarProblemBuilder::new(model)
+            LevMarProblemBuilder::new(model.clone())
                 .y(y)
                 .weights(vec! {1.,2.,3.})
                 .build(),

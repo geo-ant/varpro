@@ -214,7 +214,7 @@ where
 
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
-        let mut problem = LevMarProblem {
+        let problem = LevMarProblem {
             // these parameters all come from the builder
             y_w,
             model,

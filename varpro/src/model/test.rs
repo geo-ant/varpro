@@ -6,45 +6,81 @@ use crate::model::errors::ModelError;
 use crate::prelude::*;
 use crate::test_helpers;
 
-/// a dummy structure that implements a separable nonlinear model trait
-/// but will panic when any of the methods is actually called
-#[derive(Default, Copy, Clone)]
-pub struct DummySeparableModel {}
+// mock the separable model for later use in tests
+// some exta manual labor because the mocker was having trouble with
+// my trait
+mockall::mock! {
+    /// MockSeparableNonlinearModel that can be used 
+    /// in unit and integration tests inside this crate
+    pub SeparableNonlinearModel {
+        fn parameter_count(&self) -> usize;
+        fn base_function_count(&self) -> usize;
+        fn output_len(&self) -> usize;
+        fn set_params(&mut self, parameters : &[f64]) -> Result<(),MockModelError>;
+        fn params(&self) -> DVector<f64>;
+        fn eval(
+            &self,
+        ) -> Result<DMatrix<f64>, MockModelError>;
+        fn eval_partial_deriv(
+            &self,
+            derivative_index: usize,
+        ) -> Result<DMatrix<f64>, MockModelError>;
+    }   
 
-impl SeparableNonlinearModel<f64> for DummySeparableModel {
-    type Error = ModelError;
+    impl Clone for SeparableNonlinearModel {
+        fn clone(&self) -> Self;
+    }
+}
+
+//derive a simple error using thiserror that can be 
+//converted from a string
+#[derive(Debug, thiserror::Error)]
+pub enum MockModelError {
+    #[error("MockModelError: {}",0)]
+    Error(String),
+}
+
+impl<S> From<S> for MockModelError 
+where S: Into<String>{
+    fn from(s: S) -> Self {
+        MockModelError::Error(s.into())
+    }
+}
+
+impl SeparableNonlinearModel<f64> for MockSeparableNonlinearModel {
+    type Error = MockModelError;
 
     fn parameter_count(&self) -> usize {
-        todo!()
+        self.parameter_count()
     }
 
     fn base_function_count(&self) -> usize {
-        todo!()
+        self.base_function_count()
     }
 
-    fn set_params(&mut self, _parameters : &[f64]) -> Result<(),Self::Error> {
-        todo!()
+    fn output_len(&self) -> usize {
+       self.output_len()  
+    }
+
+    fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
+        self.set_params(parameters)
     }
 
     fn params(&self) -> DVector<f64> {
-        todo!()
+        self.params()
     }
 
     fn eval(
         &self,
-    ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
-        todo!()
+    ) -> Result<DMatrix<f64>, Self::Error> {
+        self.eval()
     }
 
     fn eval_partial_deriv(
         &self,
-        _derivative_index: usize,
-    ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
-        todo!()
-    }
-
-    fn output_len(&self) -> usize {
-        todo!()
+        derivative_index: usize,
+    ) -> Result<DMatrix<f64>, Self::Error> {
+        self.eval_partial_deriv(derivative_index)
     }
 }
 

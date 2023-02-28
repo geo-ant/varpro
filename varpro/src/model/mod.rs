@@ -14,6 +14,7 @@ mod model_basis_function;
 #[cfg(test)]
 pub mod test;
 
+
 /// Represents an abstraction for a separable nonlinear model
 ///
 /// # Introduction
