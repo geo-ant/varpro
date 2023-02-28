@@ -112,7 +112,7 @@ fn residuals_are_calculated_correctly_unweighted() {
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
     let params = vec![2.,4.];
-    let model = get_double_exponential_model_with_constant_offset(tvec.clone(),params);
+    let model = get_double_exponential_model_with_constant_offset(tvec.clone(),params.clone());
 
     let data_length = tvec.len();
 
@@ -120,7 +120,8 @@ fn residuals_are_calculated_correctly_unweighted() {
         .y(yvec)
         .build()
         .expect("Building a valid solver must not return an error.");
-
+    
+    problem.set_params(&DVector::from(params));
     // for the true parameters, as the initial guess, the residual should be very close to an
     // all zeros vector
     let residuals = problem
