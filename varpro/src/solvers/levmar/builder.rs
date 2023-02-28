@@ -193,6 +193,10 @@ where
         // now do some sanity checks for the values and return
         // an error if they do not pass the test
         let x_len : usize  = model.output_len();
+        if x_len == 0 || y.is_empty() {
+            return Err(LevMarBuilderError::ZeroLengthVector);
+        }   
+        
         if x_len != y.len() {
             return Err(LevMarBuilderError::InvalidLengthOfData {
                 x_length: x_len,
@@ -200,9 +204,6 @@ where
             });
         }
 
-        if x_len == 0 || y.is_empty() {
-            return Err(LevMarBuilderError::ZeroLengthVector);
-        }   
         if !weights.is_size_correct_for_data_length(y.len()) {
             //check that weights have correct length if they were given
             return Err(LevMarBuilderError::InvalidLengthOfWeights);

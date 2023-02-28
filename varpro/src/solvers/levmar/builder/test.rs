@@ -24,42 +24,49 @@ fn new_builder_starts_with_empty_fields() {
 #[test]
 #[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
 #[allow(non_snake_case)]
-fn builder_assigns_fields_correctly() {
-    let model = MockSeparableNonlinearModel::default();
-    // octave x = linspace(0,10,11);
-    let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
+fn builder_assigns_fields_correctly_simple_case() {
+    let mut model = MockSeparableNonlinearModel::default();
     //octave y = 2*exp(-t/2)+exp(-t/4)+1;
     let y = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
-    let initial_guess = vec![1., 2.];
+    let output_len = y.len();
+    model.expect_output_len().returning(move || output_len);
 
     // build a problem with default epsilon
     let builder = LevMarProblemBuilder::new(model)
         .y(y.clone());
     let problem = builder
-        .clone()
         .build()
         .expect("Valid builder should not fail build");
 
     assert_eq!(problem.y_w, y);
-    //assert!(problem.model.as_ref().as_ptr()== model.as_ptr()); // this don't work, boss
     assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
     assert!(
-        problem.cached.as_ref().unwrap().current_svd.u.is_some(),
-        "SVD U must have been calculated on initialization"
+        problem.cached.is_none(),
+        "cached calculations must not be initialized on build"
     );
-    assert!(
-        problem.cached.as_ref().unwrap().current_svd.v_t.is_some(),
-        "SVD V^T must have been calculated on initialization"
-    );
+}
 
+#[test]
+#[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
+#[allow(non_snake_case)]
+fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
+    let mut model = MockSeparableNonlinearModel::default();
+
+    let y = DVector::from(vec![
+        4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
+    ]);
+
+    let output_len = y.len();
+    model.expect_output_len().returning(move || output_len);
     // now check that the given epsilon is also passed correctly to the model
     // and also that the weights are correctly passed and used to weigh the original data
     let weights = 2. * &y;
     let W = DMatrix::from_diagonal(&weights);
-
-    let problem = builder
+    
+    let problem = LevMarProblemBuilder::new(model)
+        .y(y.clone())
         .epsilon(-1.337) // check that negative values are converted to absolutes
         .weights(weights.clone())
         .build()
@@ -82,15 +89,8 @@ fn builder_assigns_fields_correctly() {
 }
 
 #[test]
-fn builder_gives_errors_for_missing_mandatory_parameters() {
+fn builder_gives_errors_for_missing_y_data() {
     let model = MockSeparableNonlinearModel::default();
-    // octave x = linspace(0,10,11);
-    let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
-    //octave y = 2*exp(-t/2)+exp(-t/4)+1;
-    let y = DVector::from(vec![
-        4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
-    ]);
-    let initial_guess = vec![1., 2.];
 
     assert_matches!(
         LevMarProblemBuilder::new(model)
@@ -100,45 +100,63 @@ fn builder_gives_errors_for_missing_mandatory_parameters() {
 }
 
 #[test]
-fn builder_gives_errors_for_semantically_wrong_parameters() {
-    let model = MockSeparableNonlinearModel::default();
-    // octave x = linspace(0,10,11);
-    let x = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
+fn builder_gives_errors_for_wrong_data_length() {
+    let mut model = MockSeparableNonlinearModel::default();
     //octave y = 2*exp(-t/2)+exp(-t/4)+1;
     let y = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
     let _initial_guess = vec![1., 2.];
+    
+    let wrong_output_len = y.len()-1;
+    model.expect_output_len().returning(move ||wrong_output_len);
 
     assert_matches!(
-            LevMarProblemBuilder::new(model.clone())
-                .y(y.clone())
-                .build(),
-            Err(LevMarBuilderError::InvalidParameterCount { .. })
-        ,
-        "invalid parameter count must produce correct error"
-    );
-
-    assert_matches!(
-            LevMarProblemBuilder::new(model.clone())
+            LevMarProblemBuilder::new(model)
                 .y(y.clone())
                 .build(),
             Err(LevMarBuilderError::InvalidLengthOfData { .. })
         ,
         "invalid parameter count must produce correct error"
     );
+}
+
+#[test]
+fn builder_gives_errors_for_zero_length_data() {
+    let mut model = MockSeparableNonlinearModel::default();
+    //octave y = 2*exp(-t/2)+exp(-t/4)+1;
+    let y = DVector::from(vec![
+        4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
+    ]);
+    let _initial_guess = vec![1., 2.];
+    
+    let output_len = y.len();
+    model.expect_output_len().returning(move ||output_len);
 
     assert_matches!(
-            LevMarProblemBuilder::new(model.clone())
+            LevMarProblemBuilder::new(model)
                 .y(DVector::from(Vec::<f64>::new()))
                 .build(),
             Err(LevMarBuilderError::ZeroLengthVector)
         ,
         "zero parameter count must produce correct error"
     );
+}
+
+#[test]
+fn builder_gives_errors_for_wrong_length_of_weights() {
+    let mut model = MockSeparableNonlinearModel::default();
+    //octave y = 2*exp(-t/2)+exp(-t/4)+1;
+    let y = DVector::from(vec![
+        4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
+    ]);
+    let _initial_guess = vec![1., 2.];
+    
+    let output_len = y.len();
+    model.expect_output_len().returning(move ||output_len);
 
     assert_matches!(
-            LevMarProblemBuilder::new(model.clone())
+            LevMarProblemBuilder::new(model)
                 .y(y)
                 .weights(vec! {1.,2.,3.})
                 .build(),
@@ -147,4 +165,3 @@ fn builder_gives_errors_for_semantically_wrong_parameters() {
         "invalid length of weights"
     );
 }
-

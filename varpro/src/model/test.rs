@@ -13,15 +13,15 @@ mockall::mock! {
     /// MockSeparableNonlinearModel that can be used 
     /// in unit and integration tests inside this crate
     pub SeparableNonlinearModel {
-        fn parameter_count(&self) -> usize;
-        fn base_function_count(&self) -> usize;
-        fn output_len(&self) -> usize;
-        fn set_params(&mut self, parameters : &[f64]) -> Result<(),MockModelError>;
-        fn params(&self) -> DVector<f64>;
-        fn eval(
+       pub fn parameter_count(&self) -> usize;
+       pub fn base_function_count(&self) -> usize;
+       pub fn output_len(&self) -> usize;
+       pub fn set_params(&mut self, parameters : &[f64]) -> Result<(),MockModelError>;
+       pub fn params(&self) -> DVector<f64>;
+       pub fn eval(
             &self,
         ) -> Result<DMatrix<f64>, MockModelError>;
-        fn eval_partial_deriv(
+       pub fn eval_partial_deriv(
             &self,
             derivative_index: usize,
         ) -> Result<DMatrix<f64>, MockModelError>;
