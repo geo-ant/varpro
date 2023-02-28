@@ -22,12 +22,13 @@ fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unw
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
     let params = vec![2.,4.];
-    let model = get_double_exponential_model_with_constant_offset(tvec,params);
+    let model = get_double_exponential_model_with_constant_offset(tvec,params.clone());
     let mut problem = LevMarProblemBuilder::new(model)
         .y(yvec)
         .build()
         .expect("Building a valid solver must not return an error.");
 
+    problem.set_params(&DVector::from(params));
     let jacobian_numerical =
         differentiate_numerically(&mut problem).expect("Numerical differentiation must succeed.");
     let jacobian_calculated = problem.jacobian().expect("Jacobian must not be empty!");
