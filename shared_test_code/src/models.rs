@@ -14,10 +14,12 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
 
 impl DoubleExpModelWithConstantOffsetSepModel {
     pub fn new(x_vector : DVector<f64>,(tau1_guess,tau2_guess):(f64,f64)) -> Self {
-        Self {
+        let mut ret = Self {
             x_vector, 
-            params : [tau1_guess,tau2_guess],
-        }
+            params : [0.,0.],//<-- will be overwritten by set_params
+        };
+        ret.set_params(&[tau1_guess,tau2_guess]).unwrap();
+        ret
     }
 }
 

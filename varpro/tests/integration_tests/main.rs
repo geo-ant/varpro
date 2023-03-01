@@ -1,5 +1,5 @@
 use nalgebra::DVector;
-use shared_test_code::evaluate_complete_model;
+use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::linspace;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
@@ -39,7 +39,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let x = linspace(0., 12.5, 1024);
     let tau1_guess = 2.;
     let tau2_guess = 6.5;
-    let model = get_double_exponential_model_with_constant_offset(x.clone(),vec![tau1_guess,tau2_guess]);
+    let mut model = get_double_exponential_model_with_constant_offset(x.clone(),vec![tau1_guess,tau2_guess]);
     // true parameters
     let tau1 = 1.;
     let tau2 = 3.;
@@ -48,7 +48,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
                  // generate some data without noise
-    let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
+    let y = evaluate_complete_model_at_params(&mut model, &[tau1,tau2],  &DVector::from(vec![c1, c2, c3]));
 
     // for solving the fitting problem using only the levenberg_marquardt crate                  the crate cannot deal with this:     &[tau1_guess,tau2_guess,c1,c2,c3]
     // we have to make the initial guesses closer to the true values for the Levenberg Marquart Algo
@@ -66,10 +66,6 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
 
     let (problem, report) = LevMarSolver::new().minimize(problem);
     let toc = Instant::now();
-    assert!(
-        report.termination.was_successful(),
-        "Termination not successful"
-    );
     println!(
         "varpro: elapsed time for double exponential fit = {} µs = {} ms",
         (toc - tic).as_micros(),
@@ -125,6 +121,10 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     assert_relative_eq!(c3, c3_calc, epsilon = 1e-8);
     assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
+    assert!(
+        report.termination.was_successful(),
+        "Termination not successful"
+    );
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let tau2_guess = 6.5;
     // the independent variable
     let x = linspace(0., 12.5, 1024);
-    let model = DoubleExpModelWithConstantOffsetSepModel::new(x.clone(),(tau1_guess,tau2_guess));
+    let mut model = DoubleExpModelWithConstantOffsetSepModel::new(x.clone(),(tau1_guess,tau2_guess));
     // true parameters
     let tau1 = 1.;
     let tau2 = 3.;
@@ -143,18 +143,15 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
                  // generate some data without noise
-    let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
+    
+    let y = evaluate_complete_model_at_params(&mut model, &[tau1,tau2], &DVector::from(vec![c1, c2, c3]));
 
     let problem = LevMarProblemBuilder::new(model)
         .y(y)
         .build()
         .expect("Building valid problem should not panic");
-
+     
     let (problem, report) = LevMarSolver::new().minimize(problem);
-    assert!(
-        report.termination.was_successful(),
-        "Termination not successful"
-    );
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
     let (tau1_index, tau2_index) = if problem.params()[0] < problem.params()[1] {
@@ -180,4 +177,9 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     assert_relative_eq!(c3, c3_calc, epsilon = 1e-8);
     assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
+    
+    assert!(
+        report.termination.was_successful(),
+        "Termination not successful"
+    );
 }

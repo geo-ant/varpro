@@ -212,10 +212,11 @@ where
         //now that we have valid inputs, construct the levmar problem
         // 1) create weighted data
         let y_w = &weights * y;
-
+        
+        let params = model.params();
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
-        let problem = LevMarProblem {
+        let mut problem = LevMarProblem {
             // these parameters all come from the builder
             y_w,
             model,
@@ -223,6 +224,8 @@ where
             cached: None,
             weights,
         };
+        problem.set_params(&params);
+
 
         Ok(problem)
     }

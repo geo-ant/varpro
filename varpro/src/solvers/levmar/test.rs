@@ -1,4 +1,5 @@
 use super::*;
+use crate::model::test::MockSeparableNonlinearModel;
 use crate::test_helpers::differentiation::numerical_derivative;
 use crate::test_helpers::get_double_exponential_model_with_constant_offset;
 use approx::assert_relative_eq;
@@ -205,5 +206,20 @@ fn residuals_are_calculated_correctly_with_weights() {
 
 #[test]
 fn levmar_problem_set_params_sets_the_model_parameters_correctly() {
-    todo!()
+    let mut model = MockSeparableNonlinearModel::new(); 
+    let y = DVector::from_element(10, 0.);
+    let y_len = y.len();
+    let params = [1., 2., 3.];
+    model.expect_output_len().return_const(y_len);
+    model.expect_set_params().withf(move |p| p == &params).returning(|_|Ok(()));
+    model.expect_eval().returning(||Ok(DMatrix::zeros(10,10))); // the returned matrix eval is
+    // actually nonsense, but we don't care about that here
+    let mut problem = LevMarProblemBuilder::new(model)
+        .y(y)
+        .build()
+        .expect("Building a valid solver must not return an error.");
+    // since the returned eval matrix is nonsense, the svd calculation might fail, but we don't
+    // care about that here because we just need to know that the expected functions
+    // on the model are called with the correct parameters
+    _ = problem.set_params(&DVector::from_iterator(3,params.into_iter()));
 }

@@ -31,18 +31,23 @@ pub fn linspace<ScalarType: Float + Scalar>(
 /// evaluete the vector valued function of a model by evaluating the model at the given location
 /// `x` with (nonlinear) parameters `params` and by calculating the linear superposition of the basisfunctions
 /// with the given linear coefficients `linear_coeffs`.
-pub fn evaluate_complete_model<ScalarType, Model>(
-    model: &'_ Model,
+pub fn evaluate_complete_model_at_params<ScalarType, Model>(
+    model: &'_ mut Model,
+    params : &[ScalarType],
     linear_coeffs: &DVector<ScalarType>,
 ) -> DVector<ScalarType>
 where
     ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel<ScalarType>,
 {
-    (&model
+    let original_params = model.params();
+    model.set_params(params).expect("Setting params must not fail");
+    let eval = (&model
         .eval()
         .expect("Evaluating model must not produce error"))
-        * linear_coeffs
+        * linear_coeffs;
+    model.set_params(original_params.as_slice()).expect("Setting params must not fail");
+    eval
 }
 
 /// exponential decay f(t,tau) = exp(-t/tau)

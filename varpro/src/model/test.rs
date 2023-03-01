@@ -262,7 +262,6 @@ fn model_derivative_evaluation_error_cases() {
         .build()
         .expect("Model function creation should not fail, although function is bad");
 
-
     // deriv index 0 is tau1: this derivative is bad and should fail
     assert_matches!(
             model_with_bad_function.eval_partial_deriv( 0),
@@ -290,15 +289,6 @@ fn model_derivative_evaluation_error_cases() {
     assert_matches!(
             model_with_bad_function.eval_partial_deriv( 3),
             Err(ModelError::DerivativeIndexOutOfBounds { .. })
-        ,
-        "Derivative for invalid function must fail with correct error"
-    );
-
-    // check that if an incorrect amount of parameters is provided, then the evaluation fails
-    let _ = model_with_bad_function.set_params(&[1.,2.,3.,4.]);
-    assert_matches!(
-            model_with_bad_function.eval_partial_deriv( 1),
-            Err(ModelError::IncorrectParameterCount { .. })
         ,
         "Derivative for invalid function must fail with correct error"
     );
