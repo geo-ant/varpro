@@ -39,7 +39,7 @@ fn build_problem<Model: SeparableNonlinearModel<f64>>(
     let initial_guess = model.params();
     model.set_params(&[tau1,tau2]).expect("setting the model parameters must not fail");
 
-    let y = evaluate_complete_model(&model,  &DVector::from(vec![c1, c2, c3]));
+    let y = evaluate_complete_model_at_params(&mut model,  &[tau1,tau2],&DVector::from(vec![c1, c2, c3]));
     let mut problem = LevMarProblemBuilder::new(model)
         .y(y)
         .build()
