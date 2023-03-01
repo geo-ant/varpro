@@ -81,18 +81,15 @@ pub enum ModelBuildError {
     /// However, the library requires that the derivatives take all the parameters its base function
     /// takes in the same order.
     #[error(
-        "Incorrect parameter count: Given function parameters '{:?}' have length {}, but the provided function takes {} parameter arguments.",
-        params,
-        string_params_count,
-        function_argument_count,
+        "Incorrect number of parameters for function: expected {}, got {}",
+        expected,
+        actual
     )]
     IncorrectParameterCount {
-        /// the parameters that the function actually depends on
-        params: Vec<String>,
-        /// the number of parameters provided through the string api
-        string_params_count: usize,
-        /// the number of arguments this function actually takes
-        function_argument_count: usize,
+        /// the actual number of arguments
+        actual : usize,
+        /// the number of 
+        expected: usize,
     },
 
     /// Parameter names may not contain a comma separator, because this is most likely caused by a typo, i.e.

@@ -321,7 +321,12 @@ where
 
     pub fn initial_parameters(mut self, initial_parameters: Vec<ScalarType>) -> Self {
         if let Ok(model) = self.model_result.as_mut() {
-            model.initial_parameters = Some(initial_parameters);
+            let expected = model.parameter_names.len();
+            if expected != initial_parameters.len() {
+                self.model_result = Err(ModelBuildError::IncorrectParameterCount { expected , actual : initial_parameters.len()});
+            } else {
+                model.initial_parameters = Some(initial_parameters);
+            }
         }
         self
     }

@@ -32,10 +32,10 @@ pub enum ModelError {
     },
 
     /// It was tried to evaluate a model with an incorrect number of parameters
-    #[error("Model takes {} parameters, but {} were provide.", required, actual)]
+    #[error("Model expects {} parameters, but got {}", expected, actual)]
     IncorrectParameterCount {
         /// the number of parameters that are required for the model
-        required: usize,
+        expected: usize,
         /// the given number of parameters
         actual: usize,
     },

@@ -150,18 +150,19 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 }
 
 #[test]
-fn model_function_eval_fails_for_incorrect_number_of_model_parameters() {
+fn model_function_parameter_setting_fails_for_incorrect_number_of_parameters() {
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
-    let params = vec![1., 2., 3., 4., 5.];
-    let model = test_helpers::get_double_exponential_model_with_constant_offset(tvec,params);
+    let params = vec![1., 2.];
+    let mut model = test_helpers::get_double_exponential_model_with_constant_offset(tvec,params);
     assert_eq!(
         model.parameter_count(),
         2,
         "double exponential model should have 2 params"
     );
-    // now deliberately provide a wrong number of params to eval
+    // now deliberately provide a wrong number of parameters to
+    // set_params and make sure this fails
     assert_matches!(
-        model.eval(),
+        model.set_params(&[1.]),
         Err(ModelError::IncorrectParameterCount { .. })
     );
 }

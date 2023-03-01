@@ -187,17 +187,72 @@ fn builder_produces_correct_model_from_functions() {
 
 #[test]
 fn test_model_builder_fails_when_x_data_is_missing() {
-    todo!()
+
+    fn foo(_:&DVector<f64>, _:f64, _:f64) -> DVector<f64> {
+        todo!()
+    }
+
+    let result = SeparableModelBuilder::<f64>::new(&["a","b","c"])
+        // function of a,c
+        .function(&["a","c"], foo)
+        .partial_deriv("a", foo)
+        .partial_deriv("c", |_x:&DVector<f64>,_a:f64,_c:f64|todo!()) // for this syntax we need to
+        // specify the types of the arguments of the closure. 
+        // function of b,c
+        .function(&["b","c"],foo)
+        .partial_deriv("b", foo)
+        .partial_deriv("c", foo)
+        .initial_parameters(vec![1.,2.,3.])
+        .build();
+    // make sure that the error indicates the missing x data
+    assert_matches!(result, Err(ModelBuildError::MissingX));
 }
 
 #[test]
 fn test_model_builder_fails_when_initial_parameters_are_missing() {
-    todo!()
+    fn foo(_:&DVector<f64>, _:f64, _:f64) -> DVector<f64> {
+        todo!()
+    }
+
+    let result = SeparableModelBuilder::<f64>::new(&["a","b","c"])
+        // function of a,c
+        .function(&["a","c"], foo)
+        .partial_deriv("a", foo)
+        .partial_deriv("c", foo) // for this syntax we need to
+        // specify the types of the arguments of the closure. 
+        // function of b,c
+        .function(&["b","c"],foo)
+        .partial_deriv("b", foo)
+        .partial_deriv("c", foo)
+        .independent_variable(DVector::from_vec(vec![1.,2.,3.]))
+        .build();
+    // make sure that the error indicates the initial parameters are missing
+    assert_matches!(result, Err(ModelBuildError::MissingInitialParameters));
 }
 
 #[test] 
 fn test_model_builder_fails_when_initial_parameters_have_incorrect_parameter_count() {
-    todo!()
+    fn foo(_:&DVector<f64>, _:f64, _:f64) -> DVector<f64> {
+        todo!()
+    }
+
+    let result = SeparableModelBuilder::<f64>::new(&["a","b","c"])
+        // function of a,c
+        .function(&["a","c"], foo)
+        .partial_deriv("a", foo)
+        .partial_deriv("c", foo) // for this syntax we need to
+        // specify the types of the arguments of the closure. 
+        // function of b,c
+        .function(&["b","c"],foo)
+        .partial_deriv("b", foo)
+        .partial_deriv("c", foo)
+        .independent_variable(DVector::from_vec(vec![1.,2.,3.,4.,5.]))
+        .initial_parameters(vec![1.,3.])
+        .build();
+
+    // make sure the error indicates the initial parameters 
+    // have the wonrg number of parameters
+    assert_matches!(result, Err(ModelBuildError::IncorrectParameterCount{..}));
 }
 
 /// a function that calculates exp( -(t-t0)/tau)) for every location t

@@ -134,13 +134,8 @@ where
         Ok(())
     } else {
         Err(ModelBuildError::IncorrectParameterCount {
-            params: function_parameters
-                .iter()
-                .cloned()
-                .map(|p| p.into())
-                .collect(),
-            string_params_count: function_parameters.len(),
-            function_argument_count: F::ARGUMENT_COUNT,
+            actual: function_parameters.len(),
+            expected: F::ARGUMENT_COUNT,
         })
     }
 }

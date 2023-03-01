@@ -278,6 +278,12 @@ where
     }
 
     fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error> {
+        if parameters.len() != self.parameter_count() {
+            return Err(ModelError::IncorrectParameterCount {
+                expected: self.parameter_count(),
+                actual: parameters.len(),
+            });
+        }
         self.current_parameters = parameters.to_vec();
         Ok(())
     }
@@ -293,7 +299,7 @@ where
         let parameters = &self.current_parameters;
         if parameters.len() != self.parameter_count() {
             return Err(ModelError::IncorrectParameterCount {
-                required: self.parameter_count(),
+                expected: self.parameter_count(),
                 actual: parameters.len(),
             });
         }
@@ -325,7 +331,7 @@ where
         let parameters = &self.current_parameters;
         if parameters.len() != self.parameter_names.len() {
             return Err(ModelError::IncorrectParameterCount {
-                required: self.parameter_names.len(),
+                expected: self.parameter_names.len(),
                 actual: parameters.len(),
             });
         }
