@@ -30,9 +30,14 @@ fn builder_assigns_fields_correctly_simple_case() {
     let y = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
-    let output_len = y.len();
-    model.expect_output_len().returning(move || output_len);
-
+    let y_len = y.len();
+    let params_array = [1., 2., 3.];
+    let params_vector = DVector::from_column_slice(&params_array);
+    model.expect_output_len().return_const(y_len);
+    model.expect_params().return_const(params_vector.clone());
+    model.expect_set_params().withf(move |p| p == &params_array).returning(|_|Ok(()));
+    model.expect_eval().returning(move ||Ok(DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
+    
     // build a problem with default epsilon
     let builder = LevMarProblemBuilder::new(model)
         .y(y.clone());
@@ -43,8 +48,8 @@ fn builder_assigns_fields_correctly_simple_case() {
     assert_eq!(problem.y_w, y);
     assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
     assert!(
-        problem.cached.is_none(),
-        "cached calculations must not be initialized on build"
+        problem.cached.is_some(),
+        "cached calculations are assigned when problem is built"
     );
 }
 
