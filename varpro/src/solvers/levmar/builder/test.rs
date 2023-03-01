@@ -63,8 +63,13 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
 
-    let output_len = y.len();
-    model.expect_output_len().returning(move || output_len);
+    let y_len = y.len();
+    let params_array = [1., 2., 3.];
+    let params_vector = DVector::from_column_slice(&params_array);
+    model.expect_output_len().return_const(y_len);
+    model.expect_params().return_const(params_vector.clone());
+    model.expect_set_params().withf(move |p| p == &params_array).returning(|_|Ok(()));
+    model.expect_eval().returning(move ||Ok(DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
     // now check that the given epsilon is also passed correctly to the model
     // and also that the weights are correctly passed and used to weigh the original data
     let weights = 2. * &y;
