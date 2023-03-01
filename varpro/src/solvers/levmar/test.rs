@@ -205,21 +205,19 @@ fn residuals_are_calculated_correctly_with_weights() {
 }
 
 #[test]
-fn levmar_problem_set_params_sets_the_model_parameters_correctly() {
+fn levmar_problem_set_params_sets_the_model_parameters_when_built() {
     let mut model = MockSeparableNonlinearModel::new(); 
     let y = DVector::from_element(10, 0.);
     let y_len = y.len();
-    let params = [1., 2., 3.];
+    let params_array = [1., 2., 3.];
+    let params_vector = DVector::from_column_slice(&params_array);
     model.expect_output_len().return_const(y_len);
-    model.expect_set_params().withf(move |p| p == &params).returning(|_|Ok(()));
-    model.expect_eval().returning(||Ok(DMatrix::zeros(10,10))); // the returned matrix eval is
+    model.expect_params().return_const(params_vector.clone());
+    model.expect_set_params().withf(move |p| p == &params_array).returning(|_|Ok(()));
+    model.expect_eval().returning(move ||Ok(DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
     // actually nonsense, but we don't care about that here
-    let mut problem = LevMarProblemBuilder::new(model)
+    let  _problem = LevMarProblemBuilder::new(model)
         .y(y)
         .build()
         .expect("Building a valid solver must not return an error.");
-    // since the returned eval matrix is nonsense, the svd calculation might fail, but we don't
-    // care about that here because we just need to know that the expected functions
-    // on the model are called with the correct parameters
-    _ = problem.set_params(&DVector::from_iterator(3,params.into_iter()));
 }
