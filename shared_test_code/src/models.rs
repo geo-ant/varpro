@@ -9,14 +9,18 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// the x vector associated with this model
     x_vector : DVector<f64>,
     /// current parameters [tau1,tau2]
-    params : [f64;2]
+    params : [f64;2],
+    /// precalculated evaluation of the model
+    eval : DMatrix<f64>,
 }
 
 impl DoubleExpModelWithConstantOffsetSepModel {
     pub fn new(x_vector : DVector<f64>,(tau1_guess,tau2_guess):(f64,f64)) -> Self {
+        let x_len = x_vector.len();
         let mut ret = Self {
             x_vector, 
             params : [0.,0.],//<-- will be overwritten by set_params
+            eval : DMatrix::zeros(x_len, 3)
         };
         ret.set_params(&[tau1_guess,tau2_guess]).unwrap();
         ret
@@ -39,16 +43,7 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
     fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
         self.params[0] = parameters[0];
         self.params[1] = parameters[1];
-        Ok(())
-    }
 
-    fn params(&self) -> DVector<f64> {
-        DVector::from_iterator(2, self.params.clone().into_iter())
-    }
-
-    fn eval(
-        &self,
-    ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
         let location = &self.x_vector;
         let parameters = &self.params;
         // parameters expected in this order
@@ -59,14 +54,21 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         let f1 = location.map(|x| f64::exp(-x / tau1));
         let f2 = location.map(|x| f64::exp(-x / tau2));
 
-        let mut basefuncs = unsafe {
-            nalgebra::DMatrix::uninit(Dyn(location.len()), nalgebra::Dyn(3)).assume_init()
-        };
 
-        basefuncs.set_column(0, &f1);
-        basefuncs.set_column(1, &f2);
-        basefuncs.set_column(2, &DVector::from_element(location.len(), 1.));
-        Ok(basefuncs)
+        self.eval.set_column(0, &f1);
+        self.eval.set_column(1, &f2);
+        self.eval.set_column(2, &DVector::from_element(location.len(), 1.));
+        Ok(())
+    }
+
+    fn params(&self) -> DVector<f64> {
+        DVector::from_iterator(2, self.params.clone().into_iter())
+    }
+
+    fn eval(
+        &self,
+    ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
+        Ok(self.eval.clone())
     }
 
     fn eval_partial_deriv(
@@ -80,12 +82,16 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         // tau_i, we can simplify calculations here
 
         let tau = parameters[derivative_index];
-        let df = location.map(|x| x / (tau * tau) * f64::exp(-x / tau));
+        // the only nonzero derivative is the derivative of the exp(-x/tau) for 
+        // the corresponding tau at derivative_index
+        // we can use the precalculated results so we don't have to use the 
+        // exponential function again
+        let df = location.map(|x| x / (tau * tau)).component_mul(&self.eval.column(derivative_index));
 
-        let mut basefuncs = DMatrix::zeros(location.len(), 3);
+        let mut derivatives = DMatrix::zeros(location.len(), 3);
 
-        basefuncs.set_column(derivative_index, &df);
-        Ok(basefuncs)
+        derivatives.set_column(derivative_index, &df);
+        Ok(derivatives)
     }
 
     fn output_len(&self) -> usize {
