@@ -107,7 +107,9 @@ where
     /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
     /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
     fn set_params(&mut self, params: &Vector<ScalarType, Dyn, Self::ParameterStorage>) {
-        self.model.set_params(params.as_slice());
+        if self.model.set_params(params.as_slice()).is_err() {
+            self.cached = None;
+        }
         // matrix of weighted model function values
         let Phi_w = self
             .model

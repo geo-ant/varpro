@@ -250,7 +250,7 @@ fn model_derivative_evaluation_produces_correct_result() {
 // * the derivative is requested for a wrong number of parameter arguments
 fn model_derivative_evaluation_error_cases() {
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
-    let mut model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
+    let model_with_bad_function = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
         .independent_variable(tvec)
         .function(&["tau2"], test_helpers::exp_decay)
         .partial_deriv("tau2", test_helpers::exp_decay_dtau)

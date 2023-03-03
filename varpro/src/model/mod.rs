@@ -18,6 +18,7 @@ pub mod test;
 /// Represents an abstraction for a separable nonlinear model
 ///
 /// # Introduction
+///
 /// A separable nonlinear model is
 /// a nonlinear, vector valued function function `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` which depends on
 /// * an independent variable `$\vec{x}$`, e.g. a location, time, etc...

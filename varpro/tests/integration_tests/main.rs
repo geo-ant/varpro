@@ -65,6 +65,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         .expect("Building valid problem should not panic");
 
     let (problem, report) = LevMarSolver::new().minimize(problem);
+    assert!(report.termination.was_successful(),"Levenberg Marquardt did not converge");
     let toc = Instant::now();
     println!(
         "varpro: elapsed time for double exponential fit = {} µs = {} ms",
