@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, DVector, Dyn};
+use nalgebra::{DMatrix, DVector, Dyn, U2};
 use varpro::{model::errors::ModelError, prelude::*};
 
 #[derive(Clone)]
@@ -29,6 +29,7 @@ impl DoubleExpModelWithConstantOffsetSepModel {
 
 impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
     type Error = ModelError;
+    type ParameterDim = U2;
 
     #[inline]
     fn parameter_count(&self) -> usize {

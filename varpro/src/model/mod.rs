@@ -1,7 +1,7 @@
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector, Dyn};
+use nalgebra::{DMatrix, DVector, Dyn, Dim};
 use num_traits::Zero;
 
 mod detail;
@@ -100,6 +100,8 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// to return an error, it is possible to specify [`std::convert::Infallible`]
     /// as the associated `Error` type.
     type Error: std::error::Error;
+
+    type ParameterDim: Dim;
 
     /// must return the number of *nonlinear* parameters that this model depends on.
     /// This does not include the number of linear *coefficients*.
@@ -269,6 +271,7 @@ where
     ScalarType: Scalar + Zero,
 {
     type Error = ModelError;
+    type ParameterDim = Dyn;
 
     fn parameter_count(&self) -> usize {
         self.parameter_names.len()

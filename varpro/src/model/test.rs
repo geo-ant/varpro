@@ -1,6 +1,7 @@
 use nalgebra::DMatrix;
 use nalgebra::DVector;
 use assert_matches::assert_matches;
+use nalgebra::Dyn;
 use crate::model::builder::SeparableModelBuilder;
 use crate::model::errors::ModelError;
 use crate::prelude::*;
@@ -49,6 +50,7 @@ where S: Into<String>{
 
 impl SeparableNonlinearModel<f64> for MockSeparableNonlinearModel {
     type Error = MockModelError;
+    type ParameterDim = Dyn;
 
     fn parameter_count(&self) -> usize {
         self.parameter_count()
