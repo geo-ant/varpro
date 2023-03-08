@@ -35,7 +35,7 @@ fn builder_assigns_fields_correctly_simple_case() {
     let params_vector = DVector::from_column_slice(&params_array);
     model.expect_output_len().return_const(y_len);
     model.expect_params().return_const(params_vector.clone());
-    model.expect_set_params().withf(move |p| p == &params_array).returning(|_|Ok(()));
+    model.expect_set_params().withf(move |p| p == &DVector::from(params_vector.clone())).returning(|_|Ok(()));
     model.expect_eval().returning(move ||Ok(DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
     
     // build a problem with default epsilon
@@ -68,7 +68,7 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
     let params_vector = DVector::from_column_slice(&params_array);
     model.expect_output_len().return_const(y_len);
     model.expect_params().return_const(params_vector.clone());
-    model.expect_set_params().withf(move |p| p == &params_array).returning(|_|Ok(()));
+    model.expect_set_params().withf(move |p| p == &DVector::from(params_vector.clone())).returning(|_|Ok(()));
     model.expect_eval().returning(move ||Ok(DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
     // now check that the given epsilon is also passed correctly to the model
     // and also that the weights are correctly passed and used to weigh the original data

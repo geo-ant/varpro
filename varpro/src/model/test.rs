@@ -14,10 +14,10 @@ mockall::mock! {
     /// MockSeparableNonlinearModel that can be used 
     /// in unit and integration tests inside this crate
     pub SeparableNonlinearModel {
-       pub fn parameter_count(&self) -> usize;
+       pub fn parameter_count(&self) -> Dyn;
        pub fn base_function_count(&self) -> usize;
        pub fn output_len(&self) -> usize;
-       pub fn set_params(&mut self, parameters : &[f64]) -> Result<(),MockModelError>;
+       pub fn set_params(&mut self, parameters : DVector<f64>) -> Result<(),MockModelError>;
        pub fn params(&self) -> DVector<f64>;
        pub fn eval(
             &self,
@@ -52,7 +52,7 @@ impl SeparableNonlinearModel<f64> for MockSeparableNonlinearModel {
     type Error = MockModelError;
     type ParameterDim = Dyn;
 
-    fn parameter_count(&self) -> usize {
+    fn parameter_count(&self) -> Dyn {
         self.parameter_count()
     }
 
@@ -64,7 +64,7 @@ impl SeparableNonlinearModel<f64> for MockSeparableNonlinearModel {
        self.output_len()  
     }
 
-    fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
+    fn set_params(&mut self, parameters : DVector<f64>) -> Result<(),Self::Error> {
         self.set_params(parameters)
     }
 
@@ -91,7 +91,7 @@ fn model_gets_initialized_with_correct_parameter_names_and_count() {
     let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10),vec![1.,2.]);
     assert_eq!(
         model.parameter_count(),
-        2,
+        Dyn(2),
         "Double exponential model has 2 parameters"
     );
     assert_eq!(
@@ -158,13 +158,13 @@ fn model_function_parameter_setting_fails_for_incorrect_number_of_parameters() {
     let mut model = test_helpers::get_double_exponential_model_with_constant_offset(tvec,params);
     assert_eq!(
         model.parameter_count(),
-        2,
+        Dyn(2),
         "double exponential model should have 2 params"
     );
     // now deliberately provide a wrong number of parameters to
     // set_params and make sure this fails
     assert_matches!(
-        model.set_params(&[1.]),
+        model.set_params(DVector::from_vec(vec![1.])),
         Err(ModelError::IncorrectParameterCount { .. })
     );
 }

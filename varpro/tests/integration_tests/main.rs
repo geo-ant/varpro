@@ -1,4 +1,5 @@
 use nalgebra::DVector;
+use nalgebra::Vector2;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::linspace;
@@ -48,7 +49,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
                  // generate some data without noise
-    let y = evaluate_complete_model_at_params(&mut model, &[tau1,tau2],  &DVector::from(vec![c1, c2, c3]));
+    let y = evaluate_complete_model_at_params(&mut model, DVector::from_vec(vec![tau1,tau2]),  &DVector::from(vec![c1, c2, c3]));
 
     // for solving the fitting problem using only the levenberg_marquardt crate                  the crate cannot deal with this:     &[tau1_guess,tau2_guess,c1,c2,c3]
     // we have to make the initial guesses closer to the true values for the Levenberg Marquart Algo
@@ -145,7 +146,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let c3 = 1.; //<- coefficient of constant offset
                  // generate some data without noise
     
-    let y = evaluate_complete_model_at_params(&mut model, &[tau1,tau2], &DVector::from(vec![c1, c2, c3]));
+    let y = evaluate_complete_model_at_params(&mut model, Vector2::new( tau1,tau2 ), &DVector::from(vec![c1, c2, c3]));
 
     let problem = LevMarProblemBuilder::new(model)
         .y(y)

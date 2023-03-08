@@ -2,6 +2,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::ComplexField;
 use nalgebra::DVector;
+use nalgebra::DefaultAllocator;
+use nalgebra::OVector;
 use nalgebra::RealField;
 use nalgebra::Scalar;
 use num_traits::Float;
@@ -23,10 +25,13 @@ struct DoubleExponentialParameters {
     c3: f64,
 }
 
-fn build_problem<Model: SeparableNonlinearModel<f64>>(
+fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<f64, Model> {
+) -> LevMarProblem<f64, Model> 
+where Model: SeparableNonlinearModel<f64>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>
+{
     let DoubleExponentialParameters {
         tau1,
         tau2,
@@ -37,7 +42,7 @@ fn build_problem<Model: SeparableNonlinearModel<f64>>(
     
     // save the initial guess so that we can reset the model to those
     let initial_guess = model.params();
-    model.set_params(&[tau1,tau2]).expect("setting the model parameters must not fail");
+    model.set_params(OVector::from_vec(vec![tau1,tau2])).expect("setting the model parameters must not fail");
 
     let y = evaluate_complete_model_at_params(&mut model,  &[tau1,tau2],&DVector::from(vec![c1, c2, c3]));
     let mut problem = LevMarProblemBuilder::new(model)
@@ -58,6 +63,7 @@ fn run_minimization<S, M>(problem: LevMarProblem<S, M>) -> [S; 5]
 where
     S: Scalar + Copy + ComplexField + Float + RealField,
     M: SeparableNonlinearModel<S>,
+    DefaultAllocator: nalgebra::allocator::Allocator<S, M::ParameterDim>
 {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
