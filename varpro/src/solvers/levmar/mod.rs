@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::storage::Owned;
-use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD, DefaultAllocator, OMatrix, UninitMatrix};
+use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD, DefaultAllocator, UninitMatrix};
 
 mod builder;
 #[cfg(test)]
