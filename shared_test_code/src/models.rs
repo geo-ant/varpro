@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, DVector, Dyn, U2, OVector};
+use nalgebra::{DMatrix, DVector, Dyn, U2, OVector, Vector2};
 use varpro::{model::errors::ModelError, prelude::*};
 
 #[derive(Clone)]
@@ -9,7 +9,7 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// the x vector associated with this model
     x_vector : DVector<f64>,
     /// current parameters [tau1,tau2]
-    params : [f64;2],
+    params : Vector2<f64>,
     /// precalculated evaluation of the model
     eval : DMatrix<f64>,
 }
@@ -19,10 +19,10 @@ impl DoubleExpModelWithConstantOffsetSepModel {
         let x_len = x_vector.len();
         let mut ret = Self {
             x_vector, 
-            params : [0.,0.],//<-- will be overwritten by set_params
+            params : Vector2::zeros(),//<-- will be overwritten by set_params
             eval : DMatrix::zeros(x_len, 3)
         };
-        ret.set_params(&[tau1_guess,tau2_guess]).unwrap();
+        ret.set_params(Vector2::new(tau1_guess, tau2_guess)).unwrap();
         ret
     }
 }
@@ -32,8 +32,8 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
     type ParameterDim = U2;
 
     #[inline]
-    fn parameter_count(&self) -> usize {
-        2
+    fn parameter_count(&self) -> U2 {
+        U2{}
     }
 
     #[inline]
@@ -41,7 +41,7 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         3
     }
 
-    fn set_params(&mut self, parameters : &[f64]) -> Result<(),Self::Error> {
+    fn set_params(&mut self, parameters : Vector2<f64>) -> Result<(),Self::Error> {
         self.params[0] = parameters[0];
         self.params[1] = parameters[1];
 
@@ -63,7 +63,7 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
     }
 
     fn params(&self) -> OVector<f64, Self::ParameterDim> {
-        DVector::from_iterator(2, self.params.clone().into_iter())
+        self.params.clone()
     }
 
     fn eval(
