@@ -3,9 +3,11 @@ use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::ComplexField;
 use nalgebra::DVector;
 use nalgebra::DefaultAllocator;
+use nalgebra::Dyn;
 use nalgebra::OVector;
 use nalgebra::RealField;
 use nalgebra::Scalar;
+use nalgebra::U1;
 use num_traits::Float;
 use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
@@ -30,7 +32,9 @@ fn build_problem<Model>(
     mut model: Model,
 ) -> LevMarProblem<f64, Model> 
 where Model: SeparableNonlinearModel<f64>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim,Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<usize, Model::ParameterDim>,
 {
     let DoubleExponentialParameters {
         tau1,
@@ -41,21 +45,13 @@ where Model: SeparableNonlinearModel<f64>,
     } = true_parameters;
     
     // save the initial guess so that we can reset the model to those
-    let initial_guess = model.params();
-    model.set_params(OVector::from_vec(vec![tau1,tau2])).expect("setting the model parameters must not fail");
+    let params = OVector::from_vec_generic(model.parameter_count(), U1, vec![tau1,tau2]);
 
-    let y = evaluate_complete_model_at_params(&mut model,  &[tau1,tau2],&DVector::from(vec![c1, c2, c3]));
-    let mut problem = LevMarProblemBuilder::new(model)
+    let y = evaluate_complete_model_at_params(&mut model,  params,&DVector::from(vec![c1, c2, c3]));
+    let  problem = LevMarProblemBuilder::new(model)
         .y(y)
         .build()
         .expect("Building valid problem should not panic");
-    
-    // now reset the model parameters to the initial guesses
-    // that the model had before
-    // we have to do that through the levmar problem beause the
-    // model was moved into it
-    problem.set_params(&initial_guess);
-
     problem
 }
 
@@ -63,7 +59,9 @@ fn run_minimization<S, M>(problem: LevMarProblem<S, M>) -> [S; 5]
 where
     S: Scalar + Copy + ComplexField + Float + RealField,
     M: SeparableNonlinearModel<S>,
-    DefaultAllocator: nalgebra::allocator::Allocator<S, M::ParameterDim>
+    DefaultAllocator: nalgebra::allocator::Allocator<S, M::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<S, M::ParameterDim,Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<usize, M::ParameterDim>,
 {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
