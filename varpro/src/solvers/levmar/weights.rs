@@ -1,5 +1,5 @@
 use crate::linalg_helpers::DiagDMatrix;
-use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Scalar};
+use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Scalar, OMatrix, Dyn, Dim};
 use std::ops::Mul;
 
 /// a variant for different weights that can be applied to a least squares problem
@@ -74,13 +74,14 @@ where
 /// If the matrix matrix multiplication fails because of incorrect dimensions.
 /// (unit weights never panic)
 #[allow(non_snake_case)]
-impl<ScalarType> Mul<DMatrix<ScalarType>> for &Weights<ScalarType>
+impl<ScalarType,C> Mul<OMatrix<ScalarType,Dyn,C>> for &Weights<ScalarType>
 where
     ScalarType: ClosedMul + Scalar + ComplexField,
+    C : Dim
 {
-    type Output = DMatrix<ScalarType>;
+    type Output = OMatrix<ScalarType,Dyn,C>;
 
-    fn mul(self, rhs: DMatrix<ScalarType>) -> Self::Output {
+    fn mul(self, rhs: OMatrix<ScalarType,Dyn,C>) -> Self::Output {
         match self {
             Weights::Unit => rhs,
             Weights::Diagonal(W) => W * &rhs,
@@ -88,24 +89,24 @@ where
     }
 }
 
-/// Matrix-vector product of the diagonal matrix and the given vector
-/// # Panics
-/// operation panics if the matrix and vector dimensions are incorrect for a product
-/// (unit weights never panic)
-#[allow(non_snake_case)]
-impl<ScalarType> Mul<DVector<ScalarType>> for &Weights<ScalarType>
-where
-    ScalarType: ClosedMul + Scalar + ComplexField,
-{
-    type Output = DVector<ScalarType>;
+// /// Matrix-vector product of the diagonal matrix and the given vector
+// /// # Panics
+// /// operation panics if the matrix and vector dimensions are incorrect for a product
+// /// (unit weights never panic)
+// #[allow(non_snake_case)]
+// impl<ScalarType> Mul<DVector<ScalarType>> for &Weights<ScalarType>
+// where
+//     ScalarType: ClosedMul + Scalar + ComplexField,
+// {
+//     type Output = DVector<ScalarType>;
 
-    fn mul(self, rhs: DVector<ScalarType>) -> Self::Output {
-        match self {
-            Weights::Unit => rhs,
-            Weights::Diagonal(W) => W * &rhs,
-        }
-    }
-}
+//     fn mul(self, rhs: DVector<ScalarType>) -> Self::Output {
+//         match self {
+//             Weights::Unit => rhs,
+//             Weights::Diagonal(W) => W * &rhs,
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod test {

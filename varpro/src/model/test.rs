@@ -51,13 +51,14 @@ where S: Into<String>{
 impl SeparableNonlinearModel<f64> for MockSeparableNonlinearModel {
     type Error = MockModelError;
     type ParameterDim = Dyn;
+    type ModelDim = Dyn;
 
     fn parameter_count(&self) -> Dyn {
         self.parameter_count()
     }
 
-    fn base_function_count(&self) -> usize {
-        self.base_function_count()
+    fn base_function_count(&self) -> Dyn {
+        Dyn(self.base_function_count())
     }
 
     fn output_len(&self) -> usize {

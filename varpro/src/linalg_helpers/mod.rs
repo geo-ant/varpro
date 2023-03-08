@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test;
 
-use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Dyn, Scalar};
+use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Dyn, Scalar, OMatrix, Dim, UninitMatrix};
 use std::ops::Mul;
 
 /// A square diagonal matrix with dynamic dimension. Off-diagonal entries are assumed zero.
@@ -57,49 +57,33 @@ where
 /// Panics if the dimensions of the matrices do not fit for matrix multiplication
 /// # Result
 /// The result of the matrix multiplication as a new dynamically sized matrix
-impl<ScalarType> Mul<&DMatrix<ScalarType>> for &DiagDMatrix<ScalarType>
+impl<ScalarType,C> Mul<&OMatrix<ScalarType,Dyn,C>> for &DiagDMatrix<ScalarType>
 where
     ScalarType: ClosedMul + Scalar + ComplexField,
+    C : Dim,
 {
-    type Output = DMatrix<ScalarType>;
+    type Output = OMatrix<ScalarType,Dyn,C>;
 
-    fn mul(self, rhs: &DMatrix<ScalarType>) -> Self::Output {
+    fn mul(self, rhs: &OMatrix<ScalarType,Dyn,C>) -> Self::Output {
         assert_eq!(
             self.ncols(),
             rhs.nrows(),
             "Matrix dimensions incorrect for diagonal matrix multiplication."
         );
 
+        let rows = Dyn(self.nrows());
+        let cols = C::from_usize(rhs.ncols());
         // this isn't an awesome pattern, but it is safe since we fill the Matrix
         // with valid values below. Ideally we would first call the
         // copy_from functionality below, but we can't because the Scalar
-        // trait bounds will screw us. See https://github.com/dimforge/nalgebra/pull/949
+        // trait bounds will screw us. See htt
         let mut result_matrix =
-            unsafe { DMatrix::uninit(Dyn(self.nrows()), Dyn(rhs.ncols())).assume_init() };
+            unsafe { UninitMatrix::uninit(rows, cols).assume_init() };
 
         for (col_idx, mut col) in result_matrix.column_iter_mut().enumerate() {
             col.copy_from(&self.diagonal.component_mul(&rhs.column(col_idx)));
         }
 
         result_matrix
-    }
-}
-
-/// Matrix-vector product of the diagonal matrix and the given vector
-/// # Panics
-/// operation panics if the matrix and vector dimensions are incorrect for a product
-impl<ScalarType> Mul<&DVector<ScalarType>> for &DiagDMatrix<ScalarType>
-where
-    ScalarType: ClosedMul + Scalar + ComplexField,
-{
-    type Output = DVector<ScalarType>;
-
-    fn mul(self, rhs: &DVector<ScalarType>) -> Self::Output {
-        assert_eq!(
-            self.ncols(),
-            rhs.len(),
-            "Matrix dimensions incorrect for diagonal matrix multiplication."
-        );
-        self.diagonal.component_mul(rhs)
     }
 }

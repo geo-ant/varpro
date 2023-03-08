@@ -104,6 +104,8 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar>
 
     type ParameterDim: Dim;
 
+    type ModelDim: Dim;
+
     /// must return the number of *nonlinear* parameters that this model depends on.
     /// This does not include the number of linear *coefficients*.
     /// The parameters passed to `eval` and `eval_partial_deriv` must
@@ -114,7 +116,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar>
     /// This is equal to the number of *linear coefficients* of the model.
     /// This is also equal to the number of _columns_ of the matrices returned
     /// from the `eval` and `eval_partial_deriv` methods.
-    fn base_function_count(&self) -> usize;
+    fn base_function_count(&self) -> Self::ModelDim;
     
     fn output_len(&self) -> usize;
 
@@ -273,13 +275,14 @@ where
 {
     type Error = ModelError;
     type ParameterDim = Dyn;
+    type ModelDim = Dyn;
 
     fn parameter_count(&self) -> Dyn {
         Dyn(self.parameter_names.len())
     }
 
-    fn base_function_count(&self) -> usize {
-        self.basefunctions.len()
+    fn base_function_count(&self) -> Self::ModelDim {
+        Dyn(self.basefunctions.len())
     }
 
     fn set_params(&mut self, parameters : DVector<ScalarType>) -> Result<(),Self::Error> {
@@ -314,7 +317,7 @@ where
         // this pattern is not great, but the trait bounds in copy_from still
         // prevent us from doing something better
         let mut function_value_matrix =
-            unsafe { DMatrix::uninit(Dyn(nrows), Dyn(ncols)).assume_init() };
+            unsafe { DMatrix::uninit(Dyn(nrows), ncols).assume_init() };
 
         for (basefunc, mut column) in self
             .basefunctions
