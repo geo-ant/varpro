@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::storage::Owned;
-use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD};
+use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD, DefaultAllocator, OMatrix, UninitMatrix};
 
 mod builder;
 #[cfg(test)]
@@ -43,6 +43,7 @@ pub struct LevMarProblem<ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
 {
     /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
@@ -66,7 +67,9 @@ where
 impl<ScalarType,Model> std::fmt::Debug for LevMarProblem<ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
-    Model: SeparableNonlinearModel<ScalarType>, {
+    Model: SeparableNonlinearModel<ScalarType>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LevMarProblem").field("y_w", &self.y_w).field("model", &"/* omitted */").field("svd_epsilon", &self.svd_epsilon).field("weights", &self.weights).field("cached", &self.cached).finish()
     }
@@ -76,6 +79,7 @@ impl<ScalarType, Model> LevMarProblem<ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
 {
     /// Get the linear coefficients for the current problem. After a successful pass of the solver,
     /// this contains a value with the best fitting linear coefficients
@@ -90,24 +94,27 @@ where
     }
 }
 
-impl<ScalarType, Model> LeastSquaresProblem<ScalarType, Dyn, Dyn>
+impl<ScalarType, Model> LeastSquaresProblem<ScalarType, Dyn, Model::ParameterDim>
     for LevMarProblem<ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Mul<ScalarType, Output = ScalarType> + Float,
     Model: SeparableNonlinearModel<ScalarType>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim,Dyn>,
+
 {
     type ResidualStorage = Owned<ScalarType, Dyn>;
-    type JacobianStorage = Owned<ScalarType, Dyn, Dyn>;
-    type ParameterStorage = Owned<ScalarType, Dyn>;
+    type JacobianStorage = Owned<ScalarType, Dyn, Model::ParameterDim>;
+    type ParameterStorage = Owned<ScalarType, Model::ParameterDim>;
 
     #[allow(non_snake_case)]
     /// Set the (nonlinear) model parameters `$\vec{\alpha}$` and update the internal state of the
     /// problem accordingly. The parameters are expected in the same order that the parameter
     /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
     /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
-    fn set_params(&mut self, params: &Vector<ScalarType, Dyn, Self::ParameterStorage>) {
-        if self.model.set_params(params.as_slice()).is_err() {
+    fn set_params(&mut self, params: &Vector<ScalarType, Model::ParameterDim, Self::ParameterStorage>) {
+        if self.model.set_params(params.clone()).is_err() {
             self.cached = None;
         }
         // matrix of weighted model function values
@@ -148,7 +155,7 @@ where
     /// names given on model creation. E.g. if the parameters at model creation where given as
     /// `&["tau","beta"]`, then the returned vector is `$\vec{\alpha} = (\tau,\beta)^T$`, i.e.
     /// the value of parameter `$\tau$` is at index `0` and the value of `$\beta$` at index `1`.
-    fn params(&self) -> Vector<ScalarType, Dyn, Self::ParameterStorage> {
+    fn params(&self) -> Vector<ScalarType, Model::ParameterDim, Self::ParameterStorage> {
         self.model.params()
     }
 
@@ -169,7 +176,7 @@ where
     /// Calculate the Jacobian matrix of the *weighted* residuals `$\vec{r}_w(\vec{\alpha})$`.
     /// For more info on how the Jacobian is calculated in the VarPro algorithm, see
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
-    fn jacobian(&self) -> Option<Matrix<ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
+    fn jacobian(&self) -> Option<Matrix<ScalarType, Dyn, Model::ParameterDim, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
         if let Some(CachedCalculations {
             current_residuals: _,
@@ -180,7 +187,7 @@ where
             // this is not a great pattern, but the trait bounds on copy_from
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
-                DMatrix::uninit(Dyn(self.y_w.len()), Dyn(self.model.parameter_count()))
+                UninitMatrix::uninit(Dyn(self.y_w.len()), self.model.parameter_count())
                     .assume_init()
             };
 

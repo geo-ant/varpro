@@ -389,7 +389,7 @@ impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel
                 parameter_names : self.parameter_names, 
                 basefunctions: self.basefunctions,
                 x_vector,
-                current_parameters:initial_parameters
+                current_parameters:DVector::from_vec(initial_parameters),
             })
         }
     }

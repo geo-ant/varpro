@@ -1,7 +1,7 @@
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector, Dyn, Dim};
+use nalgebra::{DMatrix, DVector, Dyn, Dim, OVector, DefaultAllocator};
 use num_traits::Zero;
 
 mod detail;
@@ -93,7 +93,8 @@ pub mod test;
 /// builder introduces. For that, write your own type that implements this
 /// trait and pay close attention to the documentation of the member functions
 /// below.
-pub trait SeparableNonlinearModel<ScalarType: Scalar> {
+pub trait SeparableNonlinearModel<ScalarType: Scalar>
+    where DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::ParameterDim> {
     /// the associated error type that can occur when the
     /// model or the derivative is evaluated.
     /// If this model does not need (or for performance reasons does not want)
@@ -107,7 +108,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     /// This does not include the number of linear *coefficients*.
     /// The parameters passed to `eval` and `eval_partial_deriv` must
     /// have this amount of elements.
-    fn parameter_count(&self) -> usize;
+    fn parameter_count(&self) -> Self::ParameterDim;
 
     /// must return the number of base functions that this model depends on.
     /// This is equal to the number of *linear coefficients* of the model.
@@ -117,9 +118,9 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar> {
     
     fn output_len(&self) -> usize;
 
-    fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error>;
+    fn set_params(&mut self, parameters : OVector<ScalarType,Self::ParameterDim>) -> Result<(),Self::Error>;
 
-    fn params(&self) -> DVector<ScalarType>;
+    fn params(&self) -> OVector<ScalarType,Self::ParameterDim>;
 
     /// Evaluate the base functions of the model at the given location `$\vec{x}$`
     /// and parameters `$\vec{\alpha}$` and return them in matrix form.
@@ -246,7 +247,7 @@ where
     x_vector : DVector<ScalarType>,
     /// the current parameters with which this model (and its derivatives)
     /// are evaluated
-    current_parameters : Vec<ScalarType>,
+    current_parameters : DVector<ScalarType>,
 }
 
 impl<ScalarType> std::fmt::Debug for SeparableModel<ScalarType>
@@ -273,22 +274,22 @@ where
     type Error = ModelError;
     type ParameterDim = Dyn;
 
-    fn parameter_count(&self) -> usize {
-        self.parameter_names.len()
+    fn parameter_count(&self) -> Dyn {
+        Dyn(self.parameter_names.len())
     }
 
     fn base_function_count(&self) -> usize {
         self.basefunctions.len()
     }
 
-    fn set_params(&mut self, parameters : &[ScalarType]) -> Result<(),Self::Error> {
-        if parameters.len() != self.parameter_count() {
+    fn set_params(&mut self, parameters : DVector<ScalarType>) -> Result<(),Self::Error> {
+        if parameters.len() != self.parameter_count().value() {
             return Err(ModelError::IncorrectParameterCount {
-                expected: self.parameter_count(),
+                expected: self.parameter_count().value(),
                 actual: parameters.len(),
             });
         }
-        self.current_parameters = parameters.to_vec();
+        self.current_parameters = parameters;
         Ok(())
     }
 
@@ -301,9 +302,9 @@ where
     ) -> Result<DMatrix<ScalarType>, ModelError> {
         let location = &self.x_vector;
         let parameters = &self.current_parameters;
-        if parameters.len() != self.parameter_count() {
+        if parameters.len() != self.parameter_count().value() {
             return Err(ModelError::IncorrectParameterCount {
-                expected: self.parameter_count(),
+                expected: self.parameter_count().value(),
                 actual: parameters.len(),
             });
         }
@@ -321,7 +322,7 @@ where
             .zip(function_value_matrix.column_iter_mut())
         {
             let function_value =
-                model_basis_function::evaluate_and_check(&basefunc.function, location, parameters)?;
+                model_basis_function::evaluate_and_check(&basefunc.function, location, parameters.as_slice())?;
             column.copy_from(&function_value);
         }
         Ok(function_value_matrix)
@@ -358,7 +359,7 @@ where
         {
             if let Some(derivative) = basefunc.derivatives.get(&derivative_index) {
                 let deriv_value =
-                    model_basis_function::evaluate_and_check(derivative, location, parameters)?;
+                    model_basis_function::evaluate_and_check(derivative, location, parameters.as_slice())?;
                 column.copy_from(&deriv_value);
             }
         }

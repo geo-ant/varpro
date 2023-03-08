@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, DVector, Dyn, U2};
+use nalgebra::{DMatrix, DVector, Dyn, U2, OVector};
 use varpro::{model::errors::ModelError, prelude::*};
 
 #[derive(Clone)]
@@ -62,7 +62,7 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         Ok(())
     }
 
-    fn params(&self) -> DVector<f64> {
+    fn params(&self) -> OVector<f64, Self::ParameterDim> {
         DVector::from_iterator(2, self.params.clone().into_iter())
     }
 

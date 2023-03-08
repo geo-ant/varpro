@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DVector, Scalar};
+use nalgebra::{ComplexField, DVector, Scalar, DefaultAllocator, Dyn};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -78,6 +78,7 @@ where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
     Model: SeparableNonlinearModel<ScalarType>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
 {
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
     y: Option<DVector<ScalarType>>,
@@ -100,6 +101,7 @@ where
     ScalarType: Scalar + ComplexField + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
     Model: SeparableNonlinearModel<ScalarType> + Clone,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
 {
     fn clone(&self) -> Self {
         Self {
@@ -116,6 +118,8 @@ where
     ScalarType: Scalar + ComplexField + Zero + Copy,
     ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
     Model: SeparableNonlinearModel<ScalarType>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim,Dyn>,
 {
     /// Create a new builder based on the given model
     pub fn new(model: Model) -> Self {

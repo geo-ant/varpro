@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 //! a helper crate which carries common code used by the benchtests and the
 //! integration tests.
-use nalgebra::{ComplexField, DVector, Scalar};
+use nalgebra::{ComplexField, DVector, Scalar, DefaultAllocator, OVector};
 use num_traits::Float;
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
@@ -33,12 +33,13 @@ pub fn linspace<ScalarType: Float + Scalar>(
 /// with the given linear coefficients `linear_coeffs`.
 pub fn evaluate_complete_model_at_params<ScalarType, Model>(
     model: &'_ mut Model,
-    params : &[ScalarType],
+    params : OVector<ScalarType,Model::ParameterDim>,
     linear_coeffs: &DVector<ScalarType>,
 ) -> DVector<ScalarType>
 where
     ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel<ScalarType>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
 {
     let original_params = model.params();
     model.set_params(params).expect("Setting params must not fail");
@@ -46,7 +47,7 @@ where
         .eval()
         .expect("Evaluating model must not produce error"))
         * linear_coeffs;
-    model.set_params(original_params.as_slice()).expect("Setting params must not fail");
+    model.set_params(original_params).expect("Setting params must not fail");
     eval
 }
 
