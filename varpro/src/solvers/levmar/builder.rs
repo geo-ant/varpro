@@ -120,6 +120,7 @@ where
     Model: SeparableNonlinearModel<ScalarType>,
     DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim,Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ModelDim>,
 {
     /// Create a new builder based on the given model
     pub fn new(model: Model) -> Self {

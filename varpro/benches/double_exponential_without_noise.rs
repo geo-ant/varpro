@@ -35,6 +35,7 @@ where Model: SeparableNonlinearModel<f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim,Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<usize, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>
 {
     let DoubleExponentialParameters {
         tau1,
@@ -46,8 +47,9 @@ where Model: SeparableNonlinearModel<f64>,
     
     // save the initial guess so that we can reset the model to those
     let params = OVector::from_vec_generic(model.parameter_count(), U1, vec![tau1,tau2]);
-
-    let y = evaluate_complete_model_at_params(&mut model,  params,&DVector::from(vec![c1, c2, c3]));
+    
+    let base_function_count = model.base_function_count();
+    let y = evaluate_complete_model_at_params(&mut model,  params,&OVector::from_vec_generic(base_function_count,U1,vec![c1, c2, c3]));
     let  problem = LevMarProblemBuilder::new(model)
         .y(y)
         .build()
@@ -62,6 +64,7 @@ where
     DefaultAllocator: nalgebra::allocator::Allocator<S, M::ParameterDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<S, M::ParameterDim,Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<usize, M::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<S, M::ModelDim>
 {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(

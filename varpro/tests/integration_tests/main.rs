@@ -1,4 +1,6 @@
 use nalgebra::DVector;
+use nalgebra::OVector;
+use nalgebra::U1;
 use nalgebra::Vector2;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
@@ -145,8 +147,8 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
                  // generate some data without noise
-    
-    let y = evaluate_complete_model_at_params(&mut model, Vector2::new( tau1,tau2 ), &DVector::from(vec![c1, c2, c3]));
+    let base_func_count = model.base_function_count();
+    let y = evaluate_complete_model_at_params(&mut model, Vector2::new( tau1,tau2 ), &OVector::from_vec_generic(base_func_count,U1,vec![c1, c2, c3]));
 
     let problem = LevMarProblemBuilder::new(model)
         .y(y)

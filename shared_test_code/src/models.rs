@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, DVector, Dyn, U2, OVector, Vector2, U3};
+use nalgebra::{DMatrix, DVector, Dyn, U2, OVector, Vector2, U3, OMatrix};
 use varpro::{model::errors::ModelError, prelude::*};
 
 #[derive(Clone)]
@@ -11,7 +11,7 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// current parameters [tau1,tau2]
     params : Vector2<f64>,
     /// precalculated evaluation of the model
-    eval : DMatrix<f64>,
+    eval : OMatrix<f64,Dyn,U3>,
 }
 
 impl DoubleExpModelWithConstantOffsetSepModel {
@@ -20,7 +20,7 @@ impl DoubleExpModelWithConstantOffsetSepModel {
         let mut ret = Self {
             x_vector, 
             params : Vector2::zeros(),//<-- will be overwritten by set_params
-            eval : DMatrix::zeros(x_len, 3)
+            eval : OMatrix::<f64,Dyn,U3>::zeros_generic(Dyn(x_len), U3)
         };
         ret.set_params(Vector2::new(tau1_guess, tau2_guess)).unwrap();
         ret
@@ -69,14 +69,14 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
 
     fn eval(
         &self,
-    ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
+    ) -> Result<OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
         Ok(self.eval.clone())
     }
 
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<nalgebra::DMatrix<f64>, Self::Error> {
+    ) -> Result<nalgebra::OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
         let location = &self.x_vector;
         let parameters = &self.params;
         // derivative index can be either 0,1 (corresponding to the linear parameters
@@ -90,7 +90,7 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         // exponential function again
         let df = location.map(|x| x / (tau * tau)).component_mul(&self.eval.column(derivative_index));
 
-        let mut derivatives = DMatrix::zeros(location.len(), 3);
+        let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), U3);
 
         derivatives.set_column(derivative_index, &df);
         Ok(derivatives)

@@ -34,12 +34,13 @@ pub fn linspace<ScalarType: Float + Scalar>(
 pub fn evaluate_complete_model_at_params<ScalarType, Model>(
     model: &'_ mut Model,
     params : OVector<ScalarType,Model::ParameterDim>,
-    linear_coeffs: &DVector<ScalarType>,
+    linear_coeffs: &OVector<ScalarType,Model::ModelDim>,
 ) -> DVector<ScalarType>
 where
     ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel<ScalarType>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ModelDim>
 {
     let original_params = model.params();
     model.set_params(params).expect("Setting params must not fail");

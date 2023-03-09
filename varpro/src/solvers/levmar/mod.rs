@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::storage::Owned;
-use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD, DefaultAllocator, UninitMatrix};
+use nalgebra::{ComplexField, DMatrix, DVector, Dyn, Matrix, Scalar, Vector, SVD, DefaultAllocator, UninitMatrix, Dim, OVector};
 
 mod builder;
 #[cfg(test)]
@@ -17,13 +17,17 @@ use std::ops::Mul;
 /// helper structure that stores the cached calculations,
 /// which are carried out by the LevMarProblem on setting the parameters
 #[derive(Debug, Clone)]
-struct CachedCalculations<ScalarType: Scalar + ComplexField> {
+struct CachedCalculations<ScalarType, ModelDim> 
+    where ScalarType: Scalar + ComplexField,
+        ModelDim: Dim,
+        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ModelDim>
+    {
     /// The current residual of model function values belonging to the current parameters
     current_residuals: DVector<ScalarType>,
     /// Singular value decomposition of the current function value matrix
-    current_svd: SVD<ScalarType, Dyn, Dyn>,
+    current_svd: SVD<ScalarType, Dyn, ModelDim>,
     /// the linear coefficients `$\vec{c}$` providing the current best fit
-    linear_coefficients: DVector<ScalarType>,
+    linear_coefficients: OVector<ScalarType,ModelDim>,
 }
 
 /// This is a the problem of fitting the separable model to data in a form that the
@@ -43,7 +47,8 @@ pub struct LevMarProblem<ScalarType, Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ModelDim>
 {
     /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
@@ -61,14 +66,15 @@ where
     /// those are updated on set_params. If this is None, then it indicates some error that
     /// is propagated on to the levenberg-marquardt crate by also returning None results
     /// by residuals() and/or jacobian()
-    cached: Option<CachedCalculations<ScalarType>>,
+    cached: Option<CachedCalculations<ScalarType,Model::ModelDim>>,
 }
 
 impl<ScalarType,Model> std::fmt::Debug for LevMarProblem<ScalarType,Model>
 where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ModelDim>
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LevMarProblem").field("y_w", &self.y_w).field("model", &"/* omitted */").field("svd_epsilon", &self.svd_epsilon).field("weights", &self.weights).field("cached", &self.cached).finish()
@@ -80,6 +86,7 @@ where
     ScalarType: Scalar + ComplexField + Copy,
     Model: SeparableNonlinearModel<ScalarType>,
     DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ModelDim>,
 {
     /// Get the linear coefficients for the current problem. After a successful pass of the solver,
     /// this contains a value with the best fitting linear coefficients
@@ -87,7 +94,7 @@ where
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
     /// for the linear coefficients of the base functions.
-    pub fn linear_coefficients(&self) -> Option<DVector<ScalarType>> {
+    pub fn linear_coefficients(&self) -> Option<OVector<ScalarType,Model::ModelDim>> {
         self.cached
             .as_ref()
             .map(|cache| cache.linear_coefficients.clone())
@@ -102,6 +109,7 @@ where
     Model: SeparableNonlinearModel<ScalarType>,
     DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim,Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ModelDim>,
 
 {
     type ResidualStorage = Owned<ScalarType, Dyn>;

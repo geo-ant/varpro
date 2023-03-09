@@ -1,7 +1,7 @@
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector, Dyn, Dim, OVector, DefaultAllocator};
+use nalgebra::{DMatrix, DVector, Dyn, Dim, OVector, DefaultAllocator, OMatrix};
 use num_traits::Zero;
 
 mod detail;
@@ -169,7 +169,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar>
     /// * ...
     fn eval(
         &self,
-    ) -> Result<DMatrix<ScalarType>, Self::Error>;
+    ) -> Result<OMatrix<ScalarType,Dyn,Self::ModelDim>, Self::Error>;
 
     /// Evaluate the partial derivatives for the base function at for the
     /// given location and parameters and return them in matrix form.
@@ -226,7 +226,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar>
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<DMatrix<ScalarType>, Self::Error>;
+    ) -> Result<OMatrix<ScalarType,Dyn,Self::ModelDim>, Self::Error>;
 }
 
 /// The type returned from building a model using the
