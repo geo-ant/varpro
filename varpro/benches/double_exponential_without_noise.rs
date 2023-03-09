@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::ComplexField;
-use nalgebra::DVector;
+
 use nalgebra::DefaultAllocator;
 use nalgebra::Dyn;
 use nalgebra::OVector;

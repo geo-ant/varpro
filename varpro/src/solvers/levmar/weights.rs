@@ -1,5 +1,5 @@
 use crate::linalg_helpers::DiagDMatrix;
-use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Scalar, OMatrix, Dyn, Dim};
+use nalgebra::{ClosedMul, ComplexField, DVector, Scalar, OMatrix, Dyn, Dim};
 use std::ops::Mul;
 
 /// a variant for different weights that can be applied to a least squares problem

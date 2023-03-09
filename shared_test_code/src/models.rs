@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, DVector, Dyn, U2, OVector, Vector2, U3, OMatrix};
+use nalgebra::{DVector, Dyn, U2, OVector, Vector2, U3, OMatrix};
 use varpro::{model::errors::ModelError, prelude::*};
 
 #[derive(Clone)]

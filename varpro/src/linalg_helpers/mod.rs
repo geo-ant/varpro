@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test;
 
-use nalgebra::{ClosedMul, ComplexField, DMatrix, DVector, Dyn, Scalar, OMatrix, Dim, UninitMatrix};
+use nalgebra::{ClosedMul, ComplexField, DVector, Dyn, Scalar, OMatrix, Dim, UninitMatrix};
 use std::ops::Mul;
 
 /// A square diagonal matrix with dynamic dimension. Off-diagonal entries are assumed zero.

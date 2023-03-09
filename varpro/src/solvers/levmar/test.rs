@@ -214,7 +214,7 @@ fn levmar_problem_set_params_sets_the_model_parameters_when_built() {
     model.expect_output_len().return_const(y_len);
     model.expect_params().return_const(params_vector.clone());
     model.expect_set_params().withf(move |p| p == &DVector::from(params_vector.clone())).returning(|_|Ok(()));
-    model.expect_eval().returning(move ||Ok(DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
+    model.expect_eval().returning(move ||Ok(nalgebra::DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
     // actually nonsense, but we don't care about that here
     let  _problem = LevMarProblemBuilder::new(model)
         .y(y)
