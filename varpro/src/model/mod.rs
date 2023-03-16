@@ -73,16 +73,17 @@ pub mod test;
 ///
 /// # Usage
 ///
-/// There is two ways to describe a separable nonlinear model. Firstly, you can
-/// use the builder in this crate or you can implement this trait on your own
-/// type.
+/// There is two ways to get a type that implements the separable nonlinear model trait.
+/// Firstly, you can obviously creat your own type and make it implement the trait.
+/// Secondly you can use the `SeparableModelBuilder` in this crate. 
 ///
 /// ## Using the Builder
 ///
 /// The simplest way to build an instance of a model us to use the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
 /// to create a model from a set of base functions and their derivatives. Then
 /// pass this to a solver for solving for both the linear coefficients as well
-/// as the nonlinear parameters. This is recommended for prototyping and should
+/// as the nonlinear parameters. This is definitely recommended for prototyping and it 
+/// might already be enough for a production implementation. and should
 /// already run way faster and more stable than just using a least squares backend
 /// directly. For maximum performance, you can also write your own type
 /// that implements the [SeparableNonlinearModel] interface.
@@ -101,21 +102,23 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar>
     /// to return an error, it is possible to specify [`std::convert::Infallible`]
     /// as the associated `Error` type.
     type Error: std::error::Error;
-
+    
+    /// the number of *nonlinear* parameters that this model depends on,
+    /// expressed as a dimension type of the nalgebra crate. If the number of
+    /// parameters is not known at compile time, then use the [nalgebra::Dynamic](nalgebra::Dynamic)
+    /// type.
     type ParameterDim: Dim;
-
+    
+    /// the number of base functions that this model depends on,
+    /// expressed as a dimension type of the nalgebra crate. If the number of
+    /// model base functions is not known at compile time, then use the [nalgebra::Dynamic](nalgebra::Dynamic)
+    /// type.
     type ModelDim: Dim;
 
-    /// must return the number of *nonlinear* parameters that this model depends on.
-    /// This does not include the number of linear *coefficients*.
-    /// The parameters passed to `eval` and `eval_partial_deriv` must
-    /// have this amount of elements.
+    /// return the number of *nonlinear* parameters that this model depends on.
     fn parameter_count(&self) -> Self::ParameterDim;
 
-    /// must return the number of base functions that this model depends on.
-    /// This is equal to the number of *linear coefficients* of the model.
-    /// This is also equal to the number of _columns_ of the matrices returned
-    /// from the `eval` and `eval_partial_deriv` methods.
+    /// return the number of base functions that this model depends on.
     fn base_function_count(&self) -> Self::ModelDim;
     
     fn output_len(&self) -> usize;
