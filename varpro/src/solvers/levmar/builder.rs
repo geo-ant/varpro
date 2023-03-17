@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DVector, Scalar, DefaultAllocator, Dyn};
+use nalgebra::{ComplexField, DVector, Scalar, DefaultAllocator, Dyn, OVector, Dim};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -93,7 +93,7 @@ where
     /// if no weights are given, the problem is unweighted, i.e. the same as if
     /// all weights were 1.
     /// Must have the same length as x and y.
-    weights: Weights<ScalarType>,
+    weights: Weights<ScalarType,Dyn>,
 }
 
 impl<ScalarType, Model> Clone for LevMarProblemBuilder<ScalarType, Model>
@@ -169,9 +169,7 @@ where
     /// to make weights that have a statistical meaning, the diagonal elements of the weight matrix should be
     /// set to `w_{jj} = 1/\sigma_j` where `$\sigma_j$` is the (estimated) standard deviation associated with
     /// data point `$y_j$`.
-    pub fn weights<VectorType>(self, weights: VectorType) -> Self
-    where
-        DVector<ScalarType>: From<VectorType>,
+    pub fn weights(self, weights: OVector<ScalarType,Dyn>) -> Self
     {
         Self {
             weights: Weights::diagonal(weights),
@@ -197,7 +195,7 @@ where
 
         // now do some sanity checks for the values and return
         // an error if they do not pass the test
-        let x_len : usize  = model.output_len();
+        let x_len : usize  = model.output_len().value();
         if x_len == 0 || y.is_empty() {
             return Err(LevMarBuilderError::ZeroLengthVector);
         }   

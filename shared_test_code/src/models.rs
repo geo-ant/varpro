@@ -31,6 +31,7 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
     type Error = ModelError;
     type ParameterDim = U2;
     type ModelDim = U3;
+    type OutputDim = Dyn;
 
     #[inline]
     fn parameter_count(&self) -> U2 {
@@ -96,8 +97,8 @@ impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
         Ok(derivatives)
     }
 
-    fn output_len(&self) -> usize {
-        self.x_vector.len()
+    fn output_len(&self) -> Self::OutputDim {
+        Dyn(self.x_vector.len())
     }
 }
 

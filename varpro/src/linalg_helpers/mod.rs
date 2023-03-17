@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod test;
 
-use nalgebra::{ClosedMul, ComplexField, DVector, Dyn, Scalar, OMatrix, Dim, UninitMatrix};
+use nalgebra::{ClosedMul, ComplexField, DVector, Dyn, Scalar, OMatrix, Dim, UninitMatrix, OVector, Matrix, RawStorageMut, DefaultAllocator};
 use std::ops::Mul;
 
 /// A square diagonal matrix with dynamic dimension. Off-diagonal entries are assumed zero.
@@ -9,14 +9,20 @@ use std::ops::Mul;
 /// # Types
 /// ScalarType: the numeric type of the matrix
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DiagDMatrix<ScalarType>
+pub struct DiagMatrix<ScalarType,D>
 where
     ScalarType: Scalar + ComplexField,
+    D: Dim,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>
 {
-    diagonal: DVector<ScalarType>,
+    diagonal: OVector<ScalarType,D>,
 }
 
-impl<ScalarType: Scalar + ComplexField> DiagDMatrix<ScalarType> {
+impl<ScalarType,D> DiagMatrix<ScalarType,D> 
+    where ScalarType: Scalar + ComplexField,
+    D :  Dim,    
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
+{
     /// get the number of columns of the matrix
     /// The matrix is square, so this is equal to the number of rows
     pub fn ncols(&self) -> usize {
@@ -36,18 +42,23 @@ impl<ScalarType: Scalar + ComplexField> DiagDMatrix<ScalarType> {
 
     /// Generate a square matrix containing the entries of the vector which
     /// contains only real field values of this (potentially) complex type
-    pub fn from_real_field(diagonal: &DVector<ScalarType::RealField>) -> Self {
+    pub fn from_real_field(diagonal: OVector<ScalarType::RealField,D>) -> Self 
+    where 
+    DefaultAllocator: nalgebra::allocator::Allocator<<ScalarType as ComplexField>::RealField, D>,
+    {
         Self::from(diagonal.map(ScalarType::from_real))
     }
 }
 /// Generate a square diagonal matrix from the given diagonal vector.
-impl<ScalarType: Scalar + ComplexField, VectorType> From<VectorType> for DiagDMatrix<ScalarType>
+impl<ScalarType, D> From<OVector<ScalarType,D>> for DiagMatrix<ScalarType,D>
 where
-    DVector<ScalarType>: From<VectorType>,
+ ScalarType: Scalar + ComplexField,
+    D : Dim,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>
 {
-    fn from(diagonal: VectorType) -> Self {
+    fn from(diagonal: OVector<ScalarType,D>) -> Self {
         Self {
-            diagonal: DVector::from(diagonal),
+            diagonal,
         }
     }
 }
@@ -57,33 +68,24 @@ where
 /// Panics if the dimensions of the matrices do not fit for matrix multiplication
 /// # Result
 /// The result of the matrix multiplication as a new dynamically sized matrix
-impl<ScalarType,C> Mul<&OMatrix<ScalarType,Dyn,C>> for &DiagDMatrix<ScalarType>
+impl<ScalarType,R,C,S> Mul<Matrix<ScalarType,R,C,S>> for &DiagMatrix<ScalarType,R>
 where
-    ScalarType: ClosedMul + Scalar + ComplexField,
+    ScalarType: ClosedMul + Scalar + ComplexField ,
     C : Dim,
+    R: Dim,
+    S : RawStorageMut<ScalarType, R,C,>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R>
 {
-    type Output = OMatrix<ScalarType,Dyn,C>;
+    type Output = Matrix<ScalarType,R,C,S>;
 
-    fn mul(self, rhs: &OMatrix<ScalarType,Dyn,C>) -> Self::Output {
+    fn mul(self, mut rhs: Matrix<ScalarType,R,C,S>) -> Self::Output {
         assert_eq!(
             self.ncols(),
             rhs.nrows(),
             "Matrix dimensions incorrect for diagonal matrix multiplication."
         );
-
-        let rows = Dyn(self.nrows());
-        let cols = C::from_usize(rhs.ncols());
-        // this isn't an awesome pattern, but it is safe since we fill the Matrix
-        // with valid values below. Ideally we would first call the
-        // copy_from functionality below, but we can't because the Scalar
-        // trait bounds will screw us. See htt
-        let mut result_matrix =
-            unsafe { UninitMatrix::uninit(rows, cols).assume_init() };
-
-        for (col_idx, mut col) in result_matrix.column_iter_mut().enumerate() {
-            col.copy_from(&self.diagonal.component_mul(&rhs.column(col_idx)));
-        }
-
-        result_matrix
+        rhs.column_iter_mut()
+            .for_each(|mut col| col.component_mul_assign(&self.diagonal));
+        rhs
     }
 }

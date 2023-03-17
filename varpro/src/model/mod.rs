@@ -115,13 +115,15 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar>
     /// type.
     type ModelDim: Dim;
 
+    type OutputDim: Dim;
+
     /// return the number of *nonlinear* parameters that this model depends on.
     fn parameter_count(&self) -> Self::ParameterDim;
 
     /// return the number of base functions that this model depends on.
     fn base_function_count(&self) -> Self::ModelDim;
     
-    fn output_len(&self) -> usize;
+    fn output_len(&self) -> Self::OutputDim;
 
     fn set_params(&mut self, parameters : OVector<ScalarType,Self::ParameterDim>) -> Result<(),Self::Error>;
 
@@ -279,6 +281,7 @@ where
     type Error = ModelError;
     type ParameterDim = Dyn;
     type ModelDim = Dyn;
+    type OutputDim = Dyn;
 
     fn parameter_count(&self) -> Dyn {
         Dyn(self.parameter_names.len())
@@ -372,7 +375,7 @@ where
         Ok(derivative_function_value_matrix)
     }
 
-    fn output_len(&self) -> usize {
-        self.x_vector.len()
+    fn output_len(&self) -> Self::OutputDim {
+       Self::OutputDim::from_usize(self.x_vector.len())
     }
 }

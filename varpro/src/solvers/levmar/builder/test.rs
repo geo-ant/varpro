@@ -2,7 +2,7 @@ use crate::model::test::MockSeparableNonlinearModel;
 use crate::solvers::levmar::builder::LevMarBuilderError;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblemBuilder;
-use crate::{linalg_helpers::DiagDMatrix};
+use crate::{linalg_helpers::DiagMatrix};
 use nalgebra::{DMatrix, DVector};
 use assert_matches::assert_matches;
 
@@ -90,7 +90,7 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
     if let Weights::Diagonal(diag) = problem.weights {
         assert_eq!(
             diag,
-            DiagDMatrix::from(weights),
+            DiagMatrix::from(weights),
             "Diagonal weight matrix must be correctly passed on"
         );
     } else {
@@ -168,7 +168,7 @@ fn builder_gives_errors_for_wrong_length_of_weights() {
     assert_matches!(
             LevMarProblemBuilder::new(model)
                 .y(y)
-                .weights(vec! {1.,2.,3.})
+                .weights(DVector::from_vec(vec! {1.,2.,3.}))
                 .build(),
             Err(LevMarBuilderError::InvalidLengthOfWeights { .. })
         ,
