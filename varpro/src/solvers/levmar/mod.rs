@@ -23,7 +23,7 @@ struct CachedCalculations<ScalarType, ModelDim>
         DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ModelDim>
     {
     /// The current residual of model function values belonging to the current parameters
-    current_residuals: DVector<ScalarType>,
+    current_residuals: OVector<ScalarType,Dyn>,
     /// Singular value decomposition of the current function value matrix
     current_svd: SVD<ScalarType, Dyn, ModelDim>,
     /// the linear coefficients `$\vec{c}$` providing the current best fit
@@ -53,7 +53,7 @@ where
     /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
     /// where provided (otherwise it is unweighted)
-    y_w: DVector<ScalarType>,
+    y_w: OVector<ScalarType,Dyn>,
     /// a reference to the separable model we are trying to fit to the data
     model: Model,
     /// truncation epsilon for SVD below which all singular values are assumed zero

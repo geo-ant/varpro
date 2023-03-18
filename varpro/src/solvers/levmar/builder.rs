@@ -81,7 +81,7 @@ where
     DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
 {
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
-    y: Option<DVector<ScalarType>>,
+    y: Option<OVector<ScalarType,Dyn>>,
     /// Required: the model to be fitted to the data
     separable_model: Model,
     /// Optional: set epsilon below which two singular values
@@ -134,12 +134,10 @@ where
 
     /// **Mandatory**: Set the data which we want to fit: `$\vec{y}=\vec{y}(\vec{x})$`.
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn y<VectorType>(self, yvec: VectorType) -> Self
-    where
-        DVector<ScalarType>: From<VectorType>,
+    pub fn y(self, yvec: OVector<ScalarType,Dyn>) -> Self
     {
         Self {
-            y: Some(DVector::from(yvec)),
+            y: Some(yvec),
             ..self
         }
     }
