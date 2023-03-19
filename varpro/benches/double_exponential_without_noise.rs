@@ -2,11 +2,17 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::ComplexField;
 
+use nalgebra::Const;
 use nalgebra::DefaultAllocator;
+use nalgebra::DimMax;
+use nalgebra::DimMin;
+use nalgebra::DimSub;
 use nalgebra::Dyn;
 use nalgebra::OVector;
+use nalgebra::RawStorageMut;
 use nalgebra::RealField;
 use nalgebra::Scalar;
+use nalgebra::Storage;
 use nalgebra::U1;
 use num_traits::Float;
 use pprof::criterion::{Output, PProfProfiler};
@@ -31,11 +37,27 @@ fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
 ) -> LevMarProblem<f64, Model> 
-where Model: SeparableNonlinearModel<f64>,
+where
+    Model: SeparableNonlinearModel<f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim,Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<usize, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim,Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer: Storage<f64, Model::OutputDim>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer: RawStorageMut<f64, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<<f64 as ComplexField> ::RealField, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<(<f64 as ComplexField>::RealField, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>> ,
+    Model::OutputDim: DimMin<Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<<f64 as ComplexField>::RealField, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
 {
     let DoubleExponentialParameters {
         tau1,
@@ -57,24 +79,42 @@ where Model: SeparableNonlinearModel<f64>,
     problem
 }
 
-fn run_minimization<S, M>(problem: LevMarProblem<S, M>) -> [S; 5]
+fn run_minimization<Model>(problem: LevMarProblem<f64, Model>) -> [f64; 5]
 where
-    S: Scalar + Copy + ComplexField + Float + RealField,
-    M: SeparableNonlinearModel<S>,
-    DefaultAllocator: nalgebra::allocator::Allocator<S, M::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<S, M::ParameterDim,Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<usize, M::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<S, M::ModelDim>
+    Model: SeparableNonlinearModel<f64>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim,Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer: Storage<f64, Model::OutputDim>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer: RawStorageMut<f64, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<<f64 as ComplexField> ::RealField, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<(<f64 as ComplexField>::RealField, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>> ,
+    Model::OutputDim: DimMin<Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<<f64 as ComplexField>::RealField, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    <Model as SeparableNonlinearModel<f64>>::OutputDim: DimMin<<Model as SeparableNonlinearModel<f64>>::ParameterDim>,
+    <Model as SeparableNonlinearModel<f64>>::OutputDim: DimMax<<Model as SeparableNonlinearModel<f64>>::ParameterDim>, 
+    DefaultAllocator: nalgebra::allocator::Allocator<usize, <Model as SeparableNonlinearModel<f64>>::ParameterDim>
 {
     let (problem, report) = LevMarSolver::new().minimize(problem);
-    assert!(
-        report.termination.was_successful(),
-        "Termination not successful"
-    );
+    // assert!(
+    //     report.termination.was_successful(),
+    //     "Termination not successful"
+    // );
 
-    let params = problem.params();
-    let coeff = problem.linear_coefficients().unwrap();
-    [params[0], params[1], coeff[0], coeff[1], coeff[2]]
+    // let params = problem.params();
+    // let coeff = problem.linear_coefficients().unwrap();
+    // [params[0], params[1], coeff[0], coeff[1], coeff[2]]
+    todo!()
 }
 
 fn bench_double_exp_no_noise(c: &mut Criterion) {
