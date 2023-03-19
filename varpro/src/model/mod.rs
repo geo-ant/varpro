@@ -95,7 +95,10 @@ pub mod test;
 /// trait and pay close attention to the documentation of the member functions
 /// below.
 pub trait SeparableNonlinearModel<ScalarType: Scalar>
-    where DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::ParameterDim> {
+    where DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::OutputDim, Self::ModelDim>
+
+{
     /// the associated error type that can occur when the
     /// model or the derivative is evaluated.
     /// If this model does not need (or for performance reasons does not want)
@@ -174,7 +177,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar>
     /// * ...
     fn eval(
         &self,
-    ) -> Result<OMatrix<ScalarType,Dyn,Self::ModelDim>, Self::Error>;
+    ) -> Result<OMatrix<ScalarType,Self::OutputDim,Self::ModelDim>, Self::Error>;
 
     /// Evaluate the partial derivatives for the base function at for the
     /// given location and parameters and return them in matrix form.
@@ -231,7 +234,7 @@ pub trait SeparableNonlinearModel<ScalarType: Scalar>
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<OMatrix<ScalarType,Dyn,Self::ModelDim>, Self::Error>;
+    ) -> Result<OMatrix<ScalarType,Self::OutputDim,Self::ModelDim>, Self::Error>;
 }
 
 /// The type returned from building a model using the
