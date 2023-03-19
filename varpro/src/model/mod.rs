@@ -94,10 +94,10 @@ pub mod test;
 /// builder introduces. For that, write your own type that implements this
 /// trait and pay close attention to the documentation of the member functions
 /// below.
-pub trait SeparableNonlinearModel<ScalarType: Scalar>
+pub trait SeparableNonlinearModel<ScalarType>
     where DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::OutputDim, Self::ModelDim>
-
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::OutputDim, Self::ModelDim>,
+    ScalarType: Scalar
 {
     /// the associated error type that can occur when the
     /// model or the derivative is evaluated.

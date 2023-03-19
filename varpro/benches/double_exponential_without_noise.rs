@@ -94,7 +94,7 @@ fn run_minimization_for_handrolled_separable_model(problem: LevMarProblem<f64, D
 
 /// solve the double exponential fitting problem using a separable model from the builder
 /// I should be able to unify this with the handrolled model, but I can't figure out how to do it
-/// because I cannot find the correct bounds to do it
+/// because I cannot find the correct generic bounds to do it
 fn run_minimization_for_builder_separable_model(problem: LevMarProblem<f64, SeparableModel<f64>>) -> [f64; 5] {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
@@ -105,42 +105,6 @@ fn run_minimization_for_builder_separable_model(problem: LevMarProblem<f64, Sepa
     let coeff = problem.linear_coefficients().unwrap();
     [params[0], params[1], coeff[0], coeff[1], coeff[2]]
 }
-// fn run_minimization<Model>(problem: LevMarProblem<f64, Model>) -> [f64; 5]
-// where
-//     Model: SeparableNonlinearModel<f64,OutputDim = Dyn,ModelDim = Dyn,ParameterDim = Dyn>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim,Model::OutputDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ModelDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim>,
-//     <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer: Storage<f64, Model::OutputDim>,
-//     <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer: RawStorageMut<f64, Model::OutputDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ParameterDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::OutputDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<<f64 as ComplexField> ::RealField, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<(<f64 as ComplexField>::RealField, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-//     <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>> ,
-//     Model::OutputDim: DimMin<Model::ModelDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-//     DefaultAllocator: nalgebra::allocator::Allocator<<f64 as ComplexField>::RealField, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-//     <Model as SeparableNonlinearModel<f64>>::OutputDim: DimMin<<Model as SeparableNonlinearModel<f64>>::ParameterDim>,
-//     <Model as SeparableNonlinearModel<f64>>::OutputDim: DimMax<<Model as SeparableNonlinearModel<f64>>::ParameterDim>, 
-//     DefaultAllocator: nalgebra::allocator::Allocator<usize, <Model as SeparableNonlinearModel<f64>>::ParameterDim>
-// {
-//     let (problem, report) = LevMarSolver::new().minimize(problem);
-//     assert!(
-//         report.termination.was_successful(),
-//         "Termination not successful"
-//     );
-
-//     let params = problem.params();
-//     let coeff = problem.linear_coefficients().unwrap();
-//     [params[0], params[1], coeff[0], coeff[1], coeff[2]]
-// }
 
 fn bench_double_exp_no_noise(c: &mut Criterion) {
     let true_parameters = DoubleExponentialParameters {
