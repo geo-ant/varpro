@@ -17,13 +17,15 @@ use std::ops::Mul;
 /// helper structure that stores the cached calculations,
 /// which are carried out by the LevMarProblem on setting the parameters
 #[derive(Debug, Clone)]
-struct CachedCalculations<ScalarType, ModelDim> 
+struct CachedCalculations<ScalarType, ModelDim,OutputDim> 
     where ScalarType: Scalar + ComplexField,
         ModelDim: Dim,
-        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ModelDim>
+        OutputDim: Dim,
+        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ModelDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, OutputDim>
     {
     /// The current residual of model function values belonging to the current parameters
-    current_residuals: OVector<ScalarType,Dyn>,
+    current_residuals: OVector<ScalarType,OutputDim>,
     /// Singular value decomposition of the current function value matrix
     current_svd: SVD<ScalarType, Dyn, ModelDim>,
     /// the linear coefficients `$\vec{c}$` providing the current best fit
@@ -66,7 +68,7 @@ where
     /// those are updated on set_params. If this is None, then it indicates some error that
     /// is propagated on to the levenberg-marquardt crate by also returning None results
     /// by residuals() and/or jacobian()
-    cached: Option<CachedCalculations<ScalarType,Model::ModelDim>>,
+    cached: Option<CachedCalculations<ScalarType,Model::ModelDim,Dyn>>,
 }
 
 impl<ScalarType,Model> std::fmt::Debug for LevMarProblem<ScalarType,Model>
@@ -213,7 +215,7 @@ where
                         .eval_partial_deriv(k)
                         .ok()?; // will return none if this could not be calculated
                 let Dk_c = &Dk * linear_coefficients;
-                let minus_ak: DVector<ScalarType> = U * (&U_t * (&Dk_c)) - Dk_c;
+                let minus_ak = U * (&U_t * (&Dk_c)) - Dk_c;
                 //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
                 //let Dk_t_rw : DVector<ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
                 //let _minus_bk : DVector<ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
