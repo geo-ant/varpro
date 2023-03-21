@@ -37,9 +37,9 @@ struct DoubleExponentialParameters {
 fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<f64, Model> 
+) -> LevMarProblem<Model> 
 where
-    Model: SeparableNonlinearModel<f64>,
+    Model: SeparableNonlinearModel<ScalarType=f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim,Model::OutputDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ModelDim>,
@@ -81,7 +81,7 @@ where
 }
 
 /// solve the double exponential fitting problem using a handrolled model 
-fn run_minimization_for_handrolled_separable_model(problem: LevMarProblem<f64, DoubleExpModelWithConstantOffsetSepModel>) -> [f64; 5] {
+fn run_minimization_for_handrolled_separable_model(problem: LevMarProblem<DoubleExpModelWithConstantOffsetSepModel>) -> [f64; 5] {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
         report.termination.was_successful(),
@@ -95,7 +95,7 @@ fn run_minimization_for_handrolled_separable_model(problem: LevMarProblem<f64, D
 /// solve the double exponential fitting problem using a separable model from the builder
 /// I should be able to unify this with the handrolled model, but I can't figure out how to do it
 /// because I cannot find the correct generic bounds to do it
-fn run_minimization_for_builder_separable_model(problem: LevMarProblem<f64, SeparableModel<f64>>) -> [f64; 5] {
+fn run_minimization_for_builder_separable_model(problem: LevMarProblem<SeparableModel<f64>>) -> [f64; 5] {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
         report.termination.was_successful(),

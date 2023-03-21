@@ -27,11 +27,12 @@ impl DoubleExpModelWithConstantOffsetSepModel {
     }
 }
 
-impl SeparableNonlinearModel<f64> for DoubleExpModelWithConstantOffsetSepModel {
+impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     type Error = ModelError;
     type ParameterDim = U2;
     type ModelDim = U3;
     type OutputDim = Dyn;
+    type ScalarType = f64;
 
     #[inline]
     fn parameter_count(&self) -> U2 {

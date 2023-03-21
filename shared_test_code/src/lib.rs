@@ -31,18 +31,18 @@ pub fn linspace<ScalarType: Float + Scalar>(
 /// evaluete the vector valued function of a model by evaluating the model at the given location
 /// `x` with (nonlinear) parameters `params` and by calculating the linear superposition of the basisfunctions
 /// with the given linear coefficients `linear_coeffs`.
-pub fn evaluate_complete_model_at_params<ScalarType, Model>(
+pub fn evaluate_complete_model_at_params<Model>(
     model: &'_ mut Model,
-    params : OVector<ScalarType,Model::ParameterDim>,
-    linear_coeffs: &OVector<ScalarType,Model::ModelDim>,
-) -> OVector<ScalarType,Model::OutputDim>
+    params : OVector<Model::ScalarType,Model::ParameterDim>,
+    linear_coeffs: &OVector<Model::ScalarType,Model::ModelDim>,
+) -> OVector<Model::ScalarType,Model::OutputDim>
 where
-    ScalarType: Scalar + ComplexField,
-    Model: SeparableNonlinearModel<ScalarType>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim>,
+    Model::ScalarType: Scalar + ComplexField,
+    Model: SeparableNonlinearModel,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
 {
     let original_params = model.params();
     model.set_params(params).expect("Setting params must not fail");

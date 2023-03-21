@@ -48,11 +48,12 @@ where S: Into<String>{
     }
 }
 
-impl SeparableNonlinearModel<f64> for MockSeparableNonlinearModel {
+impl SeparableNonlinearModel for MockSeparableNonlinearModel {
     type Error = MockModelError;
     type ParameterDim = Dyn;
     type ModelDim = Dyn;
     type OutputDim = Dyn;
+    type ScalarType = f64;
 
     fn parameter_count(&self) -> Dyn {
         self.parameter_count()

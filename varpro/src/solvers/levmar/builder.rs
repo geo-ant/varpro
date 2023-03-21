@@ -73,39 +73,39 @@ pub enum LevMarBuilderError {
 /// ## Additional Building blocks
 /// The other methods of the builder allow to manipulate further aspects, like adding weights to the data.
 /// The methods are marked as **Optional**.
-pub struct LevMarProblemBuilder<ScalarType, Model>
+pub struct LevMarProblemBuilder<Model>
 where
-    ScalarType: Scalar + ComplexField + Copy,
-    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model: SeparableNonlinearModel<ScalarType>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim>
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
+    Model: SeparableNonlinearModel,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>
 {
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
-    y: Option<OVector<ScalarType,Model::OutputDim>>,
+    y: Option<OVector<Model::ScalarType,Model::OutputDim>>,
     /// Required: the model to be fitted to the data
     separable_model: Model,
     /// Optional: set epsilon below which two singular values
     /// are considered zero.
     /// if this is not given, when building the builder,
     /// the this is set to machine epsilon.
-    epsilon: Option<ScalarType::RealField>,
+    epsilon: Option<<Model::ScalarType as ComplexField>::RealField>,
     /// Optional: weights to be applied to the data for weightes least squares
     /// if no weights are given, the problem is unweighted, i.e. the same as if
     /// all weights were 1.
     /// Must have the same length as x and y.
-    weights: Weights<ScalarType,Model::OutputDim>,
+    weights: Weights<Model::ScalarType,Model::OutputDim>,
 }
 
-impl<ScalarType, Model> Clone for LevMarProblemBuilder<ScalarType, Model>
+impl<Model> Clone for LevMarProblemBuilder<Model>
 where
-    ScalarType: Scalar + ComplexField + Copy,
-    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model: SeparableNonlinearModel<ScalarType> + Clone,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField : Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
+    Model: SeparableNonlinearModel + Clone,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>
 {
     fn clone(&self) -> Self {
         Self {
@@ -117,29 +117,29 @@ where
     }
 }
 
-impl<ScalarType, Model> LevMarProblemBuilder<ScalarType, Model>
+impl<Model> LevMarProblemBuilder<Model>
 where
-    ScalarType: Scalar + ComplexField + Zero + Copy,
-    ScalarType::RealField: Float + Mul<ScalarType, Output = ScalarType>,
-    Model: SeparableNonlinearModel<ScalarType>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ParameterDim,Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::ModelDim>,
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField : Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
+    Model: SeparableNonlinearModel,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim,Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
     Model::OutputDim: DimMin<Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<<ScalarType as ComplexField>::RealField, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
 
 
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
     DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<<ScalarType as ComplexField> ::RealField, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<(<ScalarType as ComplexField>::RealField, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField> ::RealField, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<(<Model::ScalarType as ComplexField>::RealField, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
     <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>> ,
 
 {
@@ -155,7 +155,7 @@ where
 
     /// **Mandatory**: Set the data which we want to fit: `$\vec{y}=\vec{y}(\vec{x})$`.
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn y(self, yvec: OVector<ScalarType,Model::OutputDim>) -> Self
+    pub fn y(self, yvec: OVector<Model::ScalarType,Model::OutputDim>) -> Self
     {
         Self {
             y: Some(yvec),
@@ -173,9 +173,9 @@ where
     /// If this value is not given, it will be set to machine epsilon.
     ///
     /// The given epsilon is automatically converted to a non-negative number.
-    pub fn epsilon(self, eps: ScalarType::RealField) -> Self {
+    pub fn epsilon(self, eps: <Model::ScalarType as ComplexField>::RealField) -> Self {
         Self {
-            epsilon: Some(<ScalarType::RealField as Float>::abs(eps)),
+            epsilon: Some(<_ as Float>::abs(eps)),
             ..self
         }
     }
@@ -188,7 +188,7 @@ where
     /// to make weights that have a statistical meaning, the diagonal elements of the weight matrix should be
     /// set to `w_{jj} = 1/\sigma_j` where `$\sigma_j$` is the (estimated) standard deviation associated with
     /// data point `$y_j$`.
-    pub fn weights(self, weights: OVector<ScalarType,Model::OutputDim>) -> Self
+    pub fn weights(self, weights: OVector<Model::ScalarType,Model::OutputDim>) -> Self
     {
         Self {
             weights: Weights::diagonal(weights),
@@ -205,7 +205,7 @@ where
     /// # Returns
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
-    pub fn build(self) -> Result<LevMarProblem<ScalarType, Model>, LevMarBuilderError> {
+    pub fn build(self) -> Result<LevMarProblem<Model>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
         let y = self.y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;

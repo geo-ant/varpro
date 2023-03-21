@@ -4,6 +4,7 @@
 ![tests](https://github.com/geo-ant/varpro/workflows/tests/badge.svg?branch=main)
 ![lints](https://github.com/geo-ant/varpro/workflows/lints/badge.svg?branch=main)
 [![Coverage Status](https://coveralls.io/repos/github/geo-ant/varpro/badge.svg?branch=main)](https://coveralls.io/github/geo-ant/varpro?branch=main)
+![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 
 This library enables robust and fast least-squares fitting of nonlinear, separable model functions to observations. It uses the VarPro algorithm to achieve this.
 

@@ -94,11 +94,12 @@ pub mod test;
 /// builder introduces. For that, write your own type that implements this
 /// trait and pay close attention to the documentation of the member functions
 /// below.
-pub trait SeparableNonlinearModel<ScalarType>
-    where DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Self::OutputDim, Self::ModelDim>,
-    ScalarType: Scalar
+pub trait SeparableNonlinearModel
+    where DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Self::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Self::OutputDim, Self::ModelDim>,
 {
+    type ScalarType :  Scalar;
+
     /// the associated error type that can occur when the
     /// model or the derivative is evaluated.
     /// If this model does not need (or for performance reasons does not want)
@@ -128,9 +129,9 @@ pub trait SeparableNonlinearModel<ScalarType>
     
     fn output_len(&self) -> Self::OutputDim;
 
-    fn set_params(&mut self, parameters : OVector<ScalarType,Self::ParameterDim>) -> Result<(),Self::Error>;
+    fn set_params(&mut self, parameters : OVector<Self::ScalarType,Self::ParameterDim>) -> Result<(),Self::Error>;
 
-    fn params(&self) -> OVector<ScalarType,Self::ParameterDim>;
+    fn params(&self) -> OVector<Self::ScalarType,Self::ParameterDim>;
 
     /// Evaluate the base functions of the model at the given location `$\vec{x}$`
     /// and parameters `$\vec{\alpha}$` and return them in matrix form.
@@ -177,7 +178,7 @@ pub trait SeparableNonlinearModel<ScalarType>
     /// * ...
     fn eval(
         &self,
-    ) -> Result<OMatrix<ScalarType,Self::OutputDim,Self::ModelDim>, Self::Error>;
+    ) -> Result<OMatrix<Self::ScalarType,Self::OutputDim,Self::ModelDim>, Self::Error>;
 
     /// Evaluate the partial derivatives for the base function at for the
     /// given location and parameters and return them in matrix form.
@@ -234,7 +235,7 @@ pub trait SeparableNonlinearModel<ScalarType>
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<OMatrix<ScalarType,Self::OutputDim,Self::ModelDim>, Self::Error>;
+    ) -> Result<OMatrix<Self::ScalarType,Self::OutputDim,Self::ModelDim>, Self::Error>;
 }
 
 /// The type returned from building a model using the
@@ -277,10 +278,11 @@ where
     }
 }
 
-impl<ScalarType> SeparableNonlinearModel<ScalarType> for SeparableModel<ScalarType>
+impl<ScalarType> SeparableNonlinearModel for SeparableModel<ScalarType>
 where
     ScalarType: Scalar + Zero,
 {
+    type ScalarType = ScalarType;
     type Error = ModelError;
     type ParameterDim = Dyn;
     type ModelDim = Dyn;

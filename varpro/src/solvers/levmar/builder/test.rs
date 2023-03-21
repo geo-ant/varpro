@@ -9,7 +9,7 @@ use assert_matches::assert_matches;
 #[test]
 fn new_builder_starts_with_empty_fields() {
     let model = MockSeparableNonlinearModel::default();
-    let builder = LevMarProblemBuilder::<f64, _>::new(model);
+    let builder = LevMarProblemBuilder::new(model);
     let LevMarProblemBuilder {
         y,
         separable_model: _model,
