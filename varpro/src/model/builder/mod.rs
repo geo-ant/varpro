@@ -16,7 +16,9 @@ mod test;
 pub mod error;
 
 ///! A builder that allows us to construct a valid [SeparableModel](crate::model::SeparableModel).
+///
 /// # Introduction
+///
 /// As explained elsewhere, the separable model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` is a vector
 /// valued function that is the linear combination of nonlinear base functions.
 /// ```math
@@ -139,8 +141,14 @@ pub mod error;
 /// ) -> DVector<ScalarType> {
 ///     tvec.map(|t| (omega * t + phi).cos())
 /// }
+/// 
+/// let x_coords = DVector::from_vec(vec![0.,1.,2.,3.,4.,5.]);
+/// let initial_guess = vec![1.,1.,1.];
 ///
 /// let model = SeparableModelBuilder::<f64>::new(&["tau","omega","phi"])
+///               // the x coordintates that this model
+///               // is evaluated on
+///               .independent_variable(x_coords)
 ///               // add the exp decay and all derivatives
 ///               .function(&["tau"],exp_decay)
 ///               .partial_deriv("tau",exp_decay_dtau)
@@ -152,6 +160,9 @@ pub mod error;
 ///               // call tells the model builder that the previous function has all
 ///               // the partial derivatives finished
 ///               .invariant_function(|x|x.clone())
+///               // the initial nonlinear parameters 
+///               // of the model
+///               .initial_parameters(initial_guess)
 ///               // we build the model calling build. This returns either a valid model
 ///               // or an error variant which is pretty helpful in understanding what went wrong
 ///               .build().unwrap();
@@ -311,14 +322,20 @@ where
     {
         SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
-
+    
+    /// Set the independent variable `$x$` which will be used when evaluating the model.
+    /// Also see the struct documentation of [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// for information on how to use this method.
     pub fn independent_variable(mut self, x : DVector<ScalarType>) -> Self {
         if let Ok(model) = self.model_result.as_mut() {
             model.x_vector = Some(x);
         }
         self
     }
-
+    
+    /// Set the initial values for the model parameters `$\vec{\alpha}$`.
+    /// Also see the struct documentation of [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// for information on how to use this method.
     pub fn initial_parameters(mut self, initial_parameters: Vec<ScalarType>) -> Self {
         if let Ok(model) = self.model_result.as_mut() {
             let expected = model.parameter_names.len();
@@ -542,6 +559,11 @@ where
         }
     }
 
+    /// Set the independent variable `\vec{x}` 
+    ///
+    /// # Usage
+    /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// struct documentation.
     pub fn independent_variable(self, x: DVector<ScalarType>) -> SeparableModelBuilder<ScalarType> {
         match self.current_result {
             Ok(pair) => {
@@ -552,6 +574,11 @@ where
         }
     }
 
+    /// Set the initial value for the nonlinear parameters `\vec{\alpha}` 
+    ///
+    /// # Usage
+    /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// struct documentation.
     pub fn initial_parameters(self, initial_parameters: Vec<ScalarType>) -> SeparableModelBuilder<ScalarType> {
         match self.current_result {
             Ok(pair) => {

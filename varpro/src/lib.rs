@@ -154,10 +154,8 @@
 //!     .build()
 //!     .unwrap();
 //! // 2.,3: Cast the fitting problem as a nonlinear least squares minimization problem
-//! let problem = LevMarProblemBuilder::new(&model)
-//!     .x(x)
-//!     .y(y)
-//!     .initial_guess(&[1., 2.])
+//! let problem = LevMarProblemBuilder::new(model)
+//!     .observations(y)
 //!     .build()
 //!     .expect("Building valid problem should not panic");
 //! // 4. Solve using the fitting problem

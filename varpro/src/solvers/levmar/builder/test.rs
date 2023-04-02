@@ -2,7 +2,7 @@ use crate::model::test::MockSeparableNonlinearModel;
 use crate::solvers::levmar::builder::LevMarBuilderError;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblemBuilder;
-use crate::{linalg_helpers::DiagMatrix};
+use crate::linalg_helpers::DiagMatrix;
 use nalgebra::{DMatrix, DVector};
 use assert_matches::assert_matches;
 
@@ -40,7 +40,7 @@ fn builder_assigns_fields_correctly_simple_case() {
     
     // build a problem with default epsilon
     let builder = LevMarProblemBuilder::new(model)
-        .y(y.clone());
+        .observations(y.clone());
     let problem = builder
         .build()
         .expect("Valid builder should not fail build");
@@ -76,7 +76,7 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
     let W = DMatrix::from_diagonal(&weights);
     
     let problem = LevMarProblemBuilder::new(model)
-        .y(y.clone())
+        .observations(y.clone())
         .epsilon(-1.337) // check that negative values are converted to absolutes
         .weights(weights.clone())
         .build()
@@ -123,7 +123,7 @@ fn builder_gives_errors_for_wrong_data_length() {
 
     assert_matches!(
             LevMarProblemBuilder::new(model)
-                .y(y.clone())
+                .observations(y.clone())
                 .build(),
             Err(LevMarBuilderError::InvalidLengthOfData { .. })
         ,
@@ -145,7 +145,7 @@ fn builder_gives_errors_for_zero_length_data() {
 
     assert_matches!(
             LevMarProblemBuilder::new(model)
-                .y(DVector::from(Vec::<f64>::new()))
+                .observations(DVector::from(Vec::<f64>::new()))
                 .build(),
             Err(LevMarBuilderError::ZeroLengthVector)
         ,
@@ -167,7 +167,7 @@ fn builder_gives_errors_for_wrong_length_of_weights() {
 
     assert_matches!(
             LevMarProblemBuilder::new(model)
-                .y(y)
+                .observations(y)
                 .weights(DVector::from_vec(vec! {1.,2.,3.}))
                 .build(),
             Err(LevMarBuilderError::InvalidLengthOfWeights { .. })

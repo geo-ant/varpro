@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::storage::Owned;
-use nalgebra::{ComplexField, DVector, Dyn, Matrix, Scalar, Vector, SVD, DefaultAllocator, UninitMatrix, Dim, OVector, Storage, RawStorageMut, DimMin, DimSub, Const};
+use nalgebra::{ComplexField, Matrix, Scalar, Vector, SVD, DefaultAllocator, UninitMatrix, Dim, OVector, Storage, RawStorageMut, DimMin, DimSub, Const};
 
 mod builder;
 #[cfg(test)]
@@ -252,8 +252,9 @@ where
                         .model
                         .eval_partial_deriv(k)
                         .ok()?; // will return none if this could not be calculated
-                let Dk_c = &Dk * linear_coefficients;
+                let Dk_c = Dk * linear_coefficients;
                 let minus_ak = U * (&U_t * (&Dk_c)) - Dk_c;
+
                 //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
                 //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
                 //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));

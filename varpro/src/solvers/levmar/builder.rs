@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblem;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DVector, Scalar, DefaultAllocator, Dyn, OVector, Dim, DimMin, DimSub, Const};
+use nalgebra::{ComplexField, Scalar, DefaultAllocator, OVector, Dim, DimMin, DimSub, Const};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -51,9 +51,7 @@ pub enum LevMarBuilderError {
 /// # use varpro::solvers::levmar::{LevMarProblem, LevMarProblemBuilder};
 /// # fn builder_example(x : DVector<f64>, y :DVector<f64>,model : SeparableModel<f64>, params: &[f64]) {
 ///   let problem = LevMarProblemBuilder::new(model)
-///                 .x(x)
-///                 .y(y)
-///                 .initial_guess(params)
+///                 .observations(y)
 ///                 .build()
 ///                 .unwrap();
 /// # }
@@ -155,7 +153,7 @@ where
 
     /// **Mandatory**: Set the data which we want to fit: `$\vec{y}=\vec{y}(\vec{x})$`.
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn y(self, yvec: OVector<Model::ScalarType,Model::OutputDim>) -> Self
+    pub fn observations(self, yvec: OVector<Model::ScalarType,Model::OutputDim>) -> Self
     {
         Self {
             y: Some(yvec),

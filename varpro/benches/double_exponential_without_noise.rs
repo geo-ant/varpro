@@ -4,20 +4,21 @@ use nalgebra::ComplexField;
 
 use nalgebra::Const;
 use nalgebra::DefaultAllocator;
-use nalgebra::DimMax;
+
 use nalgebra::DimMin;
 use nalgebra::DimSub;
-use nalgebra::Dyn;
+
 use nalgebra::OVector;
 use nalgebra::RawStorageMut;
-use nalgebra::RealField;
-use nalgebra::Scalar;
+
+
 use nalgebra::Storage;
 use nalgebra::U1;
-use num_traits::Float;
+
 use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::*;
+use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use varpro::model::SeparableModel;
 use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
@@ -74,7 +75,7 @@ where
     let base_function_count = model.base_function_count();
     let y = evaluate_complete_model_at_params(&mut model,  params,&OVector::from_vec_generic(base_function_count,U1,vec![c1, c2, c3]));
     let  problem = LevMarProblemBuilder::new(model)
-        .y(y)
+        .observations(y)
         .build()
         .expect("Building valid problem should not panic");
     problem
@@ -106,6 +107,21 @@ fn run_minimization_for_builder_separable_model(problem: LevMarProblem<Separable
     [params[0], params[1], coeff[0], coeff[1], coeff[2]]
 }
 
+/// solve the problem by using nonlinear least squares with levenberg marquardt
+/// from the levenberg marquardt crate only
+fn run_minimization_for_levenberg_marquardt_crate_problem(problem: DoubleExponentialDecayFittingWithOffsetLevmar) -> [f64; 5] {
+    let (problem, report) = LevMarSolver::new()
+        // if I don't set this, the solver will not converge
+        .with_stepbound(1.) 
+        .minimize(problem);
+    assert!(
+        report.termination.was_successful(),
+        "Termination not successful"
+    );
+    let params = problem.params();
+    [params[0], params[1], params[2], params[3], params[4]]
+}
+
 fn bench_double_exp_no_noise(c: &mut Criterion) {
     let true_parameters = DoubleExponentialParameters {
         tau1: 1.,
@@ -122,6 +138,22 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
     let x = linspace(0., 12.5, 1024);
     // initial guess for tau 
     let tau_guess  = (2., 6.5);
+    // function values
+    let f = x.map(|x: f64| true_parameters.c1 * (-x / true_parameters.tau1).exp() + true_parameters.c2 * (-x / true_parameters.tau2).exp() + true_parameters.c3);
+    
+    group.bench_function("Using Levenberg Marquardt Crate", |bencher| {
+        bencher.iter_batched(
+            || DoubleExponentialDecayFittingWithOffsetLevmar::new(
+                // we make it easier for the solver by giving it the 
+                // correct guesses for the coefficients from the start
+                // which is not gonna happen for realistic problems
+                &[tau_guess.0, tau_guess.1, true_parameters.c1, true_parameters.c2, true_parameters.c3], 
+                &x,&f
+            ),
+            run_minimization_for_levenberg_marquardt_crate_problem,
+            criterion::BatchSize::SmallInput,
+        )
+    });
 
     group.bench_function("Using Model Builder", |bencher| {
         bencher.iter_batched(

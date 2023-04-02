@@ -5,6 +5,8 @@ use varpro::{model::errors::ModelError, prelude::*};
 /// A separable model for double exponential decay
 /// with a constant offset
 /// f_j = c1*exp(-x_j/tau1) + c2*exp(-x_j/tau2) + c3
+/// this is a handcrafted model which uses caching for 
+/// maximum performance
 pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// the x vector associated with this model
     x_vector : DVector<f64>,
@@ -15,6 +17,7 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
 }
 
 impl DoubleExpModelWithConstantOffsetSepModel {
+    /// create a new model with the given x vector and initial guesses
     pub fn new(x_vector : DVector<f64>,(tau1_guess,tau2_guess):(f64,f64)) -> Self {
         let x_len = x_vector.len();
         let mut ret = Self {
@@ -176,10 +179,10 @@ impl LeastSquaresProblem<f64, Dyn, U5> for DoubleExponentialDecayFittingWithOffs
         // function values at the parameters
         let f = c1 * &self.precalc_exp_tau1
             + c2 * &self.precalc_exp_tau2
-            + &DVector::from_element(self.x.len(), c3);
+            + DVector::from_element(self.x.len(), c3);
 
         // residuals: f-y
-        Some(&f - &self.y)
+        Some(f - &self.y)
     }
 
     fn jacobian(&self) -> Option<Matrix<f64, Dyn, U5, Self::JacobianStorage>> {
@@ -189,17 +192,16 @@ impl LeastSquaresProblem<f64, Dyn, U5> for DoubleExponentialDecayFittingWithOffs
         let c1 = self.params[2];
         let c2 = self.params[3];
         // populate jacobian
-        //let ncols = 5;
         let nrows = self.x.len();
         let mut jacobian = Matrix::<f64, Dyn, U5, Self::JacobianStorage>::zeros(nrows);
 
         jacobian.set_column(
             0,
-            &(c1 / (tau1.powi(2)) * &(self.precalc_exp_tau1.component_mul(&self.x))),
+            &(c1 / (tau1*tau1) * &(self.precalc_exp_tau1.component_mul(&self.x))),
         );
         jacobian.set_column(
             1,
-            &(c2 / (tau2.powi(2)) * &(self.precalc_exp_tau2.component_mul(&self.x))),
+            &(c2 / (tau2*tau2) * &(self.precalc_exp_tau2.component_mul(&self.x))),
         );
         jacobian.set_column(2, &self.precalc_exp_tau1);
         jacobian.set_column(3, &self.precalc_exp_tau2);
