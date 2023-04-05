@@ -1,2 +1,39 @@
+[package]
+name = "varpro"
+version = "0.5.0"
+authors = ["geo-ant"]
+edition = "2021"
+license = "MIT"
+homepage = "https://github.com/geo-ant/varpro"
+repository = "https://github.com/geo-ant/varpro"
+description = "A straightforward nonlinear least-squares fitting library which uses the Variable Projection algorithm."
+readme = "README.md"
+categories = ["mathematics","science","algorithms"]
+keywords = ["nonlinear","least","squares","fitting","regression"]
+
 [workspace]
-members = ["varpro","shared_test_code"]
+members  = [ "shared_test_code" ]
+
+[dependencies]
+thiserror = "1"
+levenberg-marquardt = "0.13"
+nalgebra = "0.32"
+num-traits = "0.2"
+
+[dev-dependencies]
+approx = "0.5"
+num-complex = "0.4"
+criterion = "0.4"
+pprof = {version = "0.11",features = ["criterion","flamegraph"]}
+shared_test_code = {path = "./shared_test_code"}
+assert_matches = "1.5"
+mockall = "0.11"
+
+[[bench]]
+name = "double_exponential_without_noise"
+harness = false
+
+[package.metadata.docs.rs]
+# To build locally use
+#   RUSTDOCFLAGS="--html-in-header katex-header.html" cargo doc --no-deps --open
+rustdoc-args = [ "--html-in-header", "katex-header.html" ]

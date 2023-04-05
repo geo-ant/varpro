@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-varpro = {path = "../varpro"}
+varpro = {path = "../"}
 nalgebra = "0.32"
 num-traits = "0.2"
 levenberg-marquardt = "0.13"
