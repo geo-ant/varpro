@@ -1,49 +1,76 @@
 #![warn(missing_docs)]
 //!
 //! # Introduction
+//!  
+//! `varpro` is a crate for least squares fitting nonlinear models to observations. It works 
+//! for a large class of so called _separable_ nonlinear least squares problems.
+//! It's fast, flexible, and it is simple to use.
 //!
-//! A large class of nonlinear models consists of a mixture of both truly nonlinear and _linear_ model
+//! ## Overview
+//!
+//! Many nonlinear models consist of a mixture of both truly nonlinear and _linear_ model
 //! parameters. These are called *separable models* and can be written as a linear combination
-//! of `$N_{basis}$` nonlinear model basis functions. The purpose of this crate is to fit linear
-//! models to data using fast and robust algorithms, while providing a simple interface.
+//! of `$N_{basis}$` nonlinear model basis functions.
 //!
-//! Consider a data vector `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`, which
-//! is sampled at grid points `$\vec{x}=(x_1,\dots,x_{N_{data}})^T$`, both with `$N_{data}$` elements. Our goal is to fit a nonlinear,
-//! separable model `$f$` to the data. Because the model is separable we can write it as
+//! The purpose of this crate is to provide least
+//! squares fitting of nonlinear separable models to observations. We also aim to provide excellent usability
+//! because all too often it is overly hard to even formulate a fitting
+//! problem in code. That is why this libary provides a prototyping interface that allows to
+//! formulate a fitting problem in a few lines of code. This is done using the 
+//! [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). For 
+//! suitable problems this is likely already many times faster than just using nonlinear
+//! least squares solvers directly. This is because this crates uses the Variable Projection
+//! (VarPro) algorithm for fitting, which takes advantage of the separable structure
+//! of the model.
+//!
+//! To shave of the last couple hundreds of microseconds,
+//! you can manually implement the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait directly.
+//! The test and benchmark suite of this crate should give you a good idea of how fast
+//! the fitting can be and how to e.g. take advantage of caching intermediate results.
+//!
+//! ## The Fitting Problem
+//! 
+//! Consider a data vector of observations `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`.
+//! Our goal is to fit a nonlinear, separable model `$f$` to the data.
+//! Because the model is separable we can write it as
 //!
 //! ```math
-//! \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(\vec{x},S_j(\alpha))
+//! \vec{f}(\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(S_j(\vec{\alpha}))
 //! ```
 //!
 //! Lets look at the components of this equation in more detail. The vector valued function
-//! `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` is the actual model we want to fit. It depends on
-//! three arguments:
-//! * `$\vec{x}$` is the independent variable which corresponds to the grid points. Those can be a time,
-//! location or anything at all, really.
+//! `$\vec{f}(\vec{\alpha},\vec{c}) \in \mathbb{C}^{N_{data}}$` is the model we want to fit. It depends on
+//! two vector values parameters:
 //! * `$\vec{\alpha}=(\alpha_1,\dots,\alpha_{N_{params}})^T$` is the vector of nonlinear model parameters.
 //! We will get back to these later.
 //! * `$\vec{c}=(c_1,\dots,c_{N_{basis}})^T$` is the vector of coefficients for the basis functions.
+//! Those are the linear model parameters.
 //!
-//! Note that we call `$\vec{\alpha}$` the _parameters_ and `$\vec{c}$` the _coefficients_ of the model.
-//! We do this do make the distincion between _nonlinear parameters_ and _linear coefficients_.
+//! Note that we call `$\vec{\alpha}$` the _nonlinear parameters_ and `$\vec{c}$` the _coefficients_ of the model
+//! just to make the distinction between the two types of parameters clear. The coefficients are
+//! the linear parameters of the model, while `$\vec{\alpha}$` are the nonlinear parameters.
 //! Of course the model itself is parametrized on both `$\vec{\alpha}$` and `$\vec{c}$`.
+//!
+//! Let's look at the individual basis functions `$\vec{f}_j$` in more detail and also 
+//! why the heck we made the basis functions depend this weird `$S_j(\vec{\alpha})$`.
 //!
 //! ## Model Parameters and Basis Functions
 //!
 //! The model itself is given as a linear combination of *nonlinear* basis functions `$\vec{f}_j$` with
-//! expansion coefficient `$c_j$`. The basis functions themselves only depend on the independent variable
-//! `$\vec{x}$` and on a subset `$S_j(\alpha)$` of the nonlinear model parameters `$\vec{\alpha}$`.
+//! expansion coefficient `$c_j$`. The basis functions themselves only depend on 
+//! a subset `$S_j(\vec{\alpha})$` of the nonlinear model parameters `$\vec{\alpha}$`.
 //! Each basis function can depend on a different subset, but there is no restriction on which
-//! parameters a function can depend. Arbitrary functions might share some parameters. It's also
-//! fine for functions to depend on some (or only) parameters that are exclusive to them.
+//! parameters a function can depend on. Arbitrary functions might share none of, some of ,or all of the parameters.
+//! It's also fine for functions to depend on parameters that are exclusive to them.
 //!
 //! ## What VarPro Computes
+//!
 //! This crate finds the parameters `$\vec{\alpha}$` and `$\vec{c}$` that
-//! fit the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` to the data `$\vec{y}$` obtained at grid points
-//! `$\vec{x}$` using a least squares metric. Formally, varpro finds
+//! fit the model `$\vec{f}(\vec{\alpha},\vec{c})$` to the observations `$\vec{y}$` 
+//! using a least squares metric. Formally, varpro finds
 //!
 //! ```math
-//! \arg\min_{\vec{\alpha},\vec{c}} ||\mathbf{W}(\vec{y}-\vec{f}(\vec{x},\vec{\alpha},\vec{c}))||_2^2,
+//! \arg\min_{\vec{\alpha},\vec{c}} ||\mathbf{W}(\vec{y}-\vec{f}(\vec{\alpha},\vec{c}))||_2^2,
 //! ```
 //! where `$\mathbf{W}$` is a weight matrix that can be set to the identity matrix for unweighted
 //! least squares.
