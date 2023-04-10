@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(any(test,doctest))]
 mod test;
 
 use nalgebra::{ClosedMul, ComplexField, Scalar, Dim, OVector, Matrix, RawStorageMut, DefaultAllocator};

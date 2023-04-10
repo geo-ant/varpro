@@ -4,7 +4,7 @@ use nalgebra::storage::Owned;
 use nalgebra::{ComplexField, Matrix, Scalar, Vector, SVD, DefaultAllocator, UninitMatrix, Dim, OVector, Storage, RawStorageMut, DimMin, DimSub, Const};
 
 mod builder;
-#[cfg(test)]
+#[cfg(any(test,doctest))]
 mod test;
 mod weights;
 

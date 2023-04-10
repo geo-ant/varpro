@@ -99,7 +99,7 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test,doctest))]
 mod test {
     use crate::solvers::levmar::weights::Weights;
     use nalgebra::{DMatrix, DVector};

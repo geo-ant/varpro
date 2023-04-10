@@ -11,7 +11,7 @@ pub mod errors;
 /// contains the builder code for model creation
 pub mod builder;
 mod model_basis_function;
-#[cfg(test)]
+#[cfg(any(test,doctest))]
 pub mod test;
 
 /// Represents an abstraction for a separable nonlinear model

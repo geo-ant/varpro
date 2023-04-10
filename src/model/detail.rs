@@ -140,5 +140,5 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(any(test,doctest))]
 mod test;

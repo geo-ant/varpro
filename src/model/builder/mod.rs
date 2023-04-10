@@ -9,7 +9,7 @@ use error::ModelBuildError;
 
 mod modelfunction_builder;
 
-#[cfg(test)]
+#[cfg(any(test,doctest))]
 mod test;
 
 /// contains the error for the model builder

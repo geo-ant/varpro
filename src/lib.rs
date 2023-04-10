@@ -86,22 +86,24 @@
 //! The VarPro algorithm implemented here follows (O'Leary2013), but uses use the Kaufman approximation
 //! to calculate the Jacobian.
 //!
-//! # Usage and Workflow
-//!
-//! The workflow for solving a least squares fitting problem with varpro consists of the following steps.
-//! 1. Create a [SeparableModel](crate::model::SeparableModel) which describes the model function using
-//! the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). This is done by
-//! adding individual basis functions as well as their partial derivatives.
-//! 2. Choose a nonlinear minimizer backend. Right now the only implemented nonlinear minimizer
-//! is the [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
-//! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate. So just proceed
-//! to the next step.
-//! 3. Cast the fitting problem into a [LevMarProblem](crate::solvers::levmar::LevMarProblem) using
+//! # Usage and Examples
+//! 
+//! The first step in using this crate is to formulate the fitting problem.
+//! This is done by either creating a type that implements the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait
+//! or by using the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder) to create a model
+//! in a few lines of code. The latter is great for prototyping and might even
+//! be fast enough for your use case.
+//! 
+//! The second step is to use a nonlinear minimization backend to find the parameters that fit the model to the data.
+//! Right now the available backend is the [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
+//! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate. 
+//! Thus, cast the fitting problem into a [LevMarProblem](crate::solvers::levmar::LevMarProblem) using
 //! the [LevMarProblemBuilder](crate::solvers::levmar::builder::LevMarProblemBuilder).
-//! 4. Solve the fitting problem using the [LevMarSolver](crate::solvers::levmar::LevMarSolver), which
+//! Next, solve the fitting problem using the [LevMarSolver](crate::solvers::levmar::LevMarSolver), which
 //! is an alias for the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt) struct and allows to set
 //! additional parameters of the algorithm before performing the minimization.
-//! 5. Check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
+//!
+//! Finally, check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
 //! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
 //! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
 //!
@@ -165,7 +167,7 @@
 //! #    tvec.map(|t| (-t / tau).exp() * t / tau.powi(2))
 //! # }
 //!
-//! // create the data
+//! # // create the data
 //! # let x = DVector::from_vec(vec![0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.]);
 //! # let y = DVector::from_vec(vec![1.0,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.01]);
 //!
@@ -224,5 +226,5 @@ pub mod solvers;
 /// implemented in the nalgebra crate
 mod linalg_helpers;
 
-#[cfg(test)]
+#[cfg(any(test, doctest))]
 pub mod test_helpers;
