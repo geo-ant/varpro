@@ -15,15 +15,15 @@
 //! The purpose of this crate is to provide least
 //! squares fitting of nonlinear separable models to observations. We also aim to provide excellent usability
 //! because all too often it is overly hard to even formulate a fitting
-//! problem in code. That is why this libary provides a prototyping interface that allows to
-//! formulate a fitting problem in a few lines of code. This is done using the 
+//! problem in code. That is why this libary provides a prototyping API that allows to
+//! formulate a fitting problem in a few lines of code using the 
 //! [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). For 
 //! suitable problems this is likely already many times faster than just using nonlinear
-//! least squares solvers directly. This is because this crates uses the Variable Projection
-//! (VarPro) algorithm for fitting, which takes advantage of the separable structure
+//! least squares solvers directly. This is because this crates takes advantage of the Variable Projection
+//! (VarPro) algorithm for fitting, which utilizes the separable structure
 //! of the model.
 //!
-//! To shave of the last couple hundreds of microseconds,
+//! To shave off the last couple hundreds of microseconds,
 //! you can manually implement the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait directly.
 //! The test and benchmark suite of this crate should give you a good idea of how fast
 //! the fitting can be and how to e.g. take advantage of caching intermediate results.
@@ -60,7 +60,7 @@
 //! expansion coefficient `$c_j$`. The basis functions themselves only depend on 
 //! a subset `$S_j(\vec{\alpha})$` of the nonlinear model parameters `$\vec{\alpha}$`.
 //! Each basis function can depend on a different subset, but there is no restriction on which
-//! parameters a function can depend on. Arbitrary functions might share none of, some of ,or all of the parameters.
+//! parameters a function can depend on. Arbitrary functions might share none of, some of, or all of the parameters.
 //! It's also fine for functions to depend on parameters that are exclusive to them.
 //!
 //! ## What VarPro Computes
@@ -88,7 +88,7 @@
 //!
 //! # Usage and Workflow
 //!
-//! The workflow for solving a least squares fitting problem with varpro is consists of the following steps.
+//! The workflow for solving a least squares fitting problem with varpro consists of the following steps.
 //! 1. Create a [SeparableModel](crate::model::SeparableModel) which describes the model function using
 //! the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). This is done by
 //! adding individual basis functions as well as their partial derivatives.
@@ -164,7 +164,11 @@
 //! # fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) -> DVector<f64> {
 //! #    tvec.map(|t| (-t / tau).exp() * t / tau.powi(2))
 //! # }
-//! # fn fit_model_example(x:DVector<f64>, y:DVector<f64>) {
+//!
+//! // create the data
+//! # let x = DVector::from_vec(vec![0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.]);
+//! # let y = DVector::from_vec(vec![1.0,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.01]);
+//!
 //! //1. create the model by giving only the nonlinear parameter names it depends on
 //! let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
 //!     // add the first exponential decay and its partial derivative to the model
@@ -177,6 +181,10 @@
 //!     .partial_deriv("tau2", exp_decay_dtau)
 //!     // add the constant as a vector of ones as an invariant function
 //!     .invariant_function(|x|DVector::from_element(x.len(),1.))
+//!     // the independent variable (x-axis) is the same for all basis functions
+//!     .independent_variable(x)
+//!     // the initial guess for the nonlinear parameters is tau1=1, tau2=5
+//!     .initial_parameters(vec![1.,5.])
 //!     // build the model
 //!     .build()
 //!     .unwrap();
@@ -184,7 +192,7 @@
 //! let problem = LevMarProblemBuilder::new(model)
 //!     .observations(y)
 //!     .build()
-//!     .expect("Building valid problem should not panic");
+//!     .unwrap();
 //! // 4. Solve using the fitting problem
 //! let (solved_problem, report) = LevMarSolver::new().minimize(problem);
 //! assert!(report.termination.was_successful());
@@ -194,7 +202,6 @@
 //! // the linear coefficients after fitting
 //! // they are in the same order as the basis functions that were added to the model
 //! let c = solved_problem.linear_coefficients().unwrap();
-//! # }
 //! ```
 //!
 //! # References and Further Reading
