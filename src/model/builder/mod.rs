@@ -15,7 +15,9 @@ mod test;
 /// contains the error for the model builder
 pub mod error;
 
-///! A builder that allows us to construct a valid [SeparableModel](crate::model::SeparableModel).
+/// A builder that allows us to construct a valid [SeparableModel](crate::model::SeparableModel),
+/// which is an implementor of the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel)
+/// trait.
 ///
 /// # Introduction
 ///
@@ -30,8 +32,7 @@ pub mod error;
 /// depend on the same parameters.
 ///
 /// # Usage
-/// The SeparableModelBuilder is concerned with building a model from basis functions and
-/// their derivatives. This is done as a step by step process.
+/// The SeparableModelBuilder is concerned with building a model from basis functions and their derivatives. This is done as a step by step process.
 ///
 /// ## Constructing an Empty Builder
 /// The first step is to create an empty builder by specifying the complete set of *nonlinear* parameters that
@@ -39,25 +40,41 @@ pub mod error;
 /// and specifying the list of parameters of the model by name.
 ///
 /// ## Adding Basis Functions to The Model
+///
 /// Basis functions come in two flavors. Those that depend on a subset of the nonlinear parameters
 /// `$\vec{\alpha}$` and those that do not. Both function types have to obey certain rules to
 /// be considered valid:
 ///
 /// **Function Arguments and Output**
 ///
-/// * The first argument of the function is a `&DVector` type and is a reference to the vector of
-/// grid points `$\vec{x}$`.
-/// * The function outputs a `DVector` type of the same size as `$\vec{x}$`
+/// * The first argument of the function must be a reference to a `&DVector` type
+/// that accepts the independent variable (the `$\vec{x}$` values) and the other
+/// parameters must be scalars that are the nonlinear parameters that the basis 
+/// function depends on.
+/// 
+/// So if we want to model a basis function `$\vec{f_1}(\vec{x},\vec{\alpha})$` 
+/// where `$\vec{\alpha}=(\alpha_1,\alpha_2)$` we would write the function in Rust as
+///
+/// ```rust
+/// fn f1(x: &DVector<f32>, alpha1: f32, alpha2: f32) -> DVector<f32> { 
+///    // e.g. for sinusoidal function with frequency alpha1 and phase alpha2
+///    // apply the function elementwise to the vector x
+///    x.map(|x| f32::sin(alpha1*x+alpha2))
+/// }
+/// ```
+/// using single precision (`f32`) floats.
 ///
 /// ** Linear Independence**
+///
 /// The basis functions must be linearly independent. That means adding `$\vec{f_1}(\vec{x})=\vec{x}$`
-/// and `$\vec{f_1}(\vec{x})=2\,\vec{x}$` is a bad idea. It is a bad idea because it *might* destabilize
-/// the calculations. It is also a bad idea because it adds no value, since the model functions have
-/// associated linear expansion coefficients anyways.
+/// and `$\vec{f_1}(\vec{x})=2\,\vec{x}$` is forbidden. Adding functions that 
+/// are lineary dependent will possibly destabilize the fitting process.
+/// the calculations. Adding linearly dependent functions is also a bad idea 
+/// because it adds no value due to the linear superposition of the basis functions.
 ///
 /// For some models, e.g. sums of exponential decays it might happen that the basis functions become
 /// linearly dependent *for some combinations* of nonlinear model parameters. This isn't great but it is
-/// okay, since the VarPro algorithm in this crate exhibits a level of robustness against basis functions
+/// okay, since the VarPro algorithm in this crate exhibits a degree of robustness against basis functions
 /// becoming collinear (see [LevMarProblemBuilder::epsilon](crate::solvers::levmar::LevMarProblemBuilder::epsilon)).
 ///
 /// ### Invariant Basis Functions
@@ -87,13 +104,51 @@ pub mod error;
 /// make no sense to use the varpro library to fit such a model because that is purely a linear
 /// least squares problem. See the next section for adding parameter dependent functions.
 ///
-/// ### Basis Functions
-/// Most of the time we'll be adding basis functions to the model that depend on some of the model
-/// parameters. We can add a basis function to a builder by calling `builder.function`. Each call must
+/// ### Nonlinear Basis Functions
+/// The core functionality of the builder is to add basis functions to the model
+/// that depend nonlinearly on some (or all) of the model parameters `$\vec{\alpha}$`.
+/// We add a basis function to a builder by calling `builder.function`. Each call must
 /// be immediately followed by calls to `partial_deriv` for each of the parameters that the basis
 /// function depends on.
 ///
-/// **Example**: The procedure is best illustrated with an example
+/// #### Rules for Model Functions
+/// There are several rules for adding model basis functions. One of them is enforced by the compiler,
+/// some of them are enforced at runtime (when trying to build the model) and others simply cannot
+/// be enforced by the library.
+///
+/// ** Rules You Must Abide By**
+/// 
+/// * Basis functions must be **nonlinear** in the parameters they take. If they aren't, you can always
+/// rewrite the problem so that the linear parameters go in the coefficient vector `$\vec{c}$`. This
+/// means that each partial derivative also depend on all the parameters that the basis function depends
+/// on.
+/// * Derivatives must take the same parameter arguments *and in the same order* as the original
+/// basis function. This means if basis function `$\vec{f}_j$` is given as `$\vec{f}_j(\vec{x},a,b)$`,
+/// then the derivatives must also be given with the parameters `$a,b$` in the same order, i.e.
+/// `$\partial/\partial a \vec{f}_j(\vec{x},a,b)$`, `$\partial/\partial b \vec{f}_j(\vec{x},a,b)$`.
+///
+/// **Rules Enforced at Compile Time**
+///
+/// * Partial derivatives cannot be added to invariant functions.
+///
+/// **Rules Enforced at Runtime**
+///
+/// * A partial derivative must be given for each parameter that the basis function depends on.
+/// * Basis functions may only depend on the parameters that the model depends on.
+///
+///
+/// The builder allows us to provide basis functions for a separable model as a step by step process.
+///
+/// ## Example
+/// Let's build a model that is the sum of an exponential decay `$\exp(-t/\tau)$`
+/// and a sine  function `$\sin(\omega t + \phi)$`. The model depends on the parameters `$\tau$`,
+/// `$\omega$` and `$\phi$`. The exponential decay depends only on `$\tau$` and the sine function
+/// depends on `$\omega$` and `$\phi$`. The model is given by
+/// 
+/// ```math
+/// f(t,\tau,\omega,\phi) = \exp(-t/\tau) + \sin(\omega t + \phi)
+/// ```
+/// which is a reasonable nontrivial model to demonstrate the usage of the library.
 ///
 /// ```rust
 /// // exponential decay f(t,tau) = exp(-t/tau)
@@ -174,31 +229,6 @@ pub mod error;
 /// are simply scalar arguments in the parameter list of the function. This works for functions
 /// taking up to 10 nonlinear arguments, but can be extended easily by modifying this crates source.
 ///
-/// #### Rules for Model Functions
-/// There are several rules for adding model functions. One of them is enforced by the compiler,
-/// some of them are enforced at runtime (when trying to build the model) and others simply cannot
-/// be enforced by the library.
-///
-/// **Purely Semantic Rules:
-/// * Basis functions must be **nonlinear** in the parameters they take. If they aren't, you can always
-/// rewrite the problem so that the linear parameters go in the coefficient vector `$\vec{c}$`. This
-/// means that each partial derivative also depend on all the parameters that the basis function depends
-/// on.
-/// * Derivatives must take the same parameter arguments *and in the same order* as the original
-/// basis function. This means if basis function `$\vec{f}_j$` is given as `$\vec{f}_j(\vec{x},a,b)$`,
-/// then the derivatives must also be given with the parameters `$a,b$` in the same order, i.e.
-/// `$\partial/\partial a \vec{f}_j(\vec{x},a,b)$`, `$\partial/\partial b \vec{f}_j(\vec{x},a,b)$`.
-///
-/// **Rules Enforced at Compile Time**
-/// * Partial derivatives cannot be added to invariant functions. This is the reason for the
-/// weird proxy in the module.
-///
-/// **Rules Enforced at Runtime**
-/// * A partial derivative must be given for each parameter that the basis function depends on.
-/// * Basis functions may only depend on the parameters that the model depends on.
-///
-///
-/// The builder allows us to provide basis functions for a separable model as a step by step process.
 ///
 /// ## Building a Model
 /// The model is finalized and built using the [SeparableModelBuilder::build](SeparableModelBuilder::build)

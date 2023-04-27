@@ -10,6 +10,7 @@ mod weights;
 
 use crate::solvers::levmar::weights::Weights;
 pub use builder::LevMarProblemBuilder;
+/// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use num_traits::Float;
 use std::ops::Mul;

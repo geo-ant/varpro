@@ -40,7 +40,7 @@
 //!
 //! Lets look at the components of this equation in more detail. The vector valued function
 //! `$\vec{f}(\vec{\alpha},\vec{c}) \in \mathbb{C}^{N_{data}}$` is the model we want to fit. It depends on
-//! two vector values parameters:
+//! two vector valued parameters:
 //! * `$\vec{\alpha}=(\alpha_1,\dots,\alpha_{N_{params}})^T$` is the vector of nonlinear model parameters.
 //! We will get back to these later.
 //! * `$\vec{c}=(c_1,\dots,c_{N_{basis}})^T$` is the vector of coefficients for the basis functions.
@@ -91,21 +91,64 @@
 //! The first step in using this crate is to formulate the fitting problem.
 //! This is done by either creating a type that implements the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait
 //! or by using the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder) to create a model
-//! in a few lines of code. The latter is great for prototyping and might even
-//! be fast enough for your use case.
-//! 
+//! in a few lines of code. See the examples for the trait and the builder how to
+//! use either to generate a separable nonlinear model.
+//!
+//! The builder is great for getting started quickly and
+//! is already much faster than using a nonlinear least squares solver directly.
+//! For maximum performance, you can look into implementing the trait manually.
+//!
+//! ```rust
+//! let model = /* generate model here */
+//! # ();
+//! ```
+//!
 //! The second step is to use a nonlinear minimization backend to find the parameters that fit the model to the data.
 //! Right now the available backend is the [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
 //! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate. 
 //! Thus, cast the fitting problem into a [LevMarProblem](crate::solvers::levmar::LevMarProblem) using
-//! the [LevMarProblemBuilder](crate::solvers::levmar::builder::LevMarProblemBuilder).
+//! the [LevMarProblemBuilder](crate::solvers::levmar::LevMarProblemBuilder).
+//!
+//! To build the fitting problem, we need to provide the model, and the observations.
+//! The initial guess for the nonlinear parameters `$\vec{\alpha}$` is a property
+//! of the model.
+//! 
+//! ```no_run
+//! # let model : crate::model::SeparableNonlinearModel = unimplemented!();
+//! # let y = vec![0.0; 10];
+//! let problem = LevMarProblemBuilder::new(model)
+//!               .observations(y)
+//!               .build()
+//!               .unwrap();
+//! ```
+//!
 //! Next, solve the fitting problem using the [LevMarSolver](crate::solvers::levmar::LevMarSolver), which
 //! is an alias for the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt) struct and allows to set
 //! additional parameters of the algorithm before performing the minimization.
 //!
+//! The simplest way of performing the minimization (without setting any additional
+//! parameters for the minimization is like so:
+//!
+//! ```no_run
+//! # let problem : crate::solvers::levmar::LevMarProblem = unimplemented!();
+//! let (problem, report) = LevMarSolver::new().minimize(problem);
+//! ```
 //! Finally, check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
 //! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
 //! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
+//!
+//! ```no_run
+//! # let problem : crate::solvers::levmar::LevMarProblem = unimplemented!();
+//! # let (problem, report) = LevMarSolver::new().minimize(problem);
+//! assert!(
+//!     report.termination.was_successful(),
+//!     "Termination not successful"
+//! );
+//! let alpha = problem.params();
+//! let coeff = problem.linear_coefficients().unwrap();
+//! ```
+//! If the minimization was successful, the nonlinear parameters `$\vec{\alpha}$` 
+//! are now stored in the variable `alpha` and the linear coefficients `$\vec{c}$` are stored in `coeff`.
 //!
 //! # Example
 //!
@@ -114,6 +157,7 @@
 //! to observations `$\vec{y}$` obtained at grid points `$\vec{x}$`. The model itself is a vector valued
 //! function with the same number of elements as `$\vec{x}$` and `$\vec{y}$`. The component at index
 //! `k` is given by
+//!
 //! ```math
 //! (\vec{f}(\vec{x},\vec{\alpha},\vec{c}))_k= c_1 \exp\left(-x_k/\tau_1\right)+c_2 \exp\left(-x_k/\tau_2\right)+c_3,
 //! ```
@@ -143,7 +187,7 @@
 //! ```
 //!
 //! We'll see in the example how the [function](crate::model::builder::SeparableModelBuilder::function) method
-//! and the [partial_deriv](crate::model::builder::SeparableModelBuilderProxWithDerivatives::partial_deriv)
+//! and the [partial_deriv](crate::model::builder::SeparableModelBuilderProxyWithDerivatives::partial_deriv)
 //! methods let us add the function and the derivative as base functions.
 //!
 //! There is a second type of basis function, which corresponds to coefficient `$c_3$`. This is a constant

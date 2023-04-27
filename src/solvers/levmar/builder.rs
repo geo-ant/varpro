@@ -62,15 +62,6 @@ pub enum LevMarBuilderError {
 /// the [build](LevMarProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
 /// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
 /// it contains an error variant.
-/// ## Mandatory Building Blocks
-/// The following methods must be called before building a problem with the builder.
-/// * [x](LevMarProblemBuilder::x) to set the values of the independent variable `$\vec{x}$`
-/// * [y](LevMarProblemBuilder::y) to set the values of the independent variable `$\vec{y}$`
-/// * [model](LevMarProblemBuilder::model) to set the model function
-/// * [initial_guess](LevMarProblemBuilder::initial_guess) provide an initial guess
-/// ## Additional Building blocks
-/// The other methods of the builder allow to manipulate further aspects, like adding weights to the data.
-/// The methods are marked as **Optional**.
 pub struct LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,

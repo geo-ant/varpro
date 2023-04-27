@@ -1,7 +1,7 @@
 //! This module provides blanket implementations for the BasisFunction trait for all callables
-//! Fn(&DVector<T>,T)->DVector<T>
-//! Fn(&DVector<T>,T,T)->DVector<T>
-//! Fn(&DVector<T>,T,T,T)->DVector<T>
+//! `Fn(&DVector<T>,T)->DVector<T>`
+//! `Fn(&DVector<T>,T,T)->DVector<T>`
+//! `Fn(&DVector<T>,T,T,T)->DVector<T>`
 //! ...
 //! and so on up to a maximum number of parameters. T is of nalgebra::Scalar type.
 //! Currently the maximum number of scalar parameters is 10.
