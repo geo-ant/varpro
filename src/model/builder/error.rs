@@ -87,8 +87,8 @@ pub enum ModelBuildError {
     )]
     IncorrectParameterCount {
         /// the actual number of arguments
-        actual : usize,
-        /// the number of 
+        actual: usize,
+        /// the number of
         expected: usize,
     },
 

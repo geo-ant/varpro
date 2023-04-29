@@ -1,5 +1,7 @@
 use crate::linalg_helpers::DiagMatrix;
-use nalgebra::{ClosedMul, ComplexField, Scalar, Dim, OVector, RawStorageMut, DefaultAllocator, Matrix};
+use nalgebra::{
+    ClosedMul, ComplexField, DefaultAllocator, Dim, Matrix, OVector, RawStorageMut, Scalar,
+};
 use std::ops::Mul;
 
 /// a variant for different weights that can be applied to a least squares problem
@@ -7,31 +9,30 @@ use std::ops::Mul;
 /// matrix for the weights. Can easily be extended in the future, because this structure
 /// offers an interface for matrix-matrix multiplication and matrix-vector multiplication
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Weights<ScalarType,D>
+pub enum Weights<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
 {
     /// unit weights, which means the problem is unweighted
     Unit,
     /// the weights are represented by a diagonal matrix
-    Diagonal(DiagMatrix<ScalarType,D>),
+    Diagonal(DiagMatrix<ScalarType, D>),
 }
 
-impl<ScalarType,D> Weights<ScalarType,D>
+impl<ScalarType, D> Weights<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
 {
     /// create diagonal weights with the given diagonal elements of a matrix.
     /// The resulting diagonal matrix is a square matrix with the given diagonal
     /// elements and all off-diagonal elements set to zero
     /// Make sure that the dimensions of the weights match the data that they
     /// should be applied to
-    pub fn diagonal(diagonal: OVector<ScalarType,D>) -> Self
-    {
+    pub fn diagonal(diagonal: OVector<ScalarType, D>) -> Self {
         Self::from(DiagMatrix::from(diagonal))
     }
 
@@ -49,11 +50,11 @@ where
 }
 
 /// Get a variant representing unit weights (i.e. unweighted problem)
-impl<ScalarType,D> Default for Weights<ScalarType,D>
+impl<ScalarType, D> Default for Weights<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
 {
     fn default() -> Self {
         Self::Unit
@@ -61,13 +62,13 @@ where
 }
 
 /// create diagonal weights using the given diagonal matrix
-impl<ScalarType,D> From<DiagMatrix<ScalarType,D>> for Weights<ScalarType,D>
+impl<ScalarType, D> From<DiagMatrix<ScalarType, D>> for Weights<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
 {
-    fn from(diag: DiagMatrix<ScalarType,D>) -> Self {
+    fn from(diag: DiagMatrix<ScalarType, D>) -> Self {
         Self::Diagonal(diag)
     }
 }
@@ -80,18 +81,18 @@ where
 /// If the matrix matrix multiplication fails because of incorrect dimensions.
 /// (unit weights never panic)
 #[allow(non_snake_case)]
-impl<ScalarType,R,C,S> Mul<Matrix<ScalarType,R,C,S>> for &Weights<ScalarType,R>
+impl<ScalarType, R, C, S> Mul<Matrix<ScalarType, R, C, S>> for &Weights<ScalarType, R>
 where
     ScalarType: ClosedMul + Scalar + ComplexField,
-    C : Dim,
+    C: Dim,
     R: Dim,
-    S : RawStorageMut<ScalarType, R,C,>,
+    S: RawStorageMut<ScalarType, R, C>,
     DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R, C>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R, C>,
 {
-    type Output = Matrix<ScalarType,R,C,S>;
+    type Output = Matrix<ScalarType, R, C, S>;
 
-    fn mul(self, rhs: Matrix<ScalarType,R,C,S>) -> Self::Output {
+    fn mul(self, rhs: Matrix<ScalarType, R, C, S>) -> Self::Output {
         match self {
             Weights::Unit => rhs,
             Weights::Diagonal(W) => W * rhs,
@@ -99,7 +100,7 @@ where
     }
 }
 
-#[cfg(any(test,doctest))]
+#[cfg(any(test, doctest))]
 mod test {
     use crate::solvers::levmar::weights::Weights;
     use nalgebra::{DMatrix, DVector};

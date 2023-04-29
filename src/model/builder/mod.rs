@@ -9,7 +9,7 @@ use error::ModelBuildError;
 
 mod modelfunction_builder;
 
-#[cfg(any(test,doctest))]
+#[cfg(any(test, doctest))]
 mod test;
 
 /// contains the error for the model builder
@@ -22,12 +22,12 @@ pub mod error;
 /// # Introduction
 ///
 /// In the main crate we defined a separable model as a vector valued function
-/// `$\vec{f}(\vec{\alpha},\vec{c})$`, but we are going to deviate from this 
+/// `$\vec{f}(\vec{\alpha},\vec{c})$`, but we are going to deviate from this
 /// definition slightly here. We want to provide an *independent variable* `$\vec{x}$`
 /// that the function depends on, to make a model usable on different supports.
 ///
 /// To make the dependence on the independent variable explitict,
-/// we now writethe separable model as 
+/// we now writethe separable model as
 /// ```math
 ///  \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(\vec{x},S_j(\alpha))
 /// ```
@@ -55,14 +55,14 @@ pub mod error;
 ///
 /// * The first argument of the function must be a reference to a `&DVector` type
 /// that accepts the independent variable (the `$\vec{x}$` values) and the other
-/// parameters must be scalars that are the nonlinear parameters that the basis 
+/// parameters must be scalars that are the nonlinear parameters that the basis
 /// function depends on.
-/// 
-/// So if we want to model a basis function `$\vec{f_1}(\vec{x},\vec{\alpha})$` 
+///
+/// So if we want to model a basis function `$\vec{f_1}(\vec{x},\vec{\alpha})$`
 /// where `$\vec{\alpha}=(\alpha_1,\alpha_2)$` we would write the function in Rust as
 ///
 /// ```rust
-/// fn f1(x: &DVector<f32>, alpha1: f32, alpha2: f32) -> DVector<f32> { 
+/// fn f1(x: &DVector<f32>, alpha1: f32, alpha2: f32) -> DVector<f32> {
 ///    // e.g. for sinusoidal function with frequency alpha1 and phase alpha2
 ///    // apply the function elementwise to the vector x
 ///    x.map(|x| f32::sin(alpha1*x+alpha2))
@@ -73,9 +73,9 @@ pub mod error;
 /// ** Linear Independence**
 ///
 /// The basis functions must be linearly independent. That means adding `$\vec{f_1}(\vec{x})=\vec{x}$`
-/// and `$\vec{f_1}(\vec{x})=2\,\vec{x}$` is forbidden. Adding functions that 
+/// and `$\vec{f_1}(\vec{x})=2\,\vec{x}$` is forbidden. Adding functions that
 /// are lineary dependent will possibly destabilize the fitting process.
-/// the calculations. Adding linearly dependent functions is also a bad idea 
+/// the calculations. Adding linearly dependent functions is also a bad idea
 /// because it adds no value due to the linear superposition of the basis functions.
 ///
 /// For some models, e.g. sums of exponential decays it might happen that the basis functions become
@@ -126,7 +126,7 @@ pub mod error;
 /// be enforced by the library.
 ///
 /// ** Rules You Must Abide By **
-/// 
+///
 /// * Basis functions must be **nonlinear** in the parameters they take. If they aren't, you can always
 /// rewrite the problem so that the linear parameters go in the coefficient vector `$\vec{c}$`. This
 /// means that each partial derivative also depend on all the parameters that the basis function depends
@@ -155,7 +155,7 @@ pub mod error;
 /// and a sine  function `$\sin(\omega t + \phi)$`. The model depends on the parameters `$\tau$`,
 /// `$\omega$` and `$\phi$`. The exponential decay depends only on `$\tau$` and the sine function
 /// depends on `$\omega$` and `$\phi$`. The model is given by
-/// 
+///
 /// ```math
 /// f(t,\tau,\omega,\phi) = \exp(-t/\tau) + \sin(\omega t + \phi)
 /// ```
@@ -207,7 +207,7 @@ pub mod error;
 /// ) -> DVector<ScalarType> {
 ///     tvec.map(|t| (omega * t + phi).cos())
 /// }
-/// 
+///
 /// let x_coords = DVector::from_vec(vec![0.,1.,2.,3.,4.,5.]);
 /// let initial_guess = vec![1.,1.,1.];
 ///
@@ -226,7 +226,7 @@ pub mod error;
 ///               // call tells the model builder that the previous function has all
 ///               // the partial derivatives finished
 ///               .invariant_function(|x|x.clone())
-///               // the initial nonlinear parameters 
+///               // the initial nonlinear parameters
 ///               // of the model
 ///               .initial_parameters(initial_guess)
 ///               // we build the model calling build. This returns either a valid model
@@ -257,15 +257,15 @@ where
 
 /// a helper structure that represents an unfinished separable model
 #[derive(Default)]
-struct UnfinishedModel<ScalarType: Scalar>{
-    /// the parameter names 
-    parameter_names : Vec<String>,
+struct UnfinishedModel<ScalarType: Scalar> {
+    /// the parameter names
+    parameter_names: Vec<String>,
     /// the base functions
-    basefunctions : Vec<ModelBasisFunction<ScalarType>>, 
+    basefunctions: Vec<ModelBasisFunction<ScalarType>>,
     /// the x-vector (independent variable associated with the model)
-    x_vector : Option<DVector<ScalarType>>,
+    x_vector: Option<DVector<ScalarType>>,
     /// the initial guesses for the parameters
-    initial_parameters : Option<Vec<ScalarType>>,
+    initial_parameters: Option<Vec<ScalarType>>,
 }
 
 /// create a SeparableModelBuilder which contains an error variant
@@ -324,12 +324,12 @@ where
             let model_result = Ok(UnfinishedModel {
                 parameter_names,
                 basefunctions: Vec::new(),
-                x_vector : None,
-                initial_parameters : None,
+                x_vector: None,
+                initial_parameters: None,
             });
             Self { model_result }
         }
-    } 
+    }
 
     /// Add a function `$\vec{f}(\vec{x})$` to the model. In the `varpro` library this is called
     /// an *invariant* function because the model function is independent of the model parameters
@@ -365,17 +365,17 @@ where
     {
         SeparableModelBuilderProxyWithDerivatives::new(self.model_result, function_params, function)
     }
-    
+
     /// Set the independent variable `$x$` which will be used when evaluating the model.
     /// Also see the struct documentation of [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
     /// for information on how to use this method.
-    pub fn independent_variable(mut self, x : DVector<ScalarType>) -> Self {
+    pub fn independent_variable(mut self, x: DVector<ScalarType>) -> Self {
         if let Ok(model) = self.model_result.as_mut() {
             model.x_vector = Some(x);
         }
         self
     }
-    
+
     /// Set the initial values for the model parameters `$\vec{\alpha}$`.
     /// Also see the struct documentation of [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
     /// for information on how to use this method.
@@ -383,7 +383,10 @@ where
         if let Ok(model) = self.model_result.as_mut() {
             let expected = model.parameter_names.len();
             if expected != initial_parameters.len() {
-                self.model_result = Err(ModelBuildError::IncorrectParameterCount { expected , actual : initial_parameters.len()});
+                self.model_result = Err(ModelBuildError::IncorrectParameterCount {
+                    expected,
+                    actual: initial_parameters.len(),
+                });
             } else {
                 model.initial_parameters = Some(initial_parameters);
             }
@@ -421,7 +424,6 @@ where
 impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel<ScalarType> {
     type Error = ModelBuildError;
     fn try_into(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
-
         if self.basefunctions.is_empty() {
             Err(ModelBuildError::EmptyModel)
         } else if self.parameter_names.is_empty() {
@@ -442,14 +444,16 @@ impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel
                     });
                 }
             }
-            let x_vector = self.x_vector.ok_or_else(||ModelBuildError::MissingX)?;
-            let initial_parameters = self.initial_parameters.ok_or_else(||ModelBuildError::MissingInitialParameters)?;
+            let x_vector = self.x_vector.ok_or_else(|| ModelBuildError::MissingX)?;
+            let initial_parameters = self
+                .initial_parameters
+                .ok_or_else(|| ModelBuildError::MissingInitialParameters)?;
             // otherwise return this model
-            Ok(SeparableModel { 
-                parameter_names : self.parameter_names, 
+            Ok(SeparableModel {
+                parameter_names: self.parameter_names,
                 basefunctions: self.basefunctions,
                 x_vector,
-                current_parameters:DVector::from_vec(initial_parameters),
+                current_parameters: DVector::from_vec(initial_parameters),
             })
         }
     }
@@ -596,13 +600,13 @@ where
         match self.current_result {
             Ok(pair) => {
                 let model_result = extend_model(pair.model, pair.builder);
-                Self::new(model_result,function_params,function)
+                Self::new(model_result, function_params, function)
             }
             Err(err) => SeparableModelBuilderProxyWithDerivatives::from(err),
         }
     }
 
-    /// Set the independent variable `\vec{x}` 
+    /// Set the independent variable `\vec{x}`
     ///
     /// # Usage
     /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
@@ -612,22 +616,25 @@ where
             Ok(pair) => {
                 let model_result = extend_model(pair.model, pair.builder);
                 SeparableModelBuilder::from(model_result).independent_variable(x)
-            },
+            }
             Err(err) => SeparableModelBuilder::from(err),
         }
     }
 
-    /// Set the initial value for the nonlinear parameters `\vec{\alpha}` 
+    /// Set the initial value for the nonlinear parameters `\vec{\alpha}`
     ///
     /// # Usage
     /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
     /// struct documentation.
-    pub fn initial_parameters(self, initial_parameters: Vec<ScalarType>) -> SeparableModelBuilder<ScalarType> {
+    pub fn initial_parameters(
+        self,
+        initial_parameters: Vec<ScalarType>,
+    ) -> SeparableModelBuilder<ScalarType> {
         match self.current_result {
             Ok(pair) => {
                 let model_result = extend_model(pair.model, pair.builder);
                 SeparableModelBuilder::from(model_result).initial_parameters(initial_parameters)
-            },
+            }
             Err(err) => SeparableModelBuilder::from(err),
         }
     }
@@ -648,10 +655,13 @@ where
     }
 }
 
-/// try and extend a model with the given function in the builder 
+/// try and extend a model with the given function in the builder
 /// if building the function in the builder fails, an error is returned,
 /// otherwise the extended model is returned
-fn extend_model<ScalarType:Scalar>(mut model : UnfinishedModel<ScalarType>, builder : ModelBasisFunctionBuilder<ScalarType>) -> Result<UnfinishedModel<ScalarType>,ModelBuildError> {
+fn extend_model<ScalarType: Scalar>(
+    mut model: UnfinishedModel<ScalarType>,
+    builder: ModelBasisFunctionBuilder<ScalarType>,
+) -> Result<UnfinishedModel<ScalarType>, ModelBuildError> {
     let function = builder.build()?;
     model.basefunctions.push(function);
     Ok(model)

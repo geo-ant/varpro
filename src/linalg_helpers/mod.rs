@@ -1,7 +1,9 @@
-#[cfg(any(test,doctest))]
+#[cfg(any(test, doctest))]
 mod test;
 
-use nalgebra::{ClosedMul, ComplexField, Scalar, Dim, OVector, Matrix, RawStorageMut, DefaultAllocator};
+use nalgebra::{
+    ClosedMul, ComplexField, DefaultAllocator, Dim, Matrix, OVector, RawStorageMut, Scalar,
+};
 use std::ops::Mul;
 
 /// A square diagonal matrix with dynamic dimension. Off-diagonal entries are assumed zero.
@@ -9,18 +11,19 @@ use std::ops::Mul;
 /// # Types
 /// ScalarType: the numeric type of the matrix
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DiagMatrix<ScalarType,D>
+pub struct DiagMatrix<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
 {
-    diagonal: OVector<ScalarType,D>,
+    diagonal: OVector<ScalarType, D>,
 }
 
-impl<ScalarType,D> DiagMatrix<ScalarType,D> 
-    where ScalarType: Scalar + ComplexField,
-    D :  Dim,    
+impl<ScalarType, D> DiagMatrix<ScalarType, D>
+where
+    ScalarType: Scalar + ComplexField,
+    D: Dim,
     DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
 {
     /// get the number of columns of the matrix
@@ -42,24 +45,23 @@ impl<ScalarType,D> DiagMatrix<ScalarType,D>
 
     /// Generate a square matrix containing the entries of the vector which
     /// contains only real field values of this (potentially) complex type
-    pub fn from_real_field(diagonal: OVector<ScalarType::RealField,D>) -> Self 
-    where 
-    DefaultAllocator: nalgebra::allocator::Allocator<<ScalarType as ComplexField>::RealField, D>,
+    pub fn from_real_field(diagonal: OVector<ScalarType::RealField, D>) -> Self
+    where
+        DefaultAllocator:
+            nalgebra::allocator::Allocator<<ScalarType as ComplexField>::RealField, D>,
     {
         Self::from(diagonal.map(ScalarType::from_real))
     }
 }
 /// Generate a square diagonal matrix from the given diagonal vector.
-impl<ScalarType, D> From<OVector<ScalarType,D>> for DiagMatrix<ScalarType,D>
+impl<ScalarType, D> From<OVector<ScalarType, D>> for DiagMatrix<ScalarType, D>
 where
- ScalarType: Scalar + ComplexField,
-    D : Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>
+    ScalarType: Scalar + ComplexField,
+    D: Dim,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
 {
-    fn from(diagonal: OVector<ScalarType,D>) -> Self {
-        Self {
-            diagonal,
-        }
+    fn from(diagonal: OVector<ScalarType, D>) -> Self {
+        Self { diagonal }
     }
 }
 
@@ -68,17 +70,17 @@ where
 /// Panics if the dimensions of the matrices do not fit for matrix multiplication
 /// # Result
 /// The result of the matrix multiplication as a new dynamically sized matrix
-impl<ScalarType,R,C,S> Mul<Matrix<ScalarType,R,C,S>> for &DiagMatrix<ScalarType,R>
+impl<ScalarType, R, C, S> Mul<Matrix<ScalarType, R, C, S>> for &DiagMatrix<ScalarType, R>
 where
-    ScalarType: ClosedMul + Scalar + ComplexField ,
-    C : Dim,
+    ScalarType: ClosedMul + Scalar + ComplexField,
+    C: Dim,
     R: Dim,
-    S : RawStorageMut<ScalarType, R,C,>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R>
+    S: RawStorageMut<ScalarType, R, C>,
+    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R>,
 {
-    type Output = Matrix<ScalarType,R,C,S>;
+    type Output = Matrix<ScalarType, R, C, S>;
 
-    fn mul(self, mut rhs: Matrix<ScalarType,R,C,S>) -> Self::Output {
+    fn mul(self, mut rhs: Matrix<ScalarType, R, C, S>) -> Self::Output {
         assert_eq!(
             self.ncols(),
             rhs.nrows(),

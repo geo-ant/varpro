@@ -1,6 +1,6 @@
+use nalgebra::{DVector, Scalar};
 use std::collections::HashSet;
 use std::hash::Hash;
-use nalgebra::{DVector, Scalar};
 
 use crate::basis_function::BasisFunction;
 use crate::model::builder::error::ModelBuildError;
@@ -140,5 +140,5 @@ where
     }
 }
 
-#[cfg(any(test,doctest))]
+#[cfg(any(test, doctest))]
 mod test;

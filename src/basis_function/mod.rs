@@ -1,4 +1,4 @@
-#[cfg(any(test,doctest))]
+#[cfg(any(test, doctest))]
 mod test;
 
 mod detail;

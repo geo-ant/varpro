@@ -81,7 +81,7 @@ fn diagonal_matrix_multiplication_must_panic_for_rhs_dimensions_too_large() {
 fn diagonal_matrix_test_from_real_field() {
     use num_complex::Complex;
     let diagonal = DVector::from(vec![1., 2., 3.]);
-    let D = DiagMatrix::<Complex<f64>,_>::from_real_field(diagonal.clone());
+    let D = DiagMatrix::<Complex<f64>, _>::from_real_field(diagonal.clone());
     let ones = DVector::from(vec![
         Complex::new(1., 5.),
         Complex::new(1., 5.),

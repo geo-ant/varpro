@@ -1,11 +1,11 @@
-use nalgebra::{DVector, Dyn, U2, OVector, Vector2, U3, OMatrix};
+use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector2, U2, U3};
 use varpro::{model::errors::ModelError, prelude::*};
 
 #[derive(Clone)]
 /// A separable model for double exponential decay
 /// with a constant offset
 /// f_j = c1*exp(-x_j/tau1) + c2*exp(-x_j/tau2) + c3
-/// this is a handcrafted model which uses caching for 
+/// this is a handcrafted model which uses caching for
 /// maximum performance.
 ///
 /// This is an example of how to implement a separable model
@@ -14,16 +14,16 @@ use varpro::{model::errors::ModelError, prelude::*};
 /// to calculate the derivatives more efficiently.
 pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// the x vector associated with this model.
-    /// We make this configurable to enable models to 
+    /// We make this configurable to enable models to
     /// work with different x coordinates, but this is
     /// not an inherent requirement. We don't have to have a
     /// field like this. The only requirement given by the trait
     /// is that the model can be queried about the length
     /// of its output
-    x_vector : DVector<f64>,
+    x_vector: DVector<f64>,
     /// current parameters [tau1,tau2] of the exponential
     /// functions
-    params : Vector2<f64>,
+    params: Vector2<f64>,
     /// cached evaluation of the model
     /// the matrix columns contain the complete evaluation
     /// of the model. That is the first column contains the
@@ -34,27 +34,28 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
     ///
     /// This value is calculated in the set_params method, which is
     /// the only method with mutable access to the model state.
-    eval : OMatrix<f64,Dyn,U3>,
+    eval: OMatrix<f64, Dyn, U3>,
 }
 
 impl DoubleExpModelWithConstantOffsetSepModel {
     /// create a new model with the given x vector and initial guesses
     /// for the exponential decay constants tau_1 and tau_2
-    pub fn new(x_vector : DVector<f64>,(tau1_guess,tau2_guess):(f64,f64)) -> Self {
+    pub fn new(x_vector: DVector<f64>, (tau1_guess, tau2_guess): (f64, f64)) -> Self {
         let x_len = x_vector.len();
         let mut ret = Self {
-            x_vector, 
-            params : Vector2::zeros(),//<-- will be overwritten by set_params
-            eval : OMatrix::<f64,Dyn,U3>::zeros_generic(Dyn(x_len), U3)
+            x_vector,
+            params: Vector2::zeros(), //<-- will be overwritten by set_params
+            eval: OMatrix::<f64, Dyn, U3>::zeros_generic(Dyn(x_len), U3),
         };
-        ret.set_params(Vector2::new(tau1_guess, tau2_guess)).unwrap();
+        ret.set_params(Vector2::new(tau1_guess, tau2_guess))
+            .unwrap();
         ret
     }
 }
 
 impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     /// we give our own mddel error here, but we
-    /// could also have indicated that our calculations cannot 
+    /// could also have indicated that our calculations cannot
     /// fail by using [`std::convert::Infallible`].
     type Error = ModelError;
     /// We use a compile time constant (2) to indicate the
@@ -77,20 +78,20 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
         // regardless of the fact that we know at compile time
         // that the length is 2, we still have to return an instance
         // of that type
-        U2{}
+        U2 {}
     }
 
     #[inline]
     fn base_function_count(&self) -> U3 {
         // same as above
-        U3{}
+        U3 {}
     }
-    
+
     // we use this method not only to set the parameters inside the
     // model but we also cache some calculations. The advantage is that
     // we don't have to recalculate the exponential terms for either
     // the evaluations or the derivatives for the same parameters.
-    fn set_params(&mut self, parameters : Vector2<f64>) -> Result<(),Self::Error> {
+    fn set_params(&mut self, parameters: Vector2<f64>) -> Result<(), Self::Error> {
         // even if it is not the only thing we do, we still
         // have to update the internal parameters of the model
         self.params = parameters;
@@ -107,29 +108,28 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
 
         self.eval.set_column(0, &f1);
         self.eval.set_column(1, &f2);
-        self.eval.set_column(2, &DVector::from_element(location.len(), 1.));
+        self.eval
+            .set_column(2, &DVector::from_element(location.len(), 1.));
         Ok(())
     }
 
     fn params(&self) -> OVector<f64, Self::ParameterDim> {
         self.params.clone()
     }
-    
+
     // since we cached the model evaluation, we can just return
     // it here
-    fn eval(
-        &self,
-    ) -> Result<OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
+    fn eval(&self) -> Result<OMatrix<f64, Dyn, Self::ModelDim>, Self::Error> {
         Ok(self.eval.clone())
     }
-    
+
     // here we take advantage of the cached calculations
     // so that we do not have to recalculate the exponential
     // to calculate the derivative.
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<nalgebra::OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
+    ) -> Result<nalgebra::OMatrix<f64, Dyn, Self::ModelDim>, Self::Error> {
         let location = &self.x_vector;
         let parameters = &self.params;
         // derivative index can be either 0,1 (corresponding to the linear parameters
@@ -137,11 +137,13 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
         // tau_i, we can simplify calculations here
 
         let tau = parameters[derivative_index];
-        // the only nonzero derivative is the derivative of the exp(-x/tau) for 
+        // the only nonzero derivative is the derivative of the exp(-x/tau) for
         // the corresponding tau at derivative_index
-        // we can use the precalculated results so we don't have to use the 
+        // we can use the precalculated results so we don't have to use the
         // exponential function again
-        let df = location.map(|x| x / (tau * tau)).component_mul(&self.eval.column(derivative_index));
+        let df = location
+            .map(|x| x / (tau * tau))
+            .component_mul(&self.eval.column(derivative_index));
 
         // two of the columns are always zero when we differentiate
         // with respect to tau_1 or tau_2. Remember the constant term
@@ -251,11 +253,11 @@ impl LeastSquaresProblem<f64, Dyn, U5> for DoubleExponentialDecayFittingWithOffs
 
         jacobian.set_column(
             0,
-            &(c1 / (tau1*tau1) * &(self.precalc_exp_tau1.component_mul(&self.x))),
+            &(c1 / (tau1 * tau1) * &(self.precalc_exp_tau1.component_mul(&self.x))),
         );
         jacobian.set_column(
             1,
-            &(c2 / (tau2*tau2) * &(self.precalc_exp_tau2.component_mul(&self.x))),
+            &(c2 / (tau2 * tau2) * &(self.precalc_exp_tau2.component_mul(&self.x))),
         );
         jacobian.set_column(2, &self.precalc_exp_tau1);
         jacobian.set_column(3, &self.precalc_exp_tau2);

@@ -1,17 +1,17 @@
-use nalgebra::DMatrix;
-use nalgebra::DVector;
-use assert_matches::assert_matches;
-use nalgebra::Dyn;
 use crate::model::builder::SeparableModelBuilder;
 use crate::model::errors::ModelError;
 use crate::prelude::*;
 use crate::test_helpers;
+use assert_matches::assert_matches;
+use nalgebra::DMatrix;
+use nalgebra::DVector;
+use nalgebra::Dyn;
 
 // mock the separable model for later use in tests
 // some exta manual labor because the mocker was having trouble with
 // my trait
 mockall::mock! {
-    /// MockSeparableNonlinearModel that can be used 
+    /// MockSeparableNonlinearModel that can be used
     /// in unit and integration tests inside this crate
     pub SeparableNonlinearModel {
        pub fn parameter_count(&self) -> Dyn;
@@ -26,23 +26,25 @@ mockall::mock! {
             &self,
             derivative_index: usize,
         ) -> Result<DMatrix<f64>, MockModelError>;
-    }   
+    }
 
     impl Clone for SeparableNonlinearModel {
         fn clone(&self) -> Self;
     }
 }
 
-//derive a simple error using thiserror that can be 
+//derive a simple error using thiserror that can be
 //converted from a string
 #[derive(Debug, thiserror::Error)]
 pub enum MockModelError {
-    #[error("MockModelError: {}",0)]
+    #[error("MockModelError: {}", 0)]
     Error(String),
 }
 
-impl<S> From<S> for MockModelError 
-where S: Into<String>{
+impl<S> From<S> for MockModelError
+where
+    S: Into<String>,
+{
     fn from(s: S) -> Self {
         MockModelError::Error(s.into())
     }
@@ -64,10 +66,10 @@ impl SeparableNonlinearModel for MockSeparableNonlinearModel {
     }
 
     fn output_len(&self) -> Dyn {
-       Dyn(self.output_len())
+        Dyn(self.output_len())
     }
 
-    fn set_params(&mut self, parameters : DVector<f64>) -> Result<(),Self::Error> {
+    fn set_params(&mut self, parameters: DVector<f64>) -> Result<(), Self::Error> {
         self.set_params(parameters)
     }
 
@@ -75,23 +77,21 @@ impl SeparableNonlinearModel for MockSeparableNonlinearModel {
         self.params()
     }
 
-    fn eval(
-        &self,
-    ) -> Result<DMatrix<f64>, Self::Error> {
+    fn eval(&self) -> Result<DMatrix<f64>, Self::Error> {
         self.eval()
     }
 
-    fn eval_partial_deriv(
-        &self,
-        derivative_index: usize,
-    ) -> Result<DMatrix<f64>, Self::Error> {
+    fn eval_partial_deriv(&self, derivative_index: usize) -> Result<DMatrix<f64>, Self::Error> {
         self.eval_partial_deriv(derivative_index)
     }
 }
 
 #[test]
 fn model_gets_initialized_with_correct_parameter_names_and_count() {
-    let model = test_helpers::get_double_exponential_model_with_constant_offset(DVector::zeros(10),vec![1.,2.]);
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(
+        DVector::zeros(10),
+        vec![1., 2.],
+    );
     assert_eq!(
         model.parameter_count(),
         Dyn(2),
@@ -107,29 +107,25 @@ fn model_gets_initialized_with_correct_parameter_names_and_count() {
 #[test]
 // test that the eval method produces correct results and gives a matrix that is ordered correctly
 fn model_function_eval_produces_correct_result() {
-
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let tau1 = 1.;
     let tau2 = 3.;
 
     let params = &[tau1, tau2];
-    let model = test_helpers::get_double_exponential_model_with_constant_offset(tvec.clone(),params.to_vec());
-    let eval_matrix = model
-        .eval()
-        .expect("Model evaluation should not fail");
+    let model = test_helpers::get_double_exponential_model_with_constant_offset(
+        tvec.clone(),
+        params.to_vec(),
+    );
+    let eval_matrix = model.eval().expect("Model evaluation should not fail");
 
-    let mut expected_eval_matrix = DMatrix::zeros(eval_matrix.nrows(),eval_matrix.ncols());
-    
-    expected_eval_matrix.set_column(0,
-        &test_helpers::exp_decay(&tvec, tau2));
-    expected_eval_matrix.set_column(1, 
-        &test_helpers::exp_decay(&tvec, tau1));
-    expected_eval_matrix.set_column(2,
-        &DVector::from_element(tvec.len(), 1.));
+    let mut expected_eval_matrix = DMatrix::zeros(eval_matrix.nrows(), eval_matrix.ncols());
+
+    expected_eval_matrix.set_column(0, &test_helpers::exp_decay(&tvec, tau2));
+    expected_eval_matrix.set_column(1, &test_helpers::exp_decay(&tvec, tau1));
+    expected_eval_matrix.set_column(2, &DVector::from_element(tvec.len(), 1.));
 
     assert_eq!(
-        eval_matrix,
-        expected_eval_matrix,
+        eval_matrix, expected_eval_matrix,
         "Model evaluation should produce the expected evaluation"
     );
 }
@@ -146,7 +142,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
             DVector::from(vec![1., 3., 3., 7.])
         })
         .partial_deriv("tau1", test_helpers::exp_decay_dtau)
-        .initial_parameters(vec![2.,4.])
+        .initial_parameters(vec![2., 4.])
         .independent_variable(tvec)
         .build()
         .expect("Model function creation should not fail, although function is bad");
@@ -158,7 +154,7 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
 fn model_function_parameter_setting_fails_for_incorrect_number_of_parameters() {
     let tvec = DVector::from(vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]);
     let params = vec![1., 2.];
-    let mut model = test_helpers::get_double_exponential_model_with_constant_offset(tvec,params);
+    let mut model = test_helpers::get_double_exponential_model_with_constant_offset(tvec, params);
     assert_eq!(
         model.parameter_count(),
         Dyn(2),
@@ -193,7 +189,6 @@ fn model_derivative_evaluation_produces_correct_result() {
         .partial_deriv("omega", test_helpers::sin_ometa_t_plus_phi_domega)
         .build()
         .expect("Valid model creation should not fail");
-
 
     let deriv_tau = model
         .eval_partial_deriv(0)
@@ -263,38 +258,33 @@ fn model_derivative_evaluation_error_cases() {
         .partial_deriv("tau1", |_t: &DVector<_>, _tau| {
             DVector::from(vec![1., 3., 3., 7.])
         })
-        .initial_parameters(vec![2.,4.])
+        .initial_parameters(vec![2., 4.])
         .build()
         .expect("Model function creation should not fail, although function is bad");
 
     // deriv index 0 is tau1: this derivative is bad and should fail
     assert_matches!(
-            model_with_bad_function.eval_partial_deriv( 0),
-            Err(ModelError::UnexpectedFunctionOutput { .. })
-        ,
+        model_with_bad_function.eval_partial_deriv(0),
+        Err(ModelError::UnexpectedFunctionOutput { .. }),
         "Derivative for invalid function must fail with correct error"
     );
 
     // deriv index 0 is tau1: this derivative is good and should return an ok result
     assert!(
-        model_with_bad_function
-            .eval_partial_deriv(  1)
-            .is_ok(),
+        model_with_bad_function.eval_partial_deriv(1).is_ok(),
         "Derivative eval for valid function should return Ok result"
     );
 
     // check an out of bounds index for the derivative
     assert_matches!(
-            model_with_bad_function.eval_partial_deriv( 100),
-            Err(ModelError::DerivativeIndexOutOfBounds { .. })
-        ,
+        model_with_bad_function.eval_partial_deriv(100),
+        Err(ModelError::DerivativeIndexOutOfBounds { .. }),
         "Derivative for invalid function must fail with correct error"
     );
 
     assert_matches!(
-            model_with_bad_function.eval_partial_deriv( 3),
-            Err(ModelError::DerivativeIndexOutOfBounds { .. })
-        ,
+        model_with_bad_function.eval_partial_deriv(3),
+        Err(ModelError::DerivativeIndexOutOfBounds { .. }),
         "Derivative for invalid function must fail with correct error"
     );
 }

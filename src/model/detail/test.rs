@@ -83,10 +83,9 @@ fn test_create_index_mapping() {
 // * duplicate paramters are in the function parameter list
 // * function parameter list is empty
 // * function parameter list has a different number of arguments than the variadic basefunction takes
-fn test_create_wrapped_function_gives_error_for_empty_function_parameters_or_duplicate_elements(
-) {
+fn test_create_wrapped_function_gives_error_for_empty_function_parameters_or_duplicate_elements() {
     let model_parameters = vec!["a".to_string(), "b".to_string(), "c".to_string()];
-    // we can't use assert_matches here because the Ok variant does not 
+    // we can't use assert_matches here because the Ok variant does not
     // implement Debug
     assert!(
         matches!(
@@ -167,4 +166,3 @@ fn creating_wrapped_basis_function_dispatches_elements_correctly_to_underlying_f
         "Wrapped function must pass the location argument unaltered"
     );
 }
-

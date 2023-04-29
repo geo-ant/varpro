@@ -52,8 +52,11 @@ pub fn sin_ometa_t_plus_phi_dphi<ScalarType: Scalar + Float>(
 /// A helper function that returns a double exponential decay model
 /// f(x,tau1,tau2) = c1*exp(-x/tau1)+c2*exp(-x/tau2)+c3
 /// Model parameters are: tau1, tau2
-pub fn get_double_exponential_model_with_constant_offset(x : DVector<f64>, initial_params : Vec<f64>) -> SeparableModel<f64> {
-let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
+pub fn get_double_exponential_model_with_constant_offset(
+    x: DVector<f64>,
+    initial_params: Vec<f64>,
+) -> SeparableModel<f64> {
+    let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
     SeparableModelBuilder::new(&["tau1", "tau2"])
         .function(&["tau2"], exp_decay)

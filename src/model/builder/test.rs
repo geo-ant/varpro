@@ -1,6 +1,6 @@
-use nalgebra::DVector;
-use assert_matches::assert_matches;
 use super::*;
+use assert_matches::assert_matches;
+use nalgebra::DVector;
 
 #[test]
 // creating obviously invalid models must fail and return the correct error, i.e.
@@ -12,13 +12,15 @@ fn builder_fails_for_invalid_model_parameters() {
         SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "b".to_string()])
             .build();
     assert_matches!(
-         result, Err(ModelBuildError::DuplicateParameterNames {..}),
+        result,
+        Err(ModelBuildError::DuplicateParameterNames { .. }),
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 
     let result = SeparableModelBuilder::<f64>::new(&Vec::<String>::default()).build();
     assert_matches!(
-        result, Err(ModelBuildError::EmptyParameters {..}),
+        result,
+        Err(ModelBuildError::EmptyParameters { .. }),
         "Creating model with empty parameters must fail with correct error"
     );
 
@@ -26,7 +28,8 @@ fn builder_fails_for_invalid_model_parameters() {
         SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "c".to_string()])
             .build();
     assert_matches!(
-        result, Err(ModelBuildError::EmptyModel {..}),
+        result,
+        Err(ModelBuildError::EmptyModel { .. }),
         "Creating model without functions must fail with correct error"
     );
 }
@@ -45,7 +48,8 @@ fn builder_fails_when_not_all_model_parameters_are_depended_on_by_the_modelfunct
             .partial_deriv("a", |_: &DVector<f64>, _: f64| unimplemented!())
             .build();
     assert_matches!(
-        result, Err(ModelBuildError::UnusedParameter {..}),
+        result,
+        Err(ModelBuildError::UnusedParameter { .. }),
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 }
@@ -61,7 +65,8 @@ fn builder_fails_when_not_all_required_partial_derivatives_are_given_for_functio
         .partial_deriv("a", |_: &DVector<f64>, _: f64, _: f64| unimplemented!())
         .build();
     assert_matches!(
-        result, Err(ModelBuildError::MissingDerivative {..}),
+        result,
+        Err(ModelBuildError::MissingDerivative { .. }),
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 }
@@ -89,22 +94,21 @@ fn builder_produces_correct_model_from_functions() {
         "omega1".to_string(),
         "omega2".to_string(),
     ])
-        .invariant_function(|x| 2. * identity_function(x)) // double the x value
-        .function(&["t0".to_string(), "tau".to_string()], exponential_decay)
-        .partial_deriv("tau", exponential_decay_dtau)
-        .partial_deriv("t0", exponential_decay_dt0)
-        .invariant_function(identity_function)
-        .function(&["omega1".to_string()], sinusoid_omega)
-        .partial_deriv("omega1", sinusoid_omega_domega)
-        .function(&["omega2".to_string()], sinusoid_omega)
-        .partial_deriv("omega2", sinusoid_omega_domega)
-        .independent_variable(ts.clone())
-        .initial_parameters(params.to_vec())
-        .build()
-        .expect("Valid builder calls should produce a valid model function.");
+    .invariant_function(|x| 2. * identity_function(x)) // double the x value
+    .function(&["t0".to_string(), "tau".to_string()], exponential_decay)
+    .partial_deriv("tau", exponential_decay_dtau)
+    .partial_deriv("t0", exponential_decay_dt0)
+    .invariant_function(identity_function)
+    .function(&["omega1".to_string()], sinusoid_omega)
+    .partial_deriv("omega1", sinusoid_omega_domega)
+    .function(&["omega2".to_string()], sinusoid_omega)
+    .partial_deriv("omega2", sinusoid_omega_domega)
+    .independent_variable(ts.clone())
+    .initial_parameters(params.to_vec())
+    .build()
+    .expect("Valid builder calls should produce a valid model function.");
 
     // now check that each function behaves as expected given the model parameters
-
 
     // assert that the correct number of functions is in the set
     assert_eq!(
@@ -187,22 +191,21 @@ fn builder_produces_correct_model_from_functions() {
 
 #[test]
 fn test_model_builder_fails_when_x_data_is_missing() {
-
-    fn foo(_:&DVector<f64>, _:f64, _:f64) -> DVector<f64> {
+    fn foo(_: &DVector<f64>, _: f64, _: f64) -> DVector<f64> {
         todo!()
     }
 
-    let result = SeparableModelBuilder::<f64>::new(&["a","b","c"])
+    let result = SeparableModelBuilder::<f64>::new(&["a", "b", "c"])
         // function of a,c
-        .function(&["a","c"], foo)
+        .function(&["a", "c"], foo)
         .partial_deriv("a", foo)
-        .partial_deriv("c", |_x:&DVector<f64>,_a:f64,_c:f64|todo!()) // for this syntax we need to
-        // specify the types of the arguments of the closure. 
+        .partial_deriv("c", |_x: &DVector<f64>, _a: f64, _c: f64| todo!()) // for this syntax we need to
+        // specify the types of the arguments of the closure.
         // function of b,c
-        .function(&["b","c"],foo)
+        .function(&["b", "c"], foo)
         .partial_deriv("b", foo)
         .partial_deriv("c", foo)
-        .initial_parameters(vec![1.,2.,3.])
+        .initial_parameters(vec![1., 2., 3.])
         .build();
     // make sure that the error indicates the missing x data
     assert_matches!(result, Err(ModelBuildError::MissingX));
@@ -210,49 +213,49 @@ fn test_model_builder_fails_when_x_data_is_missing() {
 
 #[test]
 fn test_model_builder_fails_when_initial_parameters_are_missing() {
-    fn foo(_:&DVector<f64>, _:f64, _:f64) -> DVector<f64> {
+    fn foo(_: &DVector<f64>, _: f64, _: f64) -> DVector<f64> {
         todo!()
     }
 
-    let result = SeparableModelBuilder::<f64>::new(&["a","b","c"])
+    let result = SeparableModelBuilder::<f64>::new(&["a", "b", "c"])
         // function of a,c
-        .function(&["a","c"], foo)
+        .function(&["a", "c"], foo)
         .partial_deriv("a", foo)
         .partial_deriv("c", foo) // for this syntax we need to
-        // specify the types of the arguments of the closure. 
+        // specify the types of the arguments of the closure.
         // function of b,c
-        .function(&["b","c"],foo)
+        .function(&["b", "c"], foo)
         .partial_deriv("b", foo)
         .partial_deriv("c", foo)
-        .independent_variable(DVector::from_vec(vec![1.,2.,3.]))
+        .independent_variable(DVector::from_vec(vec![1., 2., 3.]))
         .build();
     // make sure that the error indicates the initial parameters are missing
     assert_matches!(result, Err(ModelBuildError::MissingInitialParameters));
 }
 
-#[test] 
+#[test]
 fn test_model_builder_fails_when_initial_parameters_have_incorrect_parameter_count() {
-    fn foo(_:&DVector<f64>, _:f64, _:f64) -> DVector<f64> {
+    fn foo(_: &DVector<f64>, _: f64, _: f64) -> DVector<f64> {
         todo!()
     }
 
-    let result = SeparableModelBuilder::<f64>::new(&["a","b","c"])
+    let result = SeparableModelBuilder::<f64>::new(&["a", "b", "c"])
         // function of a,c
-        .function(&["a","c"], foo)
+        .function(&["a", "c"], foo)
         .partial_deriv("a", foo)
         .partial_deriv("c", foo) // for this syntax we need to
-        // specify the types of the arguments of the closure. 
+        // specify the types of the arguments of the closure.
         // function of b,c
-        .function(&["b","c"],foo)
+        .function(&["b", "c"], foo)
         .partial_deriv("b", foo)
         .partial_deriv("c", foo)
-        .independent_variable(DVector::from_vec(vec![1.,2.,3.,4.,5.]))
-        .initial_parameters(vec![1.,3.])
+        .independent_variable(DVector::from_vec(vec![1., 2., 3., 4., 5.]))
+        .initial_parameters(vec![1., 3.])
         .build();
 
-    // make sure the error indicates the initial parameters 
+    // make sure the error indicates the initial parameters
     // have the wonrg number of parameters
-    assert_matches!(result, Err(ModelBuildError::IncorrectParameterCount{..}));
+    assert_matches!(result, Err(ModelBuildError::IncorrectParameterCount { .. }));
 }
 
 /// a function that calculates exp( -(t-t0)/tau)) for every location t

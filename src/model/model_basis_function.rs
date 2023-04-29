@@ -28,7 +28,10 @@ where
 
 impl<ScalarType: Scalar> std::fmt::Debug for ModelBasisFunction<ScalarType> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ModelBasisFunction").field("function", &"/* omitted */").field("derivatives", &"/* omitted */").finish()
+        f.debug_struct("ModelBasisFunction")
+            .field("function", &"/* omitted */")
+            .field("derivatives", &"/* omitted */")
+            .finish()
     }
 }
 

@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 //! a helper crate which carries common code used by the benchtests and the
 //! integration tests.
-use nalgebra::{ComplexField, DVector, Scalar, DefaultAllocator, OVector};
+use nalgebra::{ComplexField, DVector, DefaultAllocator, OVector, Scalar};
 use num_traits::Float;
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
@@ -33,24 +33,29 @@ pub fn linspace<ScalarType: Float + Scalar>(
 /// with the given linear coefficients `linear_coeffs`.
 pub fn evaluate_complete_model_at_params<Model>(
     model: &'_ mut Model,
-    params : OVector<Model::ScalarType,Model::ParameterDim>,
-    linear_coeffs: &OVector<Model::ScalarType,Model::ModelDim>,
-) -> OVector<Model::ScalarType,Model::OutputDim>
+    params: OVector<Model::ScalarType, Model::ParameterDim>,
+    linear_coeffs: &OVector<Model::ScalarType, Model::ModelDim>,
+) -> OVector<Model::ScalarType, Model::OutputDim>
 where
     Model::ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
 {
     let original_params = model.params();
-    model.set_params(params).expect("Setting params must not fail");
+    model
+        .set_params(params)
+        .expect("Setting params must not fail");
     let eval = (&model
         .eval()
         .expect("Evaluating model must not produce error"))
         * linear_coeffs;
-    model.set_params(original_params).expect("Setting params must not fail");
+    model
+        .set_params(original_params)
+        .expect("Setting params must not fail");
     eval
 }
 
@@ -73,7 +78,10 @@ pub fn exp_decay_dtau<ScalarType: Scalar + Float>(
 /// A helper function that returns a double exponential decay model
 /// f(x,tau1,tau2) = c1*exp(-x/tau1)+c2*exp(-x/tau2)+c3
 /// Model parameters are: tau1, tau2
-pub fn get_double_exponential_model_with_constant_offset(x : DVector<f64>,initial_params: Vec<f64>) -> SeparableModel<f64> {
+pub fn get_double_exponential_model_with_constant_offset(
+    x: DVector<f64>,
+    initial_params: Vec<f64>,
+) -> SeparableModel<f64> {
     let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
 
     SeparableModelBuilder::new(&["tau1", "tau2"])

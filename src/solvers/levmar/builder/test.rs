@@ -1,10 +1,10 @@
+use crate::linalg_helpers::DiagMatrix;
 use crate::model::test::MockSeparableNonlinearModel;
 use crate::solvers::levmar::builder::LevMarBuilderError;
 use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblemBuilder;
-use crate::linalg_helpers::DiagMatrix;
-use nalgebra::{DMatrix, DVector};
 use assert_matches::assert_matches;
+use nalgebra::{DMatrix, DVector};
 
 #[test]
 fn new_builder_starts_with_empty_fields() {
@@ -35,12 +35,16 @@ fn builder_assigns_fields_correctly_simple_case() {
     let params_vector = DVector::from_column_slice(&params_array);
     model.expect_output_len().return_const(y_len);
     model.expect_params().return_const(params_vector.clone());
-    model.expect_set_params().withf(move |p| p == &DVector::from(params_vector.clone())).returning(|_|Ok(()));
-    model.expect_eval().returning(move ||Ok(DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
-    
+    model
+        .expect_set_params()
+        .withf(move |p| p == &DVector::from(params_vector.clone()))
+        .returning(|_| Ok(()));
+    model
+        .expect_eval()
+        .returning(move || Ok(DMatrix::zeros(y_len, y_len))); // the returned matrix eval is not used in this test
+
     // build a problem with default epsilon
-    let builder = LevMarProblemBuilder::new(model)
-        .observations(y.clone());
+    let builder = LevMarProblemBuilder::new(model).observations(y.clone());
     let problem = builder
         .build()
         .expect("Valid builder should not fail build");
@@ -68,13 +72,18 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
     let params_vector = DVector::from_column_slice(&params_array);
     model.expect_output_len().return_const(y_len);
     model.expect_params().return_const(params_vector.clone());
-    model.expect_set_params().withf(move |p| p == &DVector::from(params_vector.clone())).returning(|_|Ok(()));
-    model.expect_eval().returning(move ||Ok(DMatrix::zeros(y_len,y_len))); // the returned matrix eval is not used in this test
-    // now check that the given epsilon is also passed correctly to the model
-    // and also that the weights are correctly passed and used to weigh the original data
+    model
+        .expect_set_params()
+        .withf(move |p| p == &DVector::from(params_vector.clone()))
+        .returning(|_| Ok(()));
+    model
+        .expect_eval()
+        .returning(move || Ok(DMatrix::zeros(y_len, y_len))); // the returned matrix eval is not used in this test
+                                                              // now check that the given epsilon is also passed correctly to the model
+                                                              // and also that the weights are correctly passed and used to weigh the original data
     let weights = 2. * &y;
     let W = DMatrix::from_diagonal(&weights);
-    
+
     let problem = LevMarProblemBuilder::new(model)
         .observations(y.clone())
         .epsilon(-1.337) // check that negative values are converted to absolutes
@@ -103,8 +112,7 @@ fn builder_gives_errors_for_missing_y_data() {
     let model = MockSeparableNonlinearModel::default();
 
     assert_matches!(
-        LevMarProblemBuilder::new(model)
-            .build(),
+        LevMarProblemBuilder::new(model).build(),
         Err(LevMarBuilderError::YDataMissing)
     );
 }
@@ -117,16 +125,17 @@ fn builder_gives_errors_for_wrong_data_length() {
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
     let _initial_guess = vec![1., 2.];
-    
-    let wrong_output_len = y.len()-1;
-    model.expect_output_len().returning(move ||wrong_output_len);
+
+    let wrong_output_len = y.len() - 1;
+    model
+        .expect_output_len()
+        .returning(move || wrong_output_len);
 
     assert_matches!(
-            LevMarProblemBuilder::new(model)
-                .observations(y.clone())
-                .build(),
-            Err(LevMarBuilderError::InvalidLengthOfData { .. })
-        ,
+        LevMarProblemBuilder::new(model)
+            .observations(y.clone())
+            .build(),
+        Err(LevMarBuilderError::InvalidLengthOfData { .. }),
         "invalid parameter count must produce correct error"
     );
 }
@@ -139,16 +148,15 @@ fn builder_gives_errors_for_zero_length_data() {
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
     let _initial_guess = vec![1., 2.];
-    
+
     let output_len = y.len();
-    model.expect_output_len().returning(move ||output_len);
+    model.expect_output_len().returning(move || output_len);
 
     assert_matches!(
-            LevMarProblemBuilder::new(model)
-                .observations(DVector::from(Vec::<f64>::new()))
-                .build(),
-            Err(LevMarBuilderError::ZeroLengthVector)
-        ,
+        LevMarProblemBuilder::new(model)
+            .observations(DVector::from(Vec::<f64>::new()))
+            .build(),
+        Err(LevMarBuilderError::ZeroLengthVector),
         "zero parameter count must produce correct error"
     );
 }
@@ -161,17 +169,16 @@ fn builder_gives_errors_for_wrong_length_of_weights() {
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
     let _initial_guess = vec![1., 2.];
-    
+
     let output_len = y.len();
-    model.expect_output_len().returning(move ||output_len);
+    model.expect_output_len().returning(move || output_len);
 
     assert_matches!(
-            LevMarProblemBuilder::new(model)
-                .observations(y)
-                .weights(DVector::from_vec(vec! {1.,2.,3.}))
-                .build(),
-            Err(LevMarBuilderError::InvalidLengthOfWeights { .. })
-        ,
+        LevMarProblemBuilder::new(model)
+            .observations(y)
+            .weights(DVector::from_vec(vec! {1.,2.,3.}))
+            .build(),
+        Err(LevMarBuilderError::InvalidLengthOfWeights { .. }),
         "invalid length of weights"
     );
 }
