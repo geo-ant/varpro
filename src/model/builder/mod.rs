@@ -62,6 +62,7 @@ pub mod error;
 /// where `$\vec{\alpha}=(\alpha_1,\alpha_2)$` we would write the function in Rust as
 ///
 /// ```rust
+/// # use nalgebra::DVector;
 /// fn f1(x: &DVector<f32>, alpha1: f32, alpha2: f32) -> DVector<f32> {
 ///    // e.g. for sinusoidal function with frequency alpha1 and phase alpha2
 ///    // apply the function elementwise to the vector x

@@ -87,6 +87,7 @@ pub mod test;
 /// of caching the intermediate calculations.
 ///
 /// ```
+/// use nalgebra::{DVector,Vector2,DMatrix,OMatrix,DefaultAllocator,U3,Dyn};
 /// /// A separable model for double exponential decay
 /// /// with a constant offset
 /// /// f_j = c1*exp(-x_j/tau1) + c2*exp(-x_j/tau2) + c3
@@ -138,10 +139,10 @@ pub mod test;
 /// }
 ///
 /// impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
-///     /// we give our own mddel error here, but we
+///     /// we give a custom mddel error here, but we
 ///     /// could also have indicated that our calculations cannot
 ///     /// fail by using [`std::convert::Infallible`].
-///     type Error = ModelError;
+///     type Error = varpro::model::errors::ModelError;
 ///     /// We use a compile time constant (2) to indicate the
 ///     /// number of parameters at compile time
 ///     type ParameterDim = U2;

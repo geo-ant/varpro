@@ -114,8 +114,9 @@
 //! of the model.
 //!
 //! ```no_run
-//! # let model : crate::model::SeparableNonlinearModel = unimplemented!();
+//! # let model : varpro::model::SeparableNonlinearModel = unimplemented!();
 //! # let y = vec![0.0; 10];
+//! use varpro::solvers::levmar::LevMarProblemBuilder;
 //! let problem = LevMarProblemBuilder::new(model)
 //!               .observations(y)
 //!               .build()
@@ -130,7 +131,8 @@
 //! parameters for the minimization is like so:
 //!
 //! ```no_run
-//! # let problem : crate::solvers::levmar::LevMarProblem = unimplemented!();
+//! # let problem : varpro::solvers::levmar::LevMarProblem = unimplemented!();
+//! use varpro::solvers::levmar::LevMarSolver;
 //! let (problem, report) = LevMarSolver::new().minimize(problem);
 //! ```
 //! Finally, check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
@@ -138,7 +140,8 @@
 //! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
 //!
 //! ```no_run
-//! # let problem : crate::solvers::levmar::LevMarProblem = unimplemented!();
+//! # let problem : vapro::solvers::levmar::LevMarProblem = unimplemented!();
+//! # use varpro::solvers::levmar::LevMarSolver;
 //! # let (problem, report) = LevMarSolver::new().minimize(problem);
 //! assert!(
 //!     report.termination.was_successful(),
