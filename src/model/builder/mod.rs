@@ -21,18 +21,24 @@ pub mod error;
 ///
 /// # Introduction
 ///
-/// As explained elsewhere, the separable model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` is a vector
-/// valued function that is the linear combination of nonlinear base functions.
+/// In the main crate we defined a separable model as a vector valued function
+/// `$\vec{f}(\vec{\alpha},\vec{c})$`, but we are going to deviate from this 
+/// definition slightly here. We want to provide an *independent variable* `$\vec{x}$`
+/// that the function depends on, to make a model usable on different supports.
+///
+/// To make the dependence on the independent variable explitict,
+/// we now writethe separable model as 
 /// ```math
 ///  \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(\vec{x},S_j(\alpha))
 /// ```
+///
 /// The basis functions `$\vec{f}_j(\vec{x},S_j(\alpha))$` depend on the independent variable `$\vec{x}$`
-/// and *a subset* `$S_j(\alpha)$` of the *nonlinear* model parameters `$\vec{\alpha}$`. The subset
-/// may or may not be different for each model function. It is okay if two or more model functions
-/// depend on the same parameters.
+/// and *a subset* `$S_j(\alpha)$` of the *nonlinear* model parameters `$\vec{\alpha}$`
+/// just as in the other notation.
 ///
 /// # Usage
-/// The SeparableModelBuilder is concerned with building a model from basis functions and their derivatives. This is done as a step by step process.
+/// The SeparableModelBuilder is concerned with building a model from basis functions and their derivatives.
+/// This is done as a step by step process.
 ///
 /// ## Constructing an Empty Builder
 /// The first step is to create an empty builder by specifying the complete set of *nonlinear* parameters that
@@ -78,6 +84,7 @@ pub mod error;
 /// becoming collinear (see [LevMarProblemBuilder::epsilon](crate::solvers::levmar::LevMarProblemBuilder::epsilon)).
 ///
 /// ### Invariant Basis Functions
+///
 /// Basis functions that do not depend on model parameters are treated specially. The library refers
 /// to them as *invariant functions* and they are added to a builder by calling
 /// [SeparableModelBuilder::invariant_function](SeparableModelBuilder::invariant_function). Since
@@ -105,6 +112,7 @@ pub mod error;
 /// least squares problem. See the next section for adding parameter dependent functions.
 ///
 /// ### Nonlinear Basis Functions
+///
 /// The core functionality of the builder is to add basis functions to the model
 /// that depend nonlinearly on some (or all) of the model parameters `$\vec{\alpha}$`.
 /// We add a basis function to a builder by calling `builder.function`. Each call must
@@ -112,16 +120,18 @@ pub mod error;
 /// function depends on.
 ///
 /// #### Rules for Model Functions
+///
 /// There are several rules for adding model basis functions. One of them is enforced by the compiler,
 /// some of them are enforced at runtime (when trying to build the model) and others simply cannot
 /// be enforced by the library.
 ///
-/// ** Rules You Must Abide By**
+/// ** Rules You Must Abide By **
 /// 
 /// * Basis functions must be **nonlinear** in the parameters they take. If they aren't, you can always
 /// rewrite the problem so that the linear parameters go in the coefficient vector `$\vec{c}$`. This
 /// means that each partial derivative also depend on all the parameters that the basis function depends
 /// on.
+///
 /// * Derivatives must take the same parameter arguments *and in the same order* as the original
 /// basis function. This means if basis function `$\vec{f}_j$` is given as `$\vec{f}_j(\vec{x},a,b)$`,
 /// then the derivatives must also be given with the parameters `$a,b$` in the same order, i.e.
@@ -140,6 +150,7 @@ pub mod error;
 /// The builder allows us to provide basis functions for a separable model as a step by step process.
 ///
 /// ## Example
+///
 /// Let's build a model that is the sum of an exponential decay `$\exp(-t/\tau)$`
 /// and a sine  function `$\sin(\omega t + \phi)$`. The model depends on the parameters `$\tau$`,
 /// `$\omega$` and `$\phi$`. The exponential decay depends only on `$\tau$` and the sine function
@@ -222,6 +233,7 @@ pub mod error;
 ///               // or an error variant which is pretty helpful in understanding what went wrong
 ///               .build().unwrap();
 /// ```
+///
 /// There is some [special macro magic](https://geo-ant.github.io/blog/2021/rust-traits-and-variadic-functions/)
 /// that allows us to pass a function `$f(\vec{x},a_1,..,a_n)$`
 /// as any item that implements the Rust trait `Fn(&DVector<ScalarType>, ScalarType,... ,ScalarType)->DVector<ScalarType> + 'static`.
@@ -231,6 +243,7 @@ pub mod error;
 ///
 ///
 /// ## Building a Model
+///
 /// The model is finalized and built using the [SeparableModelBuilder::build](SeparableModelBuilder::build)
 /// method. This method returns a valid model or an error variant doing a pretty good job of
 /// explaning why the model is invalid.
