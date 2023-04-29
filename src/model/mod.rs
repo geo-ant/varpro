@@ -245,6 +245,7 @@ pub mod test;
 ///     }
 /// }
 /// ```
+#[allow(clippy::type_complexity)]
 pub trait SeparableNonlinearModel
 where
     DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Self::ParameterDim>,
@@ -471,7 +472,7 @@ where
     }
 
     fn params(&self) -> DVector<ScalarType> {
-        DVector::from(self.current_parameters.clone())
+        self.current_parameters.clone()
     }
 
     fn eval(&self) -> Result<DMatrix<ScalarType>, ModelError> {

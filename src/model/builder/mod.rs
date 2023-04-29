@@ -444,10 +444,10 @@ impl<ScalarType: Scalar> TryInto<SeparableModel<ScalarType>> for UnfinishedModel
                     });
                 }
             }
-            let x_vector = self.x_vector.ok_or_else(|| ModelBuildError::MissingX)?;
+            let x_vector = self.x_vector.ok_or(ModelBuildError::MissingX)?;
             let initial_parameters = self
                 .initial_parameters
-                .ok_or_else(|| ModelBuildError::MissingInitialParameters)?;
+                .ok_or(ModelBuildError::MissingInitialParameters)?;
             // otherwise return this model
             Ok(SeparableModel {
                 parameter_names: self.parameter_names,
