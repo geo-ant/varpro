@@ -109,12 +109,12 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
         self.eval.set_column(0, &f1);
         self.eval.set_column(1, &f2);
         self.eval
-            .set_column(2, &DVector::from_element(location.len(), 1.));
+            .set_column(2, &DVector::from_element(self.x_vector.len(), 1.));
         Ok(())
     }
 
     fn params(&self) -> OVector<f64, Self::ParameterDim> {
-        self.params.clone()
+        self.params
     }
 
     // since we cached the model evaluation, we can just return
