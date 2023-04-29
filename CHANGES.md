@@ -2,10 +2,11 @@
 
 This is the changelog for the `varpro` library. See also here for a [version history](https://crates.io/crates/varpro/versions).
 
-## XXX
+## 0.6.0
 - Add benchtests
 - Change solver API to depend on separable model trait instead of concrete impl,
 which allows us to optimize our models for performance
+- changes in model builder api, see documentation for new usage
 
 ## 0.5.0
 - Upgrade nalgebra and levenberg_marquardt dependencies to current versions
