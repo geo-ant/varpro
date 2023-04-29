@@ -43,7 +43,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let tau1_guess = 2.;
     let tau2_guess = 6.5;
     let mut model =
-        get_double_exponential_model_with_constant_offset(x.clone(), vec![tau1_guess, tau2_guess]);
+        get_double_exponential_model_with_constant_offset(x, vec![tau1_guess, tau2_guess]);
     // true parameters
     let tau1 = 1.;
     let tau2 = 3.;
@@ -121,8 +121,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let tau1_guess = 2.;
     let tau2_guess = 6.5;
 
-    let mut model =
-        DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), (tau1_guess, tau2_guess));
+    let mut model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
     let base_func_count = model.base_function_count();
     // generate some data without noise
     let y = evaluate_complete_model_at_params(

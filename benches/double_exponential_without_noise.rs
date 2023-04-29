@@ -107,11 +107,10 @@ where
         params,
         &OVector::from_vec_generic(base_function_count, U1, vec![c1, c2, c3]),
     );
-    let problem = LevMarProblemBuilder::new(model)
+    LevMarProblemBuilder::new(model)
         .observations(y)
         .build()
-        .expect("Building valid problem should not panic");
-    problem
+        .expect("Building valid problem should not panic")
 }
 
 /// solve the double exponential fitting problem using a handrolled model
