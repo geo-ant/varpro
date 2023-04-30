@@ -1,8 +1,10 @@
 use super::*;
+use crate::model::test::MockSeparableNonlinearModel;
 use crate::test_helpers::differentiation::numerical_derivative;
 use crate::test_helpers::get_double_exponential_model_with_constant_offset;
 use approx::assert_relative_eq;
 use levenberg_marquardt::differentiate_numerically;
+use nalgebra::DVector;
 
 // test that the jacobian of the least squares problem is correct if the parameter guesses
 // are correct. I observed that the numerical differentiation inside the levmar crate and my implementation
@@ -15,22 +17,20 @@ use levenberg_marquardt::differentiate_numerically;
 // exactly why it stalls though. This seems like bad behavior.
 #[test]
 fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unweighted() {
-    let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1
     let yvec = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
-
-    let mut problem = LevMarProblemBuilder::new()
-        .x(tvec)
-        .y(yvec)
-        .model(&model)
-        .initial_guess(&[2., 4.])
+    let params = vec![2., 4.];
+    let model = get_double_exponential_model_with_constant_offset(tvec, params.clone());
+    let mut problem = LevMarProblemBuilder::new(model)
+        .observations(yvec)
         .build()
         .expect("Building a valid solver must not return an error.");
 
+    problem.set_params(&DVector::from(params));
     let jacobian_numerical =
         differentiate_numerically(&mut problem).expect("Numerical differentiation must succeed.");
     let jacobian_calculated = problem.jacobian().expect("Jacobian must not be empty!");
@@ -47,22 +47,19 @@ fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unw
 // [my post](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) on varpro
 // (found between numbered formulas 8 and 9).
 fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squares_weighted() {
-    let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1
     let yvec = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
-
+    let params = vec![1., 2.];
+    let model = get_double_exponential_model_with_constant_offset(tvec, params);
     // generate some non-unit test weights (which have no physical meaning)
     let weights = yvec.map(|v: f64| v.sqrt() + v.sin());
 
-    let mut problem = LevMarProblemBuilder::new()
-        .x(tvec)
-        .y(yvec)
-        .model(&model)
-        .initial_guess(&[1., 2.]) // these initial params don't for this test
+    let mut problem = LevMarProblemBuilder::new(model)
+        .observations(yvec)
         .weights(weights)
         .build()
         .expect("Building a valid solver must not return an error.");
@@ -110,24 +107,23 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
 
 #[test]
 fn residuals_are_calculated_correctly_unweighted() {
-    let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1
     let yvec = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
+    let params = vec![2., 4.];
+    let model = get_double_exponential_model_with_constant_offset(tvec.clone(), params.clone());
 
     let data_length = tvec.len();
 
-    let mut problem = LevMarProblemBuilder::new()
-        .x(tvec)
-        .y(yvec)
-        .model(&model)
-        .initial_guess(&[2., 4.])
+    let mut problem = LevMarProblemBuilder::new(model)
+        .observations(yvec)
         .build()
         .expect("Building a valid solver must not return an error.");
 
+    problem.set_params(&DVector::from(params));
     // for the true parameters, as the initial guess, the residual should be very close to an
     // all zeros vector
     let residuals = problem
@@ -166,7 +162,6 @@ fn residuals_are_calculated_correctly_unweighted() {
 
 #[test]
 fn residuals_are_calculated_correctly_with_weights() {
-    let model = get_double_exponential_model_with_constant_offset();
     //octave: t = linspace(0,10,11);
     let tvec = DVector::from(vec![0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10.]);
     //octave y = 2*exp(-t/2)+exp(-t/4)+1
@@ -174,21 +169,19 @@ fn residuals_are_calculated_correctly_with_weights() {
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
 
-    // generate some non-unit test weights (which have no physical meaning)
-    let weights = yvec.map(|v: f64| v.sqrt() + 2. * v.sin());
-
     // assert that the residual is also calculated correctly for parameters which are
     // not equal to the true parameters.
     // I have calculated the ground truth using octave here, which is why it is hard coded
     let tau1 = 0.5;
     let tau2 = 6.5;
 
-    let mut problem = LevMarProblemBuilder::new()
-        .x(tvec)
-        .y(yvec)
-        .model(&model)
+    let model = get_double_exponential_model_with_constant_offset(tvec, vec![tau1, tau2]);
+    // generate some non-unit test weights (which have no physical meaning)
+    let weights = yvec.map(|v: f64| v.sqrt() + 2. * v.sin());
+
+    let mut problem = LevMarProblemBuilder::new(model)
+        .observations(yvec)
         .weights(weights)
-        .initial_guess(&[tau1, tau2])
         .build()
         .expect("Building a valid solver must not return an error.");
 
@@ -210,4 +203,27 @@ fn residuals_are_calculated_correctly_with_weights() {
         .residuals()
         .expect("Calculating residuals must not fail");
     assert_relative_eq!(residuals, expected_residuals, epsilon = 1e-3);
+}
+
+#[test]
+fn levmar_problem_set_params_sets_the_model_parameters_when_built() {
+    let mut model = MockSeparableNonlinearModel::new();
+    let y = DVector::from_element(10, 0.);
+    let y_len = y.len();
+    let params_array = [1., 2., 3.];
+    let params_vector = DVector::from_column_slice(&params_array);
+    model.expect_output_len().return_const(y_len);
+    model.expect_params().return_const(params_vector.clone());
+    model
+        .expect_set_params()
+        .withf(move |p| p == &params_vector.clone())
+        .returning(|_| Ok(()));
+    model
+        .expect_eval()
+        .returning(move || Ok(nalgebra::DMatrix::zeros(y_len, y_len))); // the returned matrix eval is not used in this test
+                                                                        // actually nonsense, but we don't care about that here
+    let _problem = LevMarProblemBuilder::new(model)
+        .observations(y)
+        .build()
+        .expect("Building a valid solver must not return an error.");
 }

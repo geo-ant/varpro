@@ -1,48 +1,76 @@
+#![warn(missing_docs)]
 //!
 //! # Introduction
+//!  
+//! `varpro` is a crate for least squares fitting nonlinear models to observations. It works
+//! for a large class of so called _separable_ nonlinear least squares problems.
+//! It's fast, flexible, and it is simple to use.
 //!
-//! A large class of nonlinear models consists of a mixture of both truly nonlinear and _linear_ model
+//! ## Overview
+//!
+//! Many nonlinear models consist of a mixture of both truly nonlinear and _linear_ model
 //! parameters. These are called *separable models* and can be written as a linear combination
-//! of `$N_{basis}$` nonlinear model basis functions. The purpose of this crate is to fit linear
-//! models to data using fast and robust algorithms, while providing a simple interface.
+//! of `$N_{basis}$` nonlinear model basis functions.
 //!
-//! Consider a data vector `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`, which
-//! is sampled at grid points `$\vec{x}=(x_1,\dots,x_{N_{data}})^T$`, both with `$N_{data}$` elements. Our goal is to fit a nonlinear,
-//! separable model `$f$` to the data. Because the model is separable we can write it as
+//! The purpose of this crate is to provide least
+//! squares fitting of nonlinear separable models to observations. We also aim to provide excellent usability
+//! because all too often it is overly hard to even formulate a fitting
+//! problem in code. That is why this libary provides a prototyping API that allows to
+//! formulate a fitting problem in a few lines of code using the
+//! [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). For
+//! suitable problems this is likely already many times faster than just using nonlinear
+//! least squares solvers directly. This is because this crates takes advantage of the Variable Projection
+//! (VarPro) algorithm for fitting, which utilizes the separable structure
+//! of the model.
+//!
+//! To shave off the last couple hundreds of microseconds,
+//! you can manually implement the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait directly.
+//! The test and benchmark suite of this crate should give you a good idea of how fast
+//! the fitting can be and how to e.g. take advantage of caching intermediate results.
+//!
+//! ## The Fitting Problem
+//!
+//! Consider a data vector of observations `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`.
+//! Our goal is to fit a nonlinear, separable model `$f$` to the data.
+//! Because the model is separable we can write it as
 //!
 //! ```math
-//! \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(\vec{x},S_j(\alpha))
+//! \vec{f}(\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(S_j(\vec{\alpha}))
 //! ```
 //!
 //! Lets look at the components of this equation in more detail. The vector valued function
-//! `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` is the actual model we want to fit. It depends on
-//! three arguments:
-//! * `$\vec{x}$` is the independent variable which corresponds to the grid points. Those can be a time,
-//! location or anything at all, really.
+//! `$\vec{f}(\vec{\alpha},\vec{c}) \in \mathbb{C}^{N_{data}}$` is the model we want to fit. It depends on
+//! two vector valued parameters:
 //! * `$\vec{\alpha}=(\alpha_1,\dots,\alpha_{N_{params}})^T$` is the vector of nonlinear model parameters.
 //! We will get back to these later.
 //! * `$\vec{c}=(c_1,\dots,c_{N_{basis}})^T$` is the vector of coefficients for the basis functions.
+//! Those are the linear model parameters.
 //!
-//! Note that we call `$\vec{\alpha}$` the _parameters_ and `$\vec{c}$` the _coefficients_ of the model.
-//! We do this do make the distincion between _nonlinear parameters_ and _linear coefficients_.
+//! Note that we call `$\vec{\alpha}$` the _nonlinear parameters_ and `$\vec{c}$` the _coefficients_ of the model
+//! just to make the distinction between the two types of parameters clear. The coefficients are
+//! the linear parameters of the model, while `$\vec{\alpha}$` are the nonlinear parameters.
 //! Of course the model itself is parametrized on both `$\vec{\alpha}$` and `$\vec{c}$`.
+//!
+//! Let's look at the individual basis functions `$\vec{f}_j$` in more detail and also
+//! why the heck we made the basis functions depend this weird `$S_j(\vec{\alpha})$`.
 //!
 //! ## Model Parameters and Basis Functions
 //!
 //! The model itself is given as a linear combination of *nonlinear* basis functions `$\vec{f}_j$` with
-//! expansion coefficient `$c_j$`. The basis functions themselves only depend on the independent variable
-//! `$\vec{x}$` and on a subset `$S_j(\alpha)$` of the nonlinear model parameters `$\vec{\alpha}$`.
+//! expansion coefficient `$c_j$`. The basis functions themselves only depend on
+//! a subset `$S_j(\vec{\alpha})$` of the nonlinear model parameters `$\vec{\alpha}$`.
 //! Each basis function can depend on a different subset, but there is no restriction on which
-//! parameters a function can depend. Arbitrary functions might share some parameters. It's also
-//! fine for functions to depend on some (or only) parameters that are exclusive to them.
+//! parameters a function can depend on. Arbitrary functions might share none of, some of, or all of the parameters.
+//! It's also fine for functions to depend on parameters that are exclusive to them.
 //!
 //! ## What VarPro Computes
+//!
 //! This crate finds the parameters `$\vec{\alpha}$` and `$\vec{c}$` that
-//! fit the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` to the data `$\vec{y}$` obtained at grid points
-//! `$\vec{x}$` using a least squares metric. Formally, varpro finds
+//! fit the model `$\vec{f}(\vec{\alpha},\vec{c})$` to the observations `$\vec{y}$`
+//! using a least squares metric. Formally, varpro finds
 //!
 //! ```math
-//! \arg\min_{\vec{\alpha},\vec{c}} ||\mathbf{W}(\vec{y}-\vec{f}(\vec{x},\vec{\alpha},\vec{c}))||_2^2,
+//! \arg\min_{\vec{\alpha},\vec{c}} ||\mathbf{W}(\vec{y}-\vec{f}(\vec{\alpha},\vec{c}))||_2^2,
 //! ```
 //! where `$\mathbf{W}$` is a weight matrix that can be set to the identity matrix for unweighted
 //! least squares.
@@ -55,26 +83,78 @@
 //! uses the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate as it's optimization backend. Other
 //! optimization backends are planned for future releases.
 //!
-//! The VarPro algorithm implemented here follows (O'Leary2013), but does use the Kaufman approximation
+//! The VarPro algorithm implemented here follows (O'Leary2013), but uses use the Kaufman approximation
 //! to calculate the Jacobian.
 //!
-//! # Usage and Workflow
-//! The workflow for solving a least squares fitting problem with varpro is consists of the following steps.
-//! 1. Create a [SeparableModel](crate::model::SeparableModel) which describes the model function using
-//! the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). This is done by
-//! adding individual basis functions as well as their partial derivatives.
-//! 2. Choose a nonlinear minimizer backend. Right now the only implemented nonlinear minimizer
-//! is the [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
-//! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate. So just proceed
-//! to the next step.
-//! 3. Cast the fitting problem into a [LevMarProblem](crate::solvers::levmar::LevMarProblem) using
-//! the [LevMarProblemBuilder](crate::solvers::levmar::builder::LevMarProblemBuilder).
-//! 4. Solve the fitting problem using the [LevMarSolver](crate::solvers::levmar::LevMarSolver), which
+//! # Usage and Examples
+//!
+//! The first step in using this crate is to formulate the fitting problem.
+//! This is done by either creating a type that implements the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait
+//! or by using the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder) to create a model
+//! in a few lines of code. See the examples for the trait and the builder how to
+//! use either to generate a separable nonlinear model.
+//!
+//! The builder is great for getting started quickly and
+//! is already much faster than using a nonlinear least squares solver directly.
+//! For maximum performance, you can look into implementing the trait manually.
+//!
+//! ```rust
+//! let model = /* generate model here */
+//! # ();
+//! ```
+//!
+//! The second step is to use a nonlinear minimization backend to find the parameters that fit the model to the data.
+//! Right now the available backend is the [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
+//! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate.
+//! Thus, cast the fitting problem into a [LevMarProblem](crate::solvers::levmar::LevMarProblem) using
+//! the [LevMarProblemBuilder](crate::solvers::levmar::LevMarProblemBuilder).
+//!
+//! To build the fitting problem, we need to provide the model, and the observations.
+//! The initial guess for the nonlinear parameters `$\vec{\alpha}$` is a property
+//! of the model.
+//!
+//! ```no_run
+//! # let model : varpro::model::SeparableModel<f64> = unimplemented!();
+//! # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
+//! use varpro::solvers::levmar::LevMarProblemBuilder;
+//! let problem = LevMarProblemBuilder::new(model)
+//!               .observations(y)
+//!               .build()
+//!               .unwrap();
+//! ```
+//!
+//! Next, solve the fitting problem using the [LevMarSolver](crate::solvers::levmar::LevMarSolver), which
 //! is an alias for the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt) struct and allows to set
 //! additional parameters of the algorithm before performing the minimization.
-//! 5. Check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
+//!
+//! The simplest way of performing the minimization (without setting any additional
+//! parameters for the minimization is like so:
+//!
+//! ```no_run
+//! # use varpro::model::*;
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
+//! use varpro::solvers::levmar::LevMarSolver;
+//! let (problem, report) = LevMarSolver::new().minimize(problem);
+//! ```
+//! Finally, check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
 //! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
 //! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
+//!
+//! ```no_run
+//! # use varpro::model::SeparableModel;
+//! # use varpro::prelude::*;
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
+//! # use varpro::solvers::levmar::LevMarSolver;
+//! # let (problem, report) = LevMarSolver::new().minimize(problem);
+//! assert!(
+//!     report.termination.was_successful(),
+//!     "Termination not successful"
+//! );
+//! let alpha = problem.params();
+//! let coeff = problem.linear_coefficients().unwrap();
+//! ```
+//! If the minimization was successful, the nonlinear parameters `$\vec{\alpha}$`
+//! are now stored in the variable `alpha` and the linear coefficients `$\vec{c}$` are stored in `coeff`.
 //!
 //! # Example
 //!
@@ -83,6 +163,7 @@
 //! to observations `$\vec{y}$` obtained at grid points `$\vec{x}$`. The model itself is a vector valued
 //! function with the same number of elements as `$\vec{x}$` and `$\vec{y}$`. The component at index
 //! `k` is given by
+//!
 //! ```math
 //! (\vec{f}(\vec{x},\vec{\alpha},\vec{c}))_k= c_1 \exp\left(-x_k/\tau_1\right)+c_2 \exp\left(-x_k/\tau_2\right)+c_3,
 //! ```
@@ -112,7 +193,7 @@
 //! ```
 //!
 //! We'll see in the example how the [function](crate::model::builder::SeparableModelBuilder::function) method
-//! and the [partial_deriv](crate::model::builder::SeparableModelBuilderProxWithDerivatives::partial_deriv)
+//! and the [partial_deriv](crate::model::builder::SeparableModelBuilderProxyWithDerivatives::partial_deriv)
 //! methods let us add the function and the derivative as base functions.
 //!
 //! There is a second type of basis function, which corresponds to coefficient `$c_3$`. This is a constant
@@ -135,7 +216,11 @@
 //! # fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) -> DVector<f64> {
 //! #    tvec.map(|t| (-t / tau).exp() * t / tau.powi(2))
 //! # }
-//! # fn fit_model_example(x:DVector<f64>, y:DVector<f64>) {
+//!
+//! # // create the data
+//! # let x = DVector::from_vec(vec![0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.]);
+//! # let y = DVector::from_vec(vec![1.0,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.01]);
+//!
 //! //1. create the model by giving only the nonlinear parameter names it depends on
 //! let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
 //!     // add the first exponential decay and its partial derivative to the model
@@ -148,17 +233,18 @@
 //!     .partial_deriv("tau2", exp_decay_dtau)
 //!     // add the constant as a vector of ones as an invariant function
 //!     .invariant_function(|x|DVector::from_element(x.len(),1.))
+//!     // the independent variable (x-axis) is the same for all basis functions
+//!     .independent_variable(x)
+//!     // the initial guess for the nonlinear parameters is tau1=1, tau2=5
+//!     .initial_parameters(vec![1.,5.])
 //!     // build the model
 //!     .build()
 //!     .unwrap();
 //! // 2.,3: Cast the fitting problem as a nonlinear least squares minimization problem
-//! let problem = LevMarProblemBuilder::new()
-//!     .model(&model)
-//!     .x(x)
-//!     .y(y)
-//!     .initial_guess(&[1., 2.])
+//! let problem = LevMarProblemBuilder::new(model)
+//!     .observations(y)
 //!     .build()
-//!     .expect("Building valid problem should not panic");
+//!     .unwrap();
 //! // 4. Solve using the fitting problem
 //! let (solved_problem, report) = LevMarSolver::new().minimize(problem);
 //! assert!(report.termination.was_successful());
@@ -168,7 +254,6 @@
 //! // the linear coefficients after fitting
 //! // they are in the same order as the basis functions that were added to the model
 //! let c = solved_problem.linear_coefficients().unwrap();
-//! # }
 //! ```
 //!
 //! # References and Further Reading
@@ -191,5 +276,5 @@ pub mod solvers;
 /// implemented in the nalgebra crate
 mod linalg_helpers;
 
-#[cfg(test)]
+#[cfg(any(test, doctest))]
 pub mod test_helpers;

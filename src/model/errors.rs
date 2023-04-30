@@ -1,6 +1,6 @@
 use thiserror::Error as ThisError;
 
-/// Errors pertaining to use errors of the [SeparableModel].
+/// Errors pertaining to use errors of the [crate::model::SeparableModel].
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 pub enum ModelError {
     /// Base functions are expected to return a vector the same length as the location argument.
@@ -32,10 +32,10 @@ pub enum ModelError {
     },
 
     /// It was tried to evaluate a model with an incorrect number of parameters
-    #[error("Model takes {} parameters, but {} were provide.", required, actual)]
+    #[error("Model expects {} parameters, but got {}", expected, actual)]
     IncorrectParameterCount {
         /// the number of parameters that are required for the model
-        required: usize,
+        expected: usize,
         /// the given number of parameters
         actual: usize,
     },

@@ -1,9 +1,25 @@
-use common::*;
 use criterion::{criterion_group, criterion_main, Criterion};
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::DVector;
+use nalgebra::ComplexField;
+
+use nalgebra::Const;
+use nalgebra::DefaultAllocator;
+
+use nalgebra::DimMin;
+use nalgebra::DimSub;
+
+use nalgebra::OVector;
+use nalgebra::RawStorageMut;
+
+use nalgebra::Storage;
+use nalgebra::U1;
+
 use pprof::criterion::{Output, PProfProfiler};
+use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
+use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
+use shared_test_code::*;
 use varpro::model::SeparableModel;
+use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
@@ -18,11 +34,62 @@ struct DoubleExponentialParameters {
     c3: f64,
 }
 
-fn build_problem(
+fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
-    (tau1_guess, tau2_guess): (f64, f64),
-    model: &'_ SeparableModel<f64>,
-) -> LevMarProblem<'_, f64> {
+    mut model: Model,
+) -> LevMarProblem<Model>
+where
+    Model: SeparableNonlinearModel<ScalarType = f64>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer:
+        Storage<f64, Model::OutputDim>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer:
+        RawStorageMut<f64, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ParameterDim>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        (usize, usize),
+        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        f64,
+        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+        Model::OutputDim,
+    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        <f64 as ComplexField>::RealField,
+        <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
+    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        f64,
+        <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
+    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        (<f64 as ComplexField>::RealField, usize),
+        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+    >,
+    <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>>,
+    Model::OutputDim: DimMin<Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        f64,
+        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+        Model::ModelDim,
+    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        f64,
+        Model::OutputDim,
+        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        <f64 as ComplexField>::RealField,
+        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+    >,
+{
     let DoubleExponentialParameters {
         tau1,
         tau2,
@@ -31,32 +98,69 @@ fn build_problem(
         c3,
     } = true_parameters;
 
-    let x = linspace(0., 12.5, 1024);
-    let y = evaluate_complete_model(model, &x, &[tau1, tau2], &DVector::from(vec![c1, c2, c3]));
-    let problem = LevMarProblemBuilder::new()
-        .model(model)
-        .x(x)
-        .y(y)
-        .initial_guess(&[tau1_guess, tau2_guess])
+    // save the initial guess so that we can reset the model to those
+    let params = OVector::from_vec_generic(model.parameter_count(), U1, vec![tau1, tau2]);
+
+    let base_function_count = model.base_function_count();
+    let y = evaluate_complete_model_at_params(
+        &mut model,
+        params,
+        &OVector::from_vec_generic(base_function_count, U1, vec![c1, c2, c3]),
+    );
+    LevMarProblemBuilder::new(model)
+        .observations(y)
         .build()
-        .expect("Building valid problem should not panic");
-    problem
+        .expect("Building valid problem should not panic")
 }
 
-fn run_minimization(problem: LevMarProblem<'_, f64>) -> [f64; 5] {
+/// solve the double exponential fitting problem using a handrolled model
+fn run_minimization_for_handrolled_separable_model(
+    problem: LevMarProblem<DoubleExpModelWithConstantOffsetSepModel>,
+) -> [f64; 5] {
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
         report.termination.was_successful(),
         "Termination not successful"
     );
-
     let params = problem.params();
     let coeff = problem.linear_coefficients().unwrap();
     [params[0], params[1], coeff[0], coeff[1], coeff[2]]
 }
 
+/// solve the double exponential fitting problem using a separable model from the builder
+/// I should be able to unify this with the handrolled model, but I can't figure out how to do it
+/// because I cannot find the correct generic bounds to do it
+fn run_minimization_for_builder_separable_model(
+    problem: LevMarProblem<SeparableModel<f64>>,
+) -> [f64; 5] {
+    let (problem, report) = LevMarSolver::new().minimize(problem);
+    assert!(
+        report.termination.was_successful(),
+        "Termination not successful"
+    );
+    let params = problem.params();
+    let coeff = problem.linear_coefficients().unwrap();
+    [params[0], params[1], coeff[0], coeff[1], coeff[2]]
+}
+
+/// solve the problem by using nonlinear least squares with levenberg marquardt
+/// from the levenberg marquardt crate only
+fn run_minimization_for_levenberg_marquardt_crate_problem(
+    problem: DoubleExponentialDecayFittingWithOffsetLevmar,
+) -> [f64; 5] {
+    let (problem, report) = LevMarSolver::new()
+        // if I don't set this, the solver will not converge
+        .with_stepbound(1.)
+        .minimize(problem);
+    assert!(
+        report.termination.was_successful(),
+        "Termination not successful"
+    );
+    let params = problem.params();
+    [params[0], params[1], params[2], params[3], params[4]]
+}
+
 fn bench_double_exp_no_noise(c: &mut Criterion) {
-    let model = get_double_exponential_model_with_constant_offset();
     let true_parameters = DoubleExponentialParameters {
         tau1: 1.,
         tau2: 3.,
@@ -65,10 +169,68 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
         c3: 1.,
     };
 
-    c.bench_function("double exp w/o noise", move |bencher| {
+    // see here on comparing functions
+    // https://bheisler.github.io/criterion.rs/book/user_guide/comparing_functions.html
+    let mut group = c.benchmark_group("Double Exponential Without Noise");
+    // the support points for the model (moved into the closures separately)
+    let x = linspace(0., 12.5, 1024);
+    // initial guess for tau
+    let tau_guess = (2., 6.5);
+    // function values
+    let f = x.map(|x: f64| {
+        true_parameters.c1 * (-x / true_parameters.tau1).exp()
+            + true_parameters.c2 * (-x / true_parameters.tau2).exp()
+            + true_parameters.c3
+    });
+
+    group.bench_function("Using Levenberg Marquardt Crate", |bencher| {
         bencher.iter_batched(
-            || build_problem(true_parameters, (2., 6.5), &model),
-            run_minimization,
+            || {
+                DoubleExponentialDecayFittingWithOffsetLevmar::new(
+                    // we make it easier for the solver by giving it the
+                    // correct guesses for the coefficients from the start
+                    // which is not gonna happen for realistic problems
+                    &[
+                        tau_guess.0,
+                        tau_guess.1,
+                        true_parameters.c1,
+                        true_parameters.c2,
+                        true_parameters.c3,
+                    ],
+                    &x,
+                    &f,
+                )
+            },
+            run_minimization_for_levenberg_marquardt_crate_problem,
+            criterion::BatchSize::SmallInput,
+        )
+    });
+
+    group.bench_function("Using Model Builder", |bencher| {
+        bencher.iter_batched(
+            || {
+                build_problem(
+                    true_parameters,
+                    get_double_exponential_model_with_constant_offset(
+                        x.clone(),
+                        vec![tau_guess.0, tau_guess.1],
+                    ),
+                )
+            },
+            run_minimization_for_builder_separable_model,
+            criterion::BatchSize::SmallInput,
+        )
+    });
+
+    group.bench_function("Handcrafted Model", |bencher| {
+        bencher.iter_batched(
+            || {
+                build_problem(
+                    true_parameters,
+                    DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
+                )
+            },
+            run_minimization_for_handrolled_separable_model,
             criterion::BatchSize::SmallInput,
         )
     });
@@ -79,77 +241,3 @@ criterion_group!(
     config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
     targets = bench_double_exp_no_noise);
 criterion_main!(benches);
-
-mod common {
-    use nalgebra::{ComplexField, DVector, Scalar};
-    use num_traits::Float;
-    use varpro::model::builder::SeparableModelBuilder;
-    use varpro::model::SeparableModel;
-
-    /// create holding `count` the elements from range [first,last] with linear spacing. (equivalent to matlabs linspace)
-    pub fn linspace<ScalarType: Float + Scalar>(
-        first: ScalarType,
-        last: ScalarType,
-        count: usize,
-    ) -> DVector<ScalarType> {
-        let n_minus_one = ScalarType::from(count - 1).expect("Could not convert usize to Float");
-        let lin: Vec<ScalarType> = (0..count)
-            .map(|n| {
-                first
-                    + (first - last) / (n_minus_one)
-                        * ScalarType::from(n).expect("Could not convert usize to Float")
-            })
-            .collect();
-        DVector::from(lin)
-    }
-
-    /// evaluete the vector valued function of a model by evaluating the model at the given location
-    /// `x` with (nonlinear) parameters `params` and by calculating the linear superposition of the basisfunctions
-    /// with the given linear coefficients `linear_coeffs`.
-    pub fn evaluate_complete_model<ScalarType>(
-        model: &SeparableModel<ScalarType>,
-        x: &DVector<ScalarType>,
-        params: &[ScalarType],
-        linear_coeffs: &DVector<ScalarType>,
-    ) -> DVector<ScalarType>
-    where
-        ScalarType: Scalar + ComplexField,
-    {
-        (&model
-            .eval(x, params)
-            .expect("Evaluating model must not produce error"))
-            * linear_coeffs
-    }
-
-    /// exponential decay f(t,tau) = exp(-t/tau)
-    pub fn exp_decay<ScalarType: Float + Scalar>(
-        tvec: &DVector<ScalarType>,
-        tau: ScalarType,
-    ) -> DVector<ScalarType> {
-        tvec.map(|t| (-t / tau).exp())
-    }
-
-    /// derivative of exp decay with respect to tau
-    pub fn exp_decay_dtau<ScalarType: Scalar + Float>(
-        tvec: &DVector<ScalarType>,
-        tau: ScalarType,
-    ) -> DVector<ScalarType> {
-        tvec.map(|t| (-t / tau).exp() * t / (tau * tau))
-    }
-
-    /// A helper function that returns a double exponential decay model
-    /// f(x,tau1,tau2) = c1*exp(-x/tau1)+c2*exp(-x/tau2)+c3
-    /// Model parameters are: tau1, tau2
-    pub fn get_double_exponential_model_with_constant_offset() -> SeparableModel<f64> {
-        let ones = |t: &DVector<_>| DVector::from_element(t.len(), 1.);
-
-        SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
-            .function(&["tau1"], exp_decay)
-            .partial_deriv("tau1", exp_decay_dtau)
-            .function(&["tau2"], exp_decay)
-            .partial_deriv("tau2", exp_decay_dtau)
-            .invariant_function(ones)
-            .build()
-            .expect("double exponential model builder should produce a valid model")
-    }
-}

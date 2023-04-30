@@ -1,7 +1,7 @@
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector, Dyn};
+use nalgebra::{DMatrix, DVector, DefaultAllocator, Dim, Dyn, OMatrix, OVector};
 use num_traits::Zero;
 
 mod detail;
@@ -11,64 +11,395 @@ pub mod errors;
 /// contains the builder code for model creation
 pub mod builder;
 mod model_basis_function;
-#[cfg(test)]
-mod test;
+#[cfg(any(test, doctest))]
+pub mod test;
 
-/// This structure represents a separable nonlinear model.
+/// Represents an abstraction for a separable nonlinear model
 ///
 /// # Introduction
+///
 /// A separable nonlinear model is
-/// a nonlinear, vector valued function function `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` which depends on
-/// * an independent variable `$\vec{x}$`, e.g. a location, time, etc...
+/// a nonlinear, vector valued function function `$\vec{f}(\vec{\alpha},\vec{c}) \in \mathbb{C}^n$` which depends on
 /// * the *nonlinear* model parameters `$\vec{\alpha}$`.
 /// * and a number of linear parameters `$\vec{c}$`
-/// The number of elements in `$\vec{f}$` must be the same as in the independent variable `$\vec{x}$`.
+///
+/// The model is a real valued or complex valued function of the model parameters. The
+/// model is vector valued, i.e. it returns a vector of `$n$` values.
 ///
 /// *Separable* means that the nonlinear model function can be written as the
-/// linear combination of `$N_{base}$` nonlinear base functions, i.e.
+/// linear combination of `$M$` nonlinear base functions , i.e.
+///
 /// ```math
-/// f(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(\vec{x},S_j(\vec{\alpha})),
+/// \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(S_j(\vec{\alpha})),
 /// ```
-/// where `$\vec{c}=(c_1,\dots,\c_M)$` are the coefficients of the model basis functions and
+///
+/// where `$\vec{c}=(c_1,\dots,\c_M)$` are the coefficients of the model base functions `$f_j$` and
 /// `$S_j(\vec{\alpha})$` is a subset of the nonlinear model parameters that may be different
-/// for each model function. The basis functions should depend on the model parameters nonlinearly.
+/// for each model function. The base functions should depend on the model parameters nonlinearly.
 /// Linear parameters should be in the coefficient vector `$\vec{c}$` only.
 ///
-/// ## Important Considerations for Basis Functions
-/// We have already stated that the basis functions should depend on their parameter subset
-/// `$S_j(\vec{\alpha})$` in a non-linear manner. Linear dependencies should be rewritten in such a
+/// ## Important Considerations for Base Functions
+///
+/// We have already stated that the base functions should depend on their parameter subset
+/// `$S_j(\vec{\alpha})$` in a *non-linear* manner. Linear dependencies should be rewritten in such a
 /// way that we can stick them into the coefficient vector `$\vec{c}$`. It is not strictly necessary
 /// to do that, but it will only make the fitting process slower and less robust. The great strength
 /// of varpro comes from treating the linear and nonlinear parameters differently.
 ///
-/// Another important thing is to ensure that the basis functions are not linearly dependent. That is,
-/// at least not for all possible choices of `$\vec{alpha}$`. It is OK if model functions become linearly
+/// Another important thing is to ensure that the base functions are not linearly dependent,
+/// at least not for all possible choices of `$\vec{alpha}$`. It is sometimes unavoidable that
+/// that model functions become linearly
 /// dependent for *some* combinations of model parameters. See also
-/// [LevMarProblemBuilder::epsilon](crate::solver::levmar::builder::LevMarProblemBuilder::epsilon).
+/// [LevMarProblemBuilder::epsilon](crate::solvers::levmar::LevMarProblemBuilder::epsilon).
 ///
-/// ## Base Functions
 /// It perfectly fine for a base function to depend on all or none of the model parameters or any
-/// subset of the model parameters.
-///
-/// ### Invariant Functions
-/// We refer to functions `$\vec{f}_j(\vec{x})$` that do not depend on the model parameters as *invariant
-/// functions*. We offer special methods to add invariant functions during the model building process.
-///
-/// ### Base Functions
-/// The varpro library expresses base function signatures as `$\vec{f}_j(\vec{x},p_1,...,p_{P_j}))$`, where
-/// `$p_1,...,p_{P_J}$` are the paramters that the basefunction with index `$j$` actually depends on.
-/// These are not given as a vector, but as a (variadic) list of arguments. The parameters must be
-/// a subset of the model parameters. In order to add functions like this to a model, we must also
-/// provide all partial derivatives (for parameters that the function explicitly depends on).
-///
-/// Refer to the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
-/// to see how to construct a model with basis functions.
+/// subset of the model parameters. There is also no restrictions on which base functions
+/// can depend on which nonlinear parameters.
 ///
 /// # Usage
-/// The is no reason to interface with the separable model directly. First, construct it using a
-/// [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder) and then pass the model
-/// to one of the problem builders (e.g. [LevMarProblemBuilder](crate::solvers::levmar::builder::LevMarProblemBuilder))
-/// to use it for nonlinear least squares fitting.
+///
+/// There is two ways to get a type that implements the separable nonlinear model trait.
+/// Firstly, you can obviously create your own type and make it implement this trait.
+/// Secondly you can use the [`crate::model::builder::SeparableModelBuilder`] in this crate.
+///
+/// ## Using the Builder
+///
+/// The simplest way to build an instance of a model us to use the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+/// to create a model from a set of base functions and their derivatives. Then
+/// pass this to a solver for solving for both the linear coefficients as well
+/// as the nonlinear parameters. This is definitely recommended for prototyping and it
+/// might already be enough for a production implementation as it should
+/// already run way faster and more stable than just using a least squares backend
+/// directly.
+///
+/// ## Manual Implementation
+///
+/// For maximum performance, you can also write your own type that implements this trait.
+/// An immediate advantage of this is that you can cache the results of the base functions
+/// and reuse them in the derivatives as is often possible. This can be a huge performance boost if the
+/// base functions are expensive to compute. Also, you can avoid the indirection that the model builder
+/// introduces, although this should matter to a lesser degree.
+///
+/// ### Manual Implementation Example
+///
+/// This example shows how to implement a double exponential
+/// decay with constant offset from hand and takes advantage
+/// of caching the intermediate calculations.
+///
+/// ```
+/// use varpro::prelude::*;
+/// use nalgebra::{DVector,OVector,Vector2,DMatrix,OMatrix,DefaultAllocator,U2,U3,Dyn};
+/// /// A separable model for double exponential decay
+/// /// with a constant offset
+/// /// f_j = c1*exp(-x_j/tau1) + c2*exp(-x_j/tau2) + c3
+/// /// this is a handcrafted model which uses caching for
+/// /// maximum performance.
+/// ///
+/// /// This is an example of how to implement a separable model
+/// /// using the trait directly without using the builder.
+/// /// This allows us to use caching of the intermediate results
+/// /// to calculate the derivatives more efficiently.
+/// pub struct DoubleExpModelWithConstantOffsetSepModel {
+///     /// the x vector associated with this model.
+///     /// We make this configurable to enable models to
+///     /// work with different x coordinates, but this is
+///     /// not an inherent requirement. We don't have to have a
+///     /// field like this. The only requirement given by the trait
+///     /// is that the model can be queried about the length
+///     /// of its output
+///     x_vector : DVector<f64>,
+///     /// current parameters [tau1,tau2] of the exponential
+///     /// functions
+///     params : Vector2<f64>,
+///     /// cached evaluation of the model
+///     /// the matrix columns contain the complete evaluation
+///     /// of the model. That is the first column contains the
+///     /// exponential exp(-x/tau), the second column contains
+///     /// exp(-x/tau) both evaluated on the x vector. The third
+///     /// column contains a column of straight ones for the constant
+///     /// offset.
+///     ///
+///     /// This value is calculated in the set_params method, which is
+///     /// the only method with mutable access to the model state.
+///     eval : OMatrix<f64,Dyn,U3>,
+/// }
+///
+/// impl DoubleExpModelWithConstantOffsetSepModel {
+///     /// create a new model with the given x vector and initial guesses
+///     /// for the exponential decay constants tau_1 and tau_2
+///     pub fn new(x_vector : DVector<f64>,(tau1_guess,tau2_guess):(f64,f64)) -> Self {
+///         let x_len = x_vector.len();
+///         let mut ret = Self {
+///             x_vector,
+///             params : Vector2::zeros(),//<-- will be overwritten by set_params
+///             eval : OMatrix::<f64,Dyn,U3>::zeros_generic(Dyn(x_len), U3)
+///         };
+///         ret.set_params(Vector2::new(tau1_guess, tau2_guess)).unwrap();
+///         ret
+///     }
+/// }
+///
+/// impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
+///     /// we give a custom mddel error here, but we
+///     /// could also have indicated that our calculations cannot
+///     /// fail by using [`std::convert::Infallible`].
+///     type Error = varpro::model::errors::ModelError;
+///     /// We use a compile time constant (2) to indicate the
+///     /// number of parameters at compile time
+///     type ParameterDim = U2;
+///     /// the model dimension is the number of base functions.
+///     /// We also use a type to indicate its size at compile time
+///     type ModelDim = U3;
+///     /// the ouput dim is the number of elements that each base function
+///     /// produces. We have made this dynamic here since it has
+///     /// the same length as the x vector given to the model. We made it
+///     /// so that the length of the x vector is only runtime known.
+///     /// We could just as well have made it compile time known.
+///     type OutputDim = Dyn;
+///     /// the actual scalar type that our model uses for calculations
+///     type ScalarType = f64;
+///
+///     #[inline]
+///     fn parameter_count(&self) -> U2 {
+///         // regardless of the fact that we know at compile time
+///         // that the length is 2, we still have to return an instance
+///         // of that type
+///         U2{}
+///     }
+///
+///     #[inline]
+///     fn base_function_count(&self) -> U3 {
+///         // same as above
+///         U3{}
+///     }
+///     
+///     // we use this method not only to set the parameters inside the
+///     // model but we also cache some calculations. The advantage is that
+///     // we don't have to recalculate the exponential terms for either
+///     // the evaluations or the derivatives for the same parameters.
+///     fn set_params(&mut self, parameters : Vector2<f64>) -> Result<(),Self::Error> {
+///         // even if it is not the only thing we do, we still
+///         // have to update the internal parameters of the model
+///         self.params = parameters;
+///
+///         // parameters expected in this order
+///         // use unsafe to avoid bounds checks
+///         let tau1 = unsafe { self.params.get_unchecked(0) };
+///         let tau2 = unsafe { self.params.get_unchecked(1) };
+///
+///         // the exponential exp(-x/tau1)
+///         let f1 = self.x_vector.map(|x| f64::exp(-x / tau1));
+///         // the exponential exp(-x/tau2)
+///         let f2 = self.x_vector.map(|x| f64::exp(-x / tau2));
+///
+///         self.eval.set_column(0, &f1);
+///         self.eval.set_column(1, &f2);
+///         self.eval.set_column(2, &DVector::from_element(self.x_vector.len(), 1.));
+///         Ok(())
+///     }
+///
+///     fn params(&self) -> OVector<f64, Self::ParameterDim> {
+///         self.params.clone()
+///     }
+///     
+///     // since we cached the model evaluation, we can just return
+///     // it here
+///     fn eval(
+///         &self,
+///     ) -> Result<OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
+///         Ok(self.eval.clone())
+///     }
+///     
+///     // here we take advantage of the cached calculations
+///     // so that we do not have to recalculate the exponential
+///     // to calculate the derivative.
+///     fn eval_partial_deriv(
+///         &self,
+///         derivative_index: usize,
+///     ) -> Result<nalgebra::OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
+///         let location = &self.x_vector;
+///         let parameters = &self.params;
+///         // derivative index can be either 0,1 (corresponding to the linear parameters
+///         // tau1, tau2). Since only one of the basis functions depends on
+///         // tau_i, we can simplify calculations here
+///
+///         let tau = parameters[derivative_index];
+///         // the only nonzero derivative is the derivative of the exp(-x/tau) for
+///         // the corresponding tau at derivative_index
+///         // we can use the precalculated results so we don't have to use the
+///         // exponential function again
+///         let df = location.map(|x| x / (tau * tau)).component_mul(&self.eval.column(derivative_index));
+///
+///         // two of the columns are always zero when we differentiate
+///         // with respect to tau_1 or tau_2. Remember the constant term
+///         // also occupies one column and will always be zero when differentiated
+///         // with respect to the nonlinear params of the model
+///         let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), U3);
+///
+///         derivatives.set_column(derivative_index, &df);
+///         Ok(derivatives)
+///     }
+///
+///     fn output_len(&self) -> Self::OutputDim {
+///         // this is how we give a length that is only known at runtime.
+///         // We wrap it in a `Dyn` instance.
+///         Dyn(self.x_vector.len())
+///     }
+/// }
+/// ```
+#[allow(clippy::type_complexity)]
+pub trait SeparableNonlinearModel
+where
+    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Self::ParameterDim>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<Self::ScalarType, Self::OutputDim, Self::ModelDim>,
+{
+    /// the scalar number type for this model, which should be
+    /// a real or complex number type, commonly either `f64` or `f32`.
+    type ScalarType: Scalar;
+
+    /// the associated error type that can occur when the
+    /// model or the derivative is evaluated.
+    /// If this model does not need (or for performance reasons does not want)
+    /// to return an error, it is possible to specify [`std::convert::Infallible`]
+    /// as the associated `Error` type.
+    type Error: std::error::Error;
+
+    /// the number of *nonlinear* parameters that this model depends on,
+    /// expressed as a dimension type of the nalgebra crate. If the number of
+    /// nonlinear parameters is not known at compile time, then use the [nalgebra::Dyn](nalgebra::Dyn)
+    /// type.
+    type ParameterDim: Dim;
+
+    /// the number of base functions that this model depends on,
+    /// expressed as a dimension type of the nalgebra crate. If the number of
+    /// model base functions is not known at compile time, then use the [nalgebra::Dyn](nalgebra::Dyn)
+    /// type.
+    type ModelDim: Dim;
+
+    /// The dimension `$n$` of the output of the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c}) \in \mathbb{R}^n$`.
+    /// If the output dimension is not known at compile time, then use the [nalgebra::Dyn](nalgebra::Dyn),
+    /// which is likely the right choice for this dimension as a default
+    /// unless you have a good reason to do otherwise.
+    type OutputDim: Dim;
+
+    /// return the number of *nonlinear* parameters that this model depends on.
+    fn parameter_count(&self) -> Self::ParameterDim;
+
+    /// return the number of base functions that this model depends on.
+    fn base_function_count(&self) -> Self::ModelDim;
+
+    /// return the dimension `$n$` of the output of the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c}) \in \mathbb{R}^n$`.
+    /// This is also the dimension of every single base function.
+    fn output_len(&self) -> Self::OutputDim;
+
+    /// Set the nonlinear parameters `$\vec{\alpha}$` of the model to the given vector .
+    fn set_params(
+        &mut self,
+        parameters: OVector<Self::ScalarType, Self::ParameterDim>,
+    ) -> Result<(), Self::Error>;
+
+    /// Get the currently set nonlinear parameters of the model, i.e.
+    /// the vector `$\vec{\alpha}$`.
+    fn params(&self) -> OVector<Self::ScalarType, Self::ParameterDim>;
+
+    /// Evaluate the base functions of the model at the currently
+    /// set parameters `$\vec{\alpha}$` and return them in matrix form.
+    /// The columns of this matrix are the evaluated base functions.
+    /// See below for a detailed explanation.
+    ///
+    /// # Result
+    ///
+    /// As explained above, this method returns a matrix, whose columns are the
+    /// base functions evaluated at the given parameters. More formally,
+    /// if the model is written as a superposition of `$M$` base functions like so:
+    ///
+    /// ```math
+    /// \vec{f}(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(\vec{x},S_j(\vec{\alpha})),
+    /// ```
+    ///  
+    /// then the matrix must look like this:
+    ///
+    /// ```math
+    ///   \mathbf{\Phi}(\vec{x},\vec{\alpha}) \coloneqq
+    ///   \begin{pmatrix}
+    ///   \vert & \dots & \vert \\
+    ///   f_1(\vec{x},\vec{\alpha}) & \dots & f_M(\vec{x},\vec{\alpha}) \\
+    ///   \vert & \dots & \vert \\
+    ///   \end{pmatrix},
+    /// ```
+    ///
+    /// The ordering of the function must not change between function calls
+    /// and it must also be the same as for the evaluation of the derivatives.
+    /// The j-th base function must be at the j-th column. The one thing to remember
+    /// is that in Rust the matrix indices start at 0, so the first function
+    /// is at column 0, and so on...
+    ///
+    /// ## Errors
+    /// An error can be returned if the evaluation fails for  some reason.
+    ///
+    fn eval(
+        &self,
+    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error>;
+
+    /// Evaluate the partial derivatives for the base function at for the
+    /// currently set parameters and return them in matrix form.
+    ///
+    /// # Arguments
+    ///
+    /// * `derivative_index`: The index of the nonlinear parameter with respect to which
+    /// partial derivative should be evaluated. We use _zero based indexing_
+    /// here! Put in more simple terms, say your model has three nonlinear parameters
+    /// `a,b,c`, so your vector of nonlinear parameters is `$\vec{\alpha} = (a,b,c)$`.
+    /// Then index 0 requests `$\partial/\partial_a$`, index 1 requests `$\partial/\partial_b$`
+    /// and index 2 requests `$\partial/\partial_c$`.
+    ///
+    /// # Result
+    ///
+    /// Like the `eval` method, this method must return a matrix, whose columns are the
+    /// correspond to the base functions evaluated at the given parameters and location.
+    /// However, for this.
+    ///
+    /// More formally, if the model is written as a superposition of `$M$` base functions like so:
+    ///
+    /// ```math
+    /// \vec{f}(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(\vec{x},S_j(\vec{\alpha})),
+    /// ```
+    ///
+    /// Further assume that our vector of nonlinear parameters looks like
+    /// `$\vec{\alpha} = (\alpha_1,...,\alpha_N)$` and that the partial derivative
+    /// with respect to `$\alpha_\ell$` (so the given `derivative_index` was
+    /// `$\ell-1$`, since it is zero-based).
+    ///
+    /// then the matrix must look like this:
+    ///
+    /// ```math
+    ///   \mathbf{\Phi}(\vec{x},\vec{\alpha}) \coloneqq
+    ///   \begin{pmatrix}
+    ///   \vert & \dots & \vert \\
+    ///   \partial/\partial_{\alpha\ell} f_1(\vec{x},\vec{\alpha}) & \dots & \partial/\partial_{\alpha\ell} f_M(\vec{x},\vec{\alpha}) \\
+    ///   \vert & \dots & \vert \\
+    ///   \end{pmatrix},
+    /// ```
+    ///
+    /// The order of the derivatives must be the same as in the model evaluation
+    /// and must not change between method calls.
+    ///
+    /// ## Errors
+    ///
+    /// An error result is returned when
+    /// * the parameters do not have the same length as the model parameters given when building the model
+    /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
+    /// * the given parameter index is out of bounds
+    /// * ...
+    fn eval_partial_deriv(
+        &self,
+        derivative_index: usize,
+    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error>;
+}
+
+/// The type returned from building a model using the
+/// [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
 pub struct SeparableModel<ScalarType>
 where
     ScalarType: Scalar,
@@ -83,6 +414,24 @@ where
     /// which are wrapped inside a lambda function so that they can take the whole
     /// parameter space of the model as an argument
     basefunctions: Vec<ModelBasisFunction<ScalarType>>,
+    /// the independent variable `$\vec{x}$`
+    x_vector: DVector<ScalarType>,
+    /// the current parameters with which this model (and its derivatives)
+    /// are evaluated
+    current_parameters: DVector<ScalarType>,
+}
+
+impl<ScalarType> std::fmt::Debug for SeparableModel<ScalarType>
+where
+    ScalarType: Scalar,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SeparableModel")
+            .field("parameter_names", &self.parameter_names)
+            .field("basefunctions", &"/* omitted */")
+            .field("x_vector", &self.x_vector)
+            .finish()
+    }
 }
 
 impl<ScalarType> SeparableModel<ScalarType>
@@ -93,161 +442,92 @@ where
     pub fn parameters(&self) -> &[String] {
         &self.parameter_names
     }
-
-    /// Get the number of nonlinear parameters of the model
-    pub fn parameter_count(&self) -> usize {
-        self.parameter_names.len()
-    }
-
-    /// Get the number of basis functions of the model
-    pub fn basis_function_count(&self) -> usize {
-        self.basefunctions.len()
-    }
 }
 
-impl<ScalarType> SeparableModel<ScalarType>
+impl<ScalarType> SeparableNonlinearModel for SeparableModel<ScalarType>
 where
     ScalarType: Scalar + Zero,
 {
-    /// # Arguments
-    /// * `location`: the value of the independent location parameter `$\vec{x}$`
-    /// * `parameters`: the parameter vector `$\vec{\alpha}$`
-    /// # Result
-    /// Evaluates the model in matrix from for the given nonlinear parameters. This produces
-    /// a matrix where the columns of the matrix are given by the basis function, evaluated in
-    /// the order that they were added to the model. Assume the model consists of `$f_1(\vec{x},\vec{\alpha})$`,
-    /// `$f_2(\vec{x},\vec{\alpha})$`, and `$f_3(\vec{x},\vec{\alpha})$` and the functions where
-    /// added to the model builder in this particular order. Then
-    /// the matrix is given as
-    /// ```math
-    ///   \mathbf{\Phi}(\vec{x},\vec{\alpha}) \coloneqq
-    ///   \begin{pmatrix}
-    ///   \vert & \vert & \vert \\
-    ///   f_1(\vec{x},\vec{\alpha}) & f_2(\vec{x},\vec{\alpha}) & f_3(\vec{x},\vec{\alpha}) \\
-    ///   \vert & \vert & \vert \\
-    ///   \end{pmatrix},
-    /// ```
-    /// where, again, the function `$f_j$` gives the column values for colum `$j$` of `$\mathbf{\Phi}(\vec{x},\vec{\alpha})$`.
-    /// Since model function is a linear combination of the functions `$f_j$`, the value of the modelfunction
-    /// at these parameters can be obtained as the matrix vector product `$\mathbf{\Phi}(\vec{x},\vec{\alpha}) \, \vec{c}$`,
-    /// where `$\vec{c}$` is a vector of the linear coefficients.
-    /// ## Errors
-    /// An error result is returned when
-    /// * the parameters do not have the same length as the model parameters given when building the model
-    /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
-    pub fn eval(
-        &self,
-        location: &DVector<ScalarType>,
-        parameters: &[ScalarType],
-    ) -> Result<DMatrix<ScalarType>, ModelError> {
-        if parameters.len() != self.parameter_count() {
+    type ScalarType = ScalarType;
+    type Error = ModelError;
+    type ParameterDim = Dyn;
+    type ModelDim = Dyn;
+    type OutputDim = Dyn;
+
+    fn parameter_count(&self) -> Dyn {
+        Dyn(self.parameter_names.len())
+    }
+
+    fn base_function_count(&self) -> Self::ModelDim {
+        Dyn(self.basefunctions.len())
+    }
+
+    fn set_params(&mut self, parameters: DVector<ScalarType>) -> Result<(), Self::Error> {
+        if parameters.len() != self.parameter_count().value() {
             return Err(ModelError::IncorrectParameterCount {
-                required: self.parameter_count(),
+                expected: self.parameter_count().value(),
+                actual: parameters.len(),
+            });
+        }
+        self.current_parameters = parameters;
+        Ok(())
+    }
+
+    fn params(&self) -> DVector<ScalarType> {
+        self.current_parameters.clone()
+    }
+
+    fn eval(&self) -> Result<DMatrix<ScalarType>, ModelError> {
+        let location = &self.x_vector;
+        let parameters = &self.current_parameters;
+        if parameters.len() != self.parameter_count().value() {
+            return Err(ModelError::IncorrectParameterCount {
+                expected: self.parameter_count().value(),
                 actual: parameters.len(),
             });
         }
 
         let nrows = location.len();
-        let ncols = self.basis_function_count();
+        let ncols = self.base_function_count();
         // this pattern is not great, but the trait bounds in copy_from still
         // prevent us from doing something better
-        let mut function_value_matrix =
-            unsafe { DMatrix::uninit(Dyn(nrows), Dyn(ncols)).assume_init() };
+        let mut function_value_matrix = unsafe { DMatrix::uninit(Dyn(nrows), ncols).assume_init() };
 
         for (basefunc, mut column) in self
             .basefunctions
             .iter()
             .zip(function_value_matrix.column_iter_mut())
         {
-            let function_value =
-                model_basis_function::evaluate_and_check(&basefunc.function, location, parameters)?;
+            let function_value = model_basis_function::evaluate_and_check(
+                &basefunc.function,
+                location,
+                parameters.as_slice(),
+            )?;
             column.copy_from(&function_value);
         }
         Ok(function_value_matrix)
     }
 
-    /// # Arguments
-    /// * `location`: the value of the independent location parameter `$\vec{x}$`
-    /// * `parameters`: the parameter vector `$\vec{\alpha}$`
-    /// # Usage
-    /// This function returns a proxy for syntactic sugar. Use it directly to call get the derivative
-    /// matrix of model as `model.eval_deriv(&x,parameters).at(0)`. We can also access the derivative
-    /// by name for convenience as `model.eval_deriv(&x,parameters).at_param_name("tau")`, which will
-    /// produce the same result of the index based call if `"tau"` is the name of the first model
-    /// parameter.
-    /// **NOTE**: In code, the derivatives are indexed with index 0. The index is given by the order that the model
-    /// parameters where given when building a model. Say our model was given model parameters
-    /// `&["tau","omega"]`, then parameter `"tau"` corresponds to index `0` and parameter `"omega"`
-    /// to index `1`. This means that the derivative `$\partial/\partial\tau$` has index `0` and
-    /// `$\partial/\partial\omega$` has index 1.
-    /// # Result
-    /// The function returns a matrix where the derivatives of the model functions are
-    /// forming the columns of the matrix. Assume the model consists of `$f_1(\vec{x},\vec{\alpha})$`,
-    /// `$f_2(\vec{x},\vec{\alpha})$`, and `$f_3(\vec{x},\vec{\alpha})$` and the functions where
-    /// added to the model builder in this particular order. Let the model parameters be denoted by
-    /// `$\vec{\alpha}=(\alpha_1,\alpha_2,...,\alpha_N)$`, then this function returns the matrix
-    /// ```math
-    ///   \mathbf{D}_j(\vec{x},\vec{\alpha}) \coloneqq
-    ///   \begin{pmatrix}
-    ///   \vert & \vert & \vert \\
-    ///   \frac{\partial f_1(\vec{x},\vec{\alpha})}{\partial \alpha_j} & \frac{\partial f_2(\vec{x},\vec{\alpha})}{\partial \alpha_j} & \frac{\partial f_3(\vec{x},\vec{\alpha})}{\partial \alpha_j} \\
-    ///   \vert & \vert & \vert \\
-    ///   \end{pmatrix},
-    /// ```
-    /// where in the code the index `j` of the derivative begins with `0` and goes to `N-1`.
-    /// ## Errors
-    /// An error result is returned when
-    /// * the parameters do not have the same length as the model parameters given when building the model
-    /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
-    /// * the given parameter index is out of bounds
-    /// * the given parameter name is not a parameter of the model.
-    pub fn eval_deriv<'a, 'b, 'c, 'd>(
-        &'a self,
-        location: &'b DVector<ScalarType>,
-        parameters: &'c [ScalarType],
-    ) -> DerivativeProxy<'d, ScalarType>
-    where
-        'a: 'd,
-        'b: 'd,
-        'c: 'd,
-    {
-        DerivativeProxy {
-            basefunctions: &self.basefunctions,
-            location,
-            parameters,
-            model_parameter_names: &self.parameter_names,
-        }
-    }
-}
-
-/// A helper proxy that is used in conjuntion with the method to evalue the derivative of a
-/// separable model. This structure serves no purpose other than making the function call to
-/// calculate the derivative a little more readable
-#[must_use = "Derivative Proxy should be used immediately to evaluate a derivative matrix"]
-pub struct DerivativeProxy<'a, ScalarType: Scalar> {
-    basefunctions: &'a [ModelBasisFunction<ScalarType>],
-    location: &'a DVector<ScalarType>,
-    parameters: &'a [ScalarType],
-    model_parameter_names: &'a [String],
-}
-
-impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
-    /// This function is used in conjunction with evaluating the derivative matrix of the
-    /// separable model. It is documented as part of the [SeparableModel] interface.
-    #[inline]
-    pub fn at(&self, param_index: usize) -> Result<DMatrix<ScalarType>, ModelError> {
-        if self.parameters.len() != self.model_parameter_names.len() {
+    fn eval_partial_deriv(
+        &self,
+        derivative_index: usize,
+    ) -> Result<DMatrix<ScalarType>, Self::Error> {
+        let location = &self.x_vector;
+        let parameters = &self.current_parameters;
+        if parameters.len() != self.parameter_names.len() {
             return Err(ModelError::IncorrectParameterCount {
-                required: self.model_parameter_names.len(),
-                actual: self.parameters.len(),
+                expected: self.parameter_names.len(),
+                actual: parameters.len(),
             });
         }
 
-        if param_index >= self.model_parameter_names.len() {
-            return Err(ModelError::DerivativeIndexOutOfBounds { index: param_index });
+        if derivative_index >= self.parameter_names.len() {
+            return Err(ModelError::DerivativeIndexOutOfBounds {
+                index: derivative_index,
+            });
         }
 
-        let nrows = self.location.len();
+        let nrows = location.len();
         let ncols = self.basefunctions.len();
         let mut derivative_function_value_matrix =
             DMatrix::<ScalarType>::from_element(nrows, ncols, Zero::zero());
@@ -257,11 +537,11 @@ impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
             .iter()
             .zip(derivative_function_value_matrix.column_iter_mut())
         {
-            if let Some(derivative) = basefunc.derivatives.get(&param_index) {
+            if let Some(derivative) = basefunc.derivatives.get(&derivative_index) {
                 let deriv_value = model_basis_function::evaluate_and_check(
                     derivative,
-                    self.location,
-                    self.parameters,
+                    location,
+                    parameters.as_slice(),
                 )?;
                 column.copy_from(&deriv_value);
             }
@@ -269,25 +549,7 @@ impl<'a, ScalarType: Scalar + Zero> DerivativeProxy<'a, ScalarType> {
         Ok(derivative_function_value_matrix)
     }
 
-    /// This function is used in conjunction with evaluating the derivative matrix of the
-    /// separable model. It is documented as part of the [SeparableModel] interface.
-    /// Allows to access the derivative by parameter name instead of index.
-    /// # Returns
-    /// If the parameter is in the model parameters, returns the same result as calculating
-    /// the derivative at the same parameter index. Otherwise returns an error indicating
-    /// the parameter is not in the model parameters.
-    #[inline]
-    pub fn at_param_name<StrType: AsRef<str>>(
-        &self,
-        param_name: StrType,
-    ) -> Result<DMatrix<ScalarType>, ModelError> {
-        let index = self
-            .model_parameter_names
-            .iter()
-            .position(|p| p == param_name.as_ref())
-            .ok_or(ModelError::ParameterNotInModel {
-                parameter: param_name.as_ref().into(),
-            })?;
-        self.at(index)
+    fn output_len(&self) -> Self::OutputDim {
+        Self::OutputDim::from_usize(self.x_vector.len())
     }
 }

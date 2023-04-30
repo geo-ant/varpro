@@ -1,6 +1,6 @@
 [package]
 name = "varpro"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["geo-ant"]
 edition = "2021"
 license = "MIT"
@@ -11,7 +11,8 @@ readme = "README.md"
 categories = ["mathematics","science","algorithms"]
 keywords = ["nonlinear","least","squares","fitting","regression"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members  = [ "shared_test_code" ]
 
 [dependencies]
 thiserror = "1"
@@ -24,6 +25,9 @@ approx = "0.5"
 num-complex = "0.4"
 criterion = "0.4"
 pprof = {version = "0.11",features = ["criterion","flamegraph"]}
+shared_test_code = {path = "./shared_test_code"}
+assert_matches = "1.5"
+mockall = "0.11"
 
 [[bench]]
 name = "double_exponential_without_noise"
