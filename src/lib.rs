@@ -114,8 +114,8 @@
 //! of the model.
 //!
 //! ```no_run
-//! # let model : varpro::model::SeparableNonlinearModel = unimplemented!();
-//! # let y = vec![0.0; 10];
+//! # let model : varpro::model::SeparableModel<f64> = unimplemented!();
+//! # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
 //! use varpro::solvers::levmar::LevMarProblemBuilder;
 //! let problem = LevMarProblemBuilder::new(model)
 //!               .observations(y)
@@ -131,7 +131,8 @@
 //! parameters for the minimization is like so:
 //!
 //! ```no_run
-//! # let problem : varpro::solvers::levmar::LevMarProblem = unimplemented!();
+//! # use varpro::model::*;
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
 //! use varpro::solvers::levmar::LevMarSolver;
 //! let (problem, report) = LevMarSolver::new().minimize(problem);
 //! ```
@@ -140,7 +141,9 @@
 //! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
 //!
 //! ```no_run
-//! # let problem : vapro::solvers::levmar::LevMarProblem = unimplemented!();
+//! # use varpro::model::SeparableModel;
+//! # use varpro::prelude::*;
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
 //! # use varpro::solvers::levmar::LevMarSolver;
 //! # let (problem, report) = LevMarSolver::new().minimize(problem);
 //! assert!(

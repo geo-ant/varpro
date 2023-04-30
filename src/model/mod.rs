@@ -87,7 +87,8 @@ pub mod test;
 /// of caching the intermediate calculations.
 ///
 /// ```
-/// use nalgebra::{DVector,Vector2,DMatrix,OMatrix,DefaultAllocator,U3,Dyn};
+/// use varpro::prelude::*;
+/// use nalgebra::{DVector,OVector,Vector2,DMatrix,OMatrix,DefaultAllocator,U2,U3,Dyn};
 /// /// A separable model for double exponential decay
 /// /// with a constant offset
 /// /// f_j = c1*exp(-x_j/tau1) + c2*exp(-x_j/tau2) + c3
@@ -193,7 +194,7 @@ pub mod test;
 ///
 ///         self.eval.set_column(0, &f1);
 ///         self.eval.set_column(1, &f2);
-///         self.eval.set_column(2, &DVector::from_element(location.len(), 1.));
+///         self.eval.set_column(2, &DVector::from_element(self.x_vector.len(), 1.));
 ///         Ok(())
 ///     }
 ///
