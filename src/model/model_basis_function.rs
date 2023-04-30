@@ -26,6 +26,15 @@ where
     pub derivatives: HashMap<usize, BaseFuncType<ScalarType>>,
 }
 
+impl<ScalarType: Scalar> std::fmt::Debug for ModelBasisFunction<ScalarType> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ModelBasisFunction")
+            .field("function", &"/* omitted */")
+            .field("derivatives", &"/* omitted */")
+            .finish()
+    }
+}
+
 impl<ScalarType> ModelBasisFunction<ScalarType>
 where
     ScalarType: Scalar,
