@@ -132,9 +132,7 @@ fn builder_gives_errors_for_wrong_data_length() {
         .returning(move || wrong_output_len);
 
     assert_matches!(
-        LevMarProblemBuilder::new(model)
-            .observations(y)
-            .build(),
+        LevMarProblemBuilder::new(model).observations(y).build(),
         Err(LevMarBuilderError::InvalidLengthOfData { .. }),
         "invalid parameter count must produce correct error"
     );
