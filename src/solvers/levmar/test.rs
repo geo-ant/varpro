@@ -54,7 +54,7 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
     let params = vec![1., 2.];
-    let model = get_double_exponential_model_with_constant_offset(tvec.clone(), params);
+    let model = get_double_exponential_model_with_constant_offset(tvec, params);
     // generate some non-unit test weights (which have no physical meaning)
     let weights = yvec.map(|v: f64| v.sqrt() + v.sin());
 
@@ -175,7 +175,7 @@ fn residuals_are_calculated_correctly_with_weights() {
     let tau1 = 0.5;
     let tau2 = 6.5;
 
-    let model = get_double_exponential_model_with_constant_offset(tvec.clone(), vec![tau1, tau2]);
+    let model = get_double_exponential_model_with_constant_offset(tvec, vec![tau1, tau2]);
     // generate some non-unit test weights (which have no physical meaning)
     let weights = yvec.map(|v: f64| v.sqrt() + 2. * v.sin());
 
@@ -216,7 +216,7 @@ fn levmar_problem_set_params_sets_the_model_parameters_when_built() {
     model.expect_params().return_const(params_vector.clone());
     model
         .expect_set_params()
-        .withf(move |p| p == &DVector::from(params_vector.clone()))
+        .withf(move |p| p == &params_vector.clone())
         .returning(|_| Ok(()));
     model
         .expect_eval()

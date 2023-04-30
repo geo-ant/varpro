@@ -9,7 +9,7 @@ use nalgebra::DVector;
 // * models with valid parameters, but without functions
 fn builder_fails_for_invalid_model_parameters() {
     let result =
-        SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "b".to_string()])
+        SeparableModelBuilder::<f64>::new(["a".to_string(), "b".to_string(), "b".to_string()])
             .build();
     assert_matches!(
         result,
@@ -17,7 +17,7 @@ fn builder_fails_for_invalid_model_parameters() {
         "Duplicate parameter error must be emitted when creating model with duplicate params"
     );
 
-    let result = SeparableModelBuilder::<f64>::new(&Vec::<String>::default()).build();
+    let result = SeparableModelBuilder::<f64>::new(Vec::<String>::default()).build();
     assert_matches!(
         result,
         Err(ModelBuildError::EmptyParameters { .. }),
@@ -25,7 +25,7 @@ fn builder_fails_for_invalid_model_parameters() {
     );
 
     let result =
-        SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "c".to_string()])
+        SeparableModelBuilder::<f64>::new(["a".to_string(), "b".to_string(), "c".to_string()])
             .build();
     assert_matches!(
         result,
@@ -39,10 +39,10 @@ fn builder_fails_for_invalid_model_parameters() {
 // collection of function depends on
 fn builder_fails_when_not_all_model_parameters_are_depended_on_by_the_modelfunctions() {
     let result =
-        SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string(), "c".to_string()])
+        SeparableModelBuilder::<f64>::new(["a".to_string(), "b".to_string(), "c".to_string()])
             .invariant_function(|_| unimplemented!())
             .function(
-                &["a".to_string()],
+                ["a".to_string()],
                 |_: &DVector<f64>, _: f64| unimplemented!(),
             )
             .partial_deriv("a", |_: &DVector<f64>, _: f64| unimplemented!())
@@ -57,9 +57,9 @@ fn builder_fails_when_not_all_model_parameters_are_depended_on_by_the_modelfunct
 #[test]
 // test that the builder fails when not all required derivatives are given for a function
 fn builder_fails_when_not_all_required_partial_derivatives_are_given_for_function() {
-    let result = SeparableModelBuilder::<f64>::new(&["a".to_string(), "b".to_string()])
+    let result = SeparableModelBuilder::<f64>::new(["a".to_string(), "b".to_string()])
         .function(
-            &["a".to_string(), "b".to_string()],
+            ["a".to_string(), "b".to_string()],
             |_: &DVector<f64>, _: f64, _: f64| unimplemented!(),
         )
         .partial_deriv("a", |_: &DVector<f64>, _: f64, _: f64| unimplemented!())
@@ -88,20 +88,20 @@ fn builder_produces_correct_model_from_functions() {
     let omega2 = std::f64::consts::FRAC_1_PI * 2.;
     let params = vec![t0, tau, omega1, omega2];
 
-    let model = SeparableModelBuilder::<f64>::new(&[
+    let model = SeparableModelBuilder::<f64>::new([
         "t0".to_string(),
         "tau".to_string(),
         "omega1".to_string(),
         "omega2".to_string(),
     ])
     .invariant_function(|x| 2. * identity_function(x)) // double the x value
-    .function(&["t0".to_string(), "tau".to_string()], exponential_decay)
+    .function(["t0".to_string(), "tau".to_string()], exponential_decay)
     .partial_deriv("tau", exponential_decay_dtau)
     .partial_deriv("t0", exponential_decay_dt0)
     .invariant_function(identity_function)
-    .function(&["omega1".to_string()], sinusoid_omega)
+    .function(["omega1".to_string()], sinusoid_omega)
     .partial_deriv("omega1", sinusoid_omega_domega)
-    .function(&["omega2".to_string()], sinusoid_omega)
+    .function(["omega2".to_string()], sinusoid_omega)
     .partial_deriv("omega2", sinusoid_omega_domega)
     .independent_variable(ts.clone())
     .initial_parameters(params.to_vec())

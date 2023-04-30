@@ -37,7 +37,7 @@ fn builder_assigns_fields_correctly_simple_case() {
     model.expect_params().return_const(params_vector.clone());
     model
         .expect_set_params()
-        .withf(move |p| p == &DVector::from(params_vector.clone()))
+        .withf(move |p| p == &params_vector.clone())
         .returning(|_| Ok(()));
     model
         .expect_eval()
@@ -74,7 +74,7 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
     model.expect_params().return_const(params_vector.clone());
     model
         .expect_set_params()
-        .withf(move |p| p == &DVector::from(params_vector.clone()))
+        .withf(move |p| p == &params_vector.clone())
         .returning(|_| Ok(()));
     model
         .expect_eval()
@@ -133,7 +133,7 @@ fn builder_gives_errors_for_wrong_data_length() {
 
     assert_matches!(
         LevMarProblemBuilder::new(model)
-            .observations(y.clone())
+            .observations(y)
             .build(),
         Err(LevMarBuilderError::InvalidLengthOfData { .. }),
         "invalid parameter count must produce correct error"
