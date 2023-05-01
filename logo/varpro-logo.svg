@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   version="1.1"
+   height="106"
+   width="106"
+   id="svg92"
+   sodipodi:docname="varpro-logo.svg"
+   inkscape:version="1.2.2 (1:1.2.2+202212051552+b0a8486541)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs96" />
+  <sodipodi:namedview
+     id="namedview94"
+     pagecolor="#ffffff"
+     bordercolor="#111111"
+     borderopacity="1"
+     inkscape:showpageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="9.6886792"
+     inkscape:cx="44.484907"
+     inkscape:cy="53"
+     inkscape:window-width="2560"
+     inkscape:window-height="1329"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg92" />
+  <g
+     id="logo"
+     transform="translate(53, 53)">
+    <g
+       id="gear"
+       mask="url(#holes)">
+      <circle
+         r="43"
+         fill="none"
+         stroke="black"
+         stroke-width="9"
+         id="circle2" />
+      <g
+         id="cogs">
+        <polygon
+           id="cog"
+           stroke="black"
+           stroke-width="3"
+           stroke-linejoin="round"
+           points="46,3 51,0 46,-3" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(11.25)"
+           id="use5" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(22.50)"
+           id="use7" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(33.75)"
+           id="use9" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(45.00)"
+           id="use11" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(56.25)"
+           id="use13" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(67.50)"
+           id="use15" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(78.75)"
+           id="use17" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(90.00)"
+           id="use19" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(101.25)"
+           id="use21" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(112.50)"
+           id="use23" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(123.75)"
+           id="use25" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(135.00)"
+           id="use27" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(146.25)"
+           id="use29" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(157.50)"
+           id="use31" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(168.75)"
+           id="use33" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(180.00)"
+           id="use35" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(191.25)"
+           id="use37" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(202.50)"
+           id="use39" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(213.75)"
+           id="use41" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(225.00)"
+           id="use43" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(236.25)"
+           id="use45" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(247.50)"
+           id="use47" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(258.75)"
+           id="use49" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(270.00)"
+           id="use51" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(281.25)"
+           id="use53" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(292.50)"
+           id="use55" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(303.75)"
+           id="use57" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(315.00)"
+           id="use59" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(326.25)"
+           id="use61" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(337.50)"
+           id="use63" />
+        <use
+           xlink:href="#cog"
+           transform="rotate(348.75)"
+           id="use65" />
+      </g>
+      <g
+         id="mounts">
+        <polygon
+           id="mount"
+           stroke="black"
+           stroke-width="6"
+           stroke-linejoin="round"
+           points="-7,-42 0,-35 7,-42" />
+        <use
+           xlink:href="#mount"
+           transform="rotate(72)"
+           id="use69" />
+        <use
+           xlink:href="#mount"
+           transform="rotate(144)"
+           id="use71" />
+        <use
+           xlink:href="#mount"
+           transform="rotate(216)"
+           id="use73" />
+        <use
+           xlink:href="#mount"
+           transform="rotate(288)"
+           id="use75" />
+      </g>
+    </g>
+    <mask
+       id="holes">
+      <rect
+         x="-60"
+         y="-60"
+         width="120"
+         height="120"
+         fill="white"
+         id="rect79" />
+      <circle
+         id="hole"
+         cy="-40"
+         r="3" />
+      <use
+         xlink:href="#hole"
+         transform="rotate(72)"
+         id="use82" />
+      <use
+         xlink:href="#hole"
+         transform="rotate(144)"
+         id="use84" />
+      <use
+         xlink:href="#hole"
+         transform="rotate(216)"
+         id="use86" />
+      <use
+         xlink:href="#hole"
+         transform="rotate(288)"
+         id="use88" />
+    </mask>
+  </g>
+  <text
+     xml:space="preserve"
+     style="font-weight:bold;font-size:64px;font-family:'EB Garamond';-inkscape-font-specification:'EB Garamond Bold';fill:none;stroke:#ffffff;stroke-width:1.00157;stroke-opacity:1"
+     x="6.3538365"
+     y="69.872124"
+     id="text933"><tspan
+       sodipodi:role="line"
+       id="tspan931"
+       x="6.3538365"
+       y="69.872124"
+       style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:64px;font-family:'EB Garamond';-inkscape-font-specification:'EB Garamond Italic';fill:#000000;stroke:#ffffff;stroke-opacity:1">V</tspan></text>
+  <text
+     xml:space="preserve"
+     style="font-weight:bold;font-size:64px;font-family:'EB Garamond';-inkscape-font-specification:'EB Garamond Bold';fill:none;stroke:#ffffff;stroke-width:1.00157;stroke-opacity:1"
+     x="51.608311"
+     y="82.806183"
+     id="text933-3"><tspan
+       sodipodi:role="line"
+       id="tspan931-6"
+       x="51.608311"
+       y="82.806183"
+       style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:64px;font-family:'EB Garamond';-inkscape-font-specification:'EB Garamond Italic';fill:#000000;stroke:#ffffff;stroke-opacity:1">P</tspan></text>
+  <path
+     style="fill:#800000;stroke:none;stroke-width:1.00157;stroke-opacity:1"
+     d="M 74.561975,16.6985 37.561366,51.141669 53.651357,54.757257 32.427516,81.315595 66.127387,50.307246 50.523328,46.433305 Z"
+     id="path2823"
+     sodipodi:nodetypes="ccccccc" />
+</svg>
