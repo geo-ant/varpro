@@ -4,7 +4,7 @@ use nalgebra::allocator::{Allocator, Reallocator};
 use nalgebra::storage::Owned;
 use nalgebra::{
     ComplexField, Const, DefaultAllocator, Dim, DimMax, DimMaximum, DimMin, DimSub, Matrix,
-    OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD,
+    OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD, DMatrix, OMatrix, U3, U4,
 };
 
 mod builder;
@@ -17,7 +17,7 @@ pub use builder::LevMarProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
-use num_traits::Float;
+use num_traits::{Float, Zero};
 use std::ops::Mul;
 
 /// A thin wrapper around the
@@ -84,21 +84,10 @@ where
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
         <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField: Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim,Model::OutputDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
         <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>>::Buffer: Storage<Model::ScalarType, Model::OutputDim>,
             <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>>::Buffer: RawStorageMut<Model::ScalarType, Model::OutputDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::OutputDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField> ::RealField, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<(<Model::ScalarType as ComplexField>::RealField, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>> ,
         Model::OutputDim: DimMin<Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
@@ -118,21 +107,10 @@ where
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
         <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField: Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim,Model::OutputDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
         <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>>::Buffer: Storage<Model::ScalarType, Model::OutputDim>,
             <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>>::Buffer: RawStorageMut<Model::ScalarType, Model::OutputDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::OutputDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField> ::RealField, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<(<Model::ScalarType as ComplexField>::RealField, usize), <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>> ,
         Model::OutputDim: DimMin<Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
@@ -140,11 +118,19 @@ where
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMax<<Model as model::SeparableNonlinearModel>::ParameterDim>,
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMin<<Model as model::SeparableNonlinearModel>::ParameterDim>
     {
-        let (model, report) = self.solver.minimize(problem);
-
+        let (problem, report) = self.solver.minimize(problem);
+        
         todo!()
     }
 
+}
+
+// helper function to concatenate two nalgebra matrices
+fn concat_matrices<T:Scalar+Zero>(first : DMatrix<T>,second: DMatrix<T>) -> DMatrix<T> {
+    let mut result = DMatrix::zeros(first.nrows()+second.nrows(),first.ncols());
+    result.slice_mut((0,0),(first.nrows(),first.ncols())).copy_from(&first);
+    result.slice_mut((first.nrows(),0),(second.nrows(),second.ncols())).copy_from(&second);
+    result
 }
 
 /// helper structure that stores the cached calculations,
@@ -308,6 +294,11 @@ where
         self.cached
             .as_ref()
             .map(|cache| cache.linear_coefficients.clone())
+    }
+
+    /// access the contained model immutably
+    pub fn model(&self) -> &Model {
+        &self.model
     }
 }
 
