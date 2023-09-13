@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use levenberg_marquardt::LeastSquaresProblem;
+use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::ComplexField;
 
 use nalgebra::Const;
@@ -148,7 +149,7 @@ fn run_minimization_for_builder_separable_model(
 fn run_minimization_for_levenberg_marquardt_crate_problem(
     problem: DoubleExponentialDecayFittingWithOffsetLevmar,
 ) -> [f64; 5] {
-    let (problem, report) = LevMarSolver::new()
+    let (problem, report) = LevenbergMarquardt::new()
         // if I don't set this, the solver will not converge
         .with_stepbound(1.)
         .minimize(problem);

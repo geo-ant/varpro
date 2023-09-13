@@ -271,6 +271,8 @@ pub mod model;
 pub mod prelude;
 /// solvers for the nonlinear minimization problem
 pub mod solvers;
+/// statistics of the fit
+pub mod statistics;
 
 /// private module that contains helper functionality for linear algebra that is not yet
 /// implemented in the nalgebra crate

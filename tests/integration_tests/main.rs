@@ -1,3 +1,4 @@
+use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DVector;
 use nalgebra::OVector;
 use nalgebra::Vector2;
@@ -222,7 +223,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_leven
         &y,
     );
 
-    let (levenberg_marquardt_solution, report) = LevMarSolver::new()
+    let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new()
         // if I don't set this, the solver will not converge
         .with_stepbound(1.)
         .minimize(levenberg_marquart_problem);
