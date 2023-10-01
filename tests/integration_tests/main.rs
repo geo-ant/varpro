@@ -1,13 +1,18 @@
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DVector;
+use nalgebra::DVectorSlice;
 use nalgebra::OVector;
 use nalgebra::Vector2;
+use nalgebra::Vector3;
 use nalgebra::U1;
+use nalgebra::U2;
+use nalgebra::U3;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::linspace;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
+use shared_test_code::models::OLearyExampleModel;
 use varpro::prelude::*;
 use varpro::solvers::levmar::*;
 
@@ -59,7 +64,6 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         &DVector::from(vec![c1, c2, c3]),
     );
 
-    let tic = Instant::now();
     let problem = LevMarProblemBuilder::new(model)
         .observations(y)
         .build()
@@ -69,12 +73,6 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     assert!(
         report.termination.was_successful(),
         "Levenberg Marquardt did not converge"
-    );
-    let toc = Instant::now();
-    println!(
-        "varpro: elapsed time for double exponential fit = {} µs = {} ms",
-        (toc - tic).as_micros(),
-        (toc - tic).as_millis()
     );
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
@@ -256,4 +254,46 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_leven
         report.termination.was_successful(),
         "Termination not successful"
     );
+}
+
+#[test]
+// this also tests the correct application of weights
+fn oleary_example_with_handrolled_model_produces_correct_results() {
+    // those are the initial guesses from the example in the oleary matlab code
+    let initial_guess = Vector3::new(0.5, 2., 3.);
+    // these are the original timepoints from the matlab code
+    let t = DVector::from_vec(vec![
+        0., 0.1, 0.22, 0.31, 0.46, 0.50, 0.63, 0.78, 0.85, 0.97,
+    ]);
+    // the observations from the initial matlab
+    let y = DVector::from_vec(vec![
+        6.9842, 5.1851, 2.8907, 1.4199, -0.2473, -0.5243, -1.0156, -1.0260, -0.9165, -0.6805,
+    ]);
+    // and finally the weights for the observations
+    // these do actually influence the fits in the second decimal place
+    let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
+
+    let model = OLearyExampleModel::new(t, initial_guess);
+    let problem = LevMarProblemBuilder::new(model)
+        .observations(y)
+        .weights(w)
+        .build()
+        .unwrap();
+
+    let (problem, report) = LevMarSolver::new().minimize(problem);
+    assert!(
+        report.termination.was_successful(),
+        "fitting did not terminate successfully"
+    );
+    let alpha_fit = problem.params();
+    let c_fit = problem
+        .linear_coefficients()
+        .expect("solved problem must have linear coefficients");
+    // solved parameters from the matlab code
+    // they note that many parameters fit the observations well
+    let alpha_true =
+        OVector::<f64, U3>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
+    let c_true = OVector::<f64, U2>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
+    assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
+    assert_relative_eq!(c_fit, c_true, epsilon = 1e-5);
 }

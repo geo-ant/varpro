@@ -3,7 +3,7 @@ use nalgebra::{DefaultAllocator, Dim, DimAdd, OMatrix};
 /// this structure contains information about the goodness of
 /// a fit and some statistical properties like estimates uncerainties
 /// of the parameters
-pub struct Statistics<ScalarType, ModelDim, ParameterDim>
+pub struct FitStatistics<ScalarType, ModelDim, ParameterDim>
 where
     ModelDim: Dim + DimAdd<ParameterDim>,
     ParameterDim: Dim,
@@ -28,8 +28,8 @@ where
         <ModelDim as DimAdd<ParameterDim>>::Output,
         <ModelDim as DimAdd<ParameterDim>>::Output,
     >,
-    /// The parameter `$R^2$`, also known as the coefficient of determination,
-    /// or the square of the multiple correlation coefficient. A commonly
-    /// used (and misused) measure of the quality of a regression.
-    pub r_squared: ScalarType,
+    // /// The parameter `$R^2$`, also known as the coefficient of determination,
+    // /// or the square of the multiple correlation coefficient. A commonly
+    // /// used (and misused) measure of the quality of a regression.
+    // pub r_squared: ScalarType,
 }

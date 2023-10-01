@@ -1,10 +1,12 @@
+use crate::statistics::FitStatistics;
 use crate::{model, prelude::*};
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::allocator::{Allocator, Reallocator};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, Const, DefaultAllocator, Dim, DimMax, DimMaximum, DimMin, DimSub, Matrix,
-    OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD, DMatrix, OMatrix, U3, U4,
+    ComplexField, Const, DMatrix, DefaultAllocator, Dim, DimAdd, DimMax, DimMaximum, DimMin,
+    DimSub, Matrix, OMatrix, OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix,
+    Vector, SVD, U3, U4,
 };
 
 mod builder;
@@ -34,13 +36,15 @@ where
     solver: LevenbergMarquardt<Model::ScalarType>,
 }
 
-pub struct SolverReport<ScalarType> 
-    where ScalarType: RealField{
+pub struct SolverReport<ScalarType>
+where
+    ScalarType: RealField,
+{
     /// the minimization report of the underlying solver.
     /// It contains information about the minimization process
-    /// and should be queried to see whether the minimization 
+    /// and should be queried to see whether the minimization
     /// was considered successful.
-    pub minimization_report : MinimizationReport<ScalarType>,
+    pub minimization_report: MinimizationReport<ScalarType>,
 }
 
 impl<Model> LevMarSolver<Model>
@@ -100,7 +104,7 @@ where
 
     /// performs the minimization and also generates statistics about the minimization
     /// iff the computation was successful
-    pub fn minimize_with_statistics(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,MinimizationReport<Model::ScalarType>)
+    pub fn minimize_with_statistics(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,FitStatistics<Model::ScalarType,Model::ModelDim, Model::ParameterDim>)
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim> + Reallocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim,DimMaximum<Model::OutputDim,Model::ParameterDim>,Model::ParameterDim> + Allocator<usize,Model::ParameterDim>,
@@ -116,20 +120,40 @@ where
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
         DefaultAllocator: nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMax<<Model as model::SeparableNonlinearModel>::ParameterDim>,
-        <Model as model::SeparableNonlinearModel>::OutputDim: DimMin<<Model as model::SeparableNonlinearModel>::ParameterDim>
+        <Model as model::SeparableNonlinearModel>::OutputDim: DimMin<<Model as model::SeparableNonlinearModel>::ParameterDim>,
+        <Model as model::SeparableNonlinearModel>::ModelDim: nalgebra::DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType, <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output, <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output>,
+        DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType, Model::OutputDim, <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output>,
+        DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType,  <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output,Model::OutputDim>,
     {
         let (problem, report) = self.solver.minimize(problem);
-        
-        todo!()
+        let covariance: OMatrix<
+            Model::ScalarType,
+            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        > = todo!();
+        let hmat: OMatrix<
+            Model::ScalarType,
+            Model::OutputDim,
+            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        > = todo!();
+        let sigma: Model::ScalarType = todo!();
+        let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
+        covariance = hth_inv * sigma * sigma;
+        let statistics = FitStatistics { covariance };
+        (problem, statistics)
     }
-
 }
 
 // helper function to concatenate two nalgebra matrices
-fn concat_matrices<T:Scalar+Zero>(first : DMatrix<T>,second: DMatrix<T>) -> DMatrix<T> {
-    let mut result = DMatrix::zeros(first.nrows()+second.nrows(),first.ncols());
-    result.slice_mut((0,0),(first.nrows(),first.ncols())).copy_from(&first);
-    result.slice_mut((first.nrows(),0),(second.nrows(),second.ncols())).copy_from(&second);
+fn concat_matrices<T: Scalar + Zero>(first: DMatrix<T>, second: DMatrix<T>) -> DMatrix<T> {
+    let mut result = DMatrix::zeros(first.nrows() + second.nrows(), first.ncols());
+    result
+        .view_mut((0, 0), (first.nrows(), first.ncols()))
+        .copy_from(&first);
+    result
+        .view_mut((first.nrows(), 0), (second.nrows(), second.ncols()))
+        .copy_from(&second);
     result
 }
 

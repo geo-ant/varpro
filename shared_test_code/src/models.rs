@@ -285,6 +285,20 @@ pub struct OLearyExampleModel {
     phi: OMatrix<f64, Dyn, U2>,
 }
 
+impl OLearyExampleModel {
+    /// create a new model with the given t vector and initial guesses
+    pub fn new(t: DVector<f64>, initial_guesses: Vector3<f64>) -> Self {
+        let t_len = t.len();
+        let mut ret = Self {
+            t,
+            alpha: initial_guesses,
+            phi: OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(t_len), U2),
+        };
+        ret.set_params(initial_guesses).unwrap();
+        ret
+    }
+}
+
 impl SeparableNonlinearModel for OLearyExampleModel {
     type ScalarType = f64;
     type Error = ModelError;
