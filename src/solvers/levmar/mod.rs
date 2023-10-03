@@ -5,7 +5,7 @@ use nalgebra::allocator::{Allocator, Reallocator};
 use nalgebra::storage::Owned;
 use nalgebra::{
     ComplexField, Const, DMatrix, DefaultAllocator, Dim, DimAdd, DimMax, DimMaximum, DimMin,
-    DimSub, Matrix, OMatrix, OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix,
+    DimSub, Dyn, Matrix, OMatrix, OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix,
     Vector, SVD, U3, U4,
 };
 
@@ -19,7 +19,7 @@ pub use builder::LevMarProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
-use num_traits::{Float, Zero};
+use num_traits::{Float, FromPrimitive, Zero};
 use std::ops::Mul;
 
 /// A thin wrapper around the
@@ -85,7 +85,7 @@ where
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim> + Reallocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim,DimMaximum<Model::OutputDim,Model::ParameterDim>,Model::ParameterDim> + Allocator<usize,Model::ParameterDim>,
-        Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
+        Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float + FromPrimitive,
         <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField: Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
         Model: SeparableNonlinearModel,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
@@ -127,17 +127,31 @@ where
         DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType,  <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output,Model::OutputDim>,
     {
         let (problem, report) = self.solver.minimize(problem);
+
+        //todo remove unrwap!!!!!!!!!!!!!!
+        // !!!!!!!!!!!!!!!!
         let covariance: OMatrix<
             Model::ScalarType,
             <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
             <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        > = todo!();
-        let hmat: OMatrix<
-            Model::ScalarType,
-            Model::OutputDim,
-            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        > = todo!();
-        let sigma: Model::ScalarType = todo!();
+        >;
+
+        // let hmat: OMatrix<
+        //     Model::ScalarType,
+        //     Model::OutputDim,
+        //     <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        // > = OMatrix::zeros_generic(problem.model().output_len(), param_plus_basefunc_count);
+        let hmat = concat_colwise(problem.model().eval().unwrap(), problem.jacobian().unwrap());
+
+        let weighted_residuals = problem.residuals().unwrap();
+        let output_len = problem.model.output_len().value();
+        let degrees_of_freedom = problem.model().parameter_count().value()
+            + problem.model().base_function_count().value();
+        if output_len <= degrees_of_freedom {
+            todo!();
+        }
+        let sigma: Model::ScalarType = weighted_residuals.norm()
+            / Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap();
         let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
         covariance = hth_inv * sigma * sigma;
         let statistics = FitStatistics { covariance };
@@ -146,14 +160,36 @@ where
 }
 
 // helper function to concatenate two nalgebra matrices
-fn concat_matrices<T: Scalar + Zero>(first: DMatrix<T>, second: DMatrix<T>) -> DMatrix<T> {
-    let mut result = DMatrix::zeros(first.nrows() + second.nrows(), first.ncols());
-    result
-        .view_mut((0, 0), (first.nrows(), first.ncols()))
-        .copy_from(&first);
-    result
-        .view_mut((first.nrows(), 0), (second.nrows(), second.ncols()))
-        .copy_from(&second);
+fn concat_colwise<T, R, C1, C2, S1, S2>(
+    left: Matrix<T, R, C1, S1>,
+    right: Matrix<T, R, C2, S2>,
+) -> OMatrix<T, R, <C1 as DimAdd<C2>>::Output>
+where
+    R: Dim,
+    C1: Dim + DimAdd<C2>,
+    C2: Dim,
+    T: Scalar + Zero,
+    nalgebra::DefaultAllocator: Allocator<T, R, <C1 as DimAdd<C2>>::Output>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, C1>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, C2>,
+    S2: nalgebra::RawStorage<T, R, C2>,
+    S1: nalgebra::RawStorage<T, R, C1>,
+{
+    let mut result = OMatrix::<T, R, <C1 as DimAdd<C2>>::Output>::zeros_generic(
+        R::from_usize(left.nrows()),
+        <C1 as DimAdd<C2>>::Output::from_usize(left.ncols() + right.ncols()),
+    );
+
+    for idx in 0..left.ncols() {
+        result.column_mut(idx).copy_from(&left.column(idx));
+    }
+
+    for idx in 0..right.ncols() {
+        result
+            .column_mut(idx + left.ncols())
+            .copy_from(&right.column(idx));
+    }
+
     result
 }
 
