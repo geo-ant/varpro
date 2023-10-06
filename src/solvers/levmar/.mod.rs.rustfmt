@@ -156,39 +156,26 @@ where
 // fitting problem, which is the jacobian `$\vec{f}(\vec{\alpha},\vec{c}(\vec{\alpha}))$`,
 // where `$\vec{c}(\vec{\alpha})$` is the linear coefficients that solve the linear problem.
 // see also the O'Leary matlab code.
-fn model_function_jacobian<Model>(
-    model: Model,
-) -> OMatrix<
-    Model::ScalarType,
-    Model::OutputDim,
-    <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
->
+fn model_function_jacobian<Model>(model: Model) -> OMatrix<Model::ScalarType, Model::OutputDim, <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output>
 where
     Model: SeparableNonlinearModel,
-    Model::ScalarType: Float + Zero + Scalar + ComplexField,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        Model::ScalarType,
+        Model::ParameterDim,
+    >,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
         Model::ScalarType,
         Model::OutputDim,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        Model::ModelDim,
     >,
-    <Model as model::SeparableNonlinearModel>::ModelDim:
-        nalgebra::DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        Model::ScalarType,
+        Model::OutputDim,
+    <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output
+    >,
+    <Model as model::SeparableNonlinearModel>::ModelDim: nalgebra::DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>,
 {
-    // the part of the jacobian that contains the derivatives
-    // with respect to the nonlinear parameters
-    let jacobian_matrix_for_nonlinear_params =
-        OMatrix::<Model::ScalarType, Model::OutputDim, Model::ParameterDim>::zeros_generic(
-            model.output_len(),
-            model.parameter_count(),
-        );
-
-    todo!();
+    todo!()
 }
 
 // helper function to concatenate two nalgebra matrices

@@ -3,6 +3,7 @@ use nalgebra::{DefaultAllocator, Dim, DimAdd, OMatrix};
 /// this structure contains information about the goodness of
 /// a fit and some statistical properties like estimates uncerainties
 /// of the parameters
+#[derive(Debug, Clone)]
 pub struct FitStatistics<ScalarType, ModelDim, ParameterDim>
 where
     ModelDim: Dim + DimAdd<ParameterDim>,

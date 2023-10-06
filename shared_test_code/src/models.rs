@@ -276,6 +276,7 @@ impl LeastSquaresProblem<f64, Dyn, U5> for DoubleExponentialDecayFittingWithOffs
 /// # performance
 /// this model does reuse calculations but I think it could be optimized
 /// further
+#[derive(Clone, Debug, PartialEq)]
 pub struct OLearyExampleModel {
     /// the t vector
     t: DVector<f64>,
