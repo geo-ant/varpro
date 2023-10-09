@@ -303,7 +303,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     // assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
     // assert_relative_eq!(c_fit, c_true, epsilon = 1e-5);
 
-    let (mut problem, report) = LevMarSolver::new().minimize_with_statistics(p2);
+    let (mut problem, report) = LevMarSolver::new().fit_with_statistics(p2);
     println!("cov mat = {}", report.covariance);
 
     println!("jacobian analytical= {}", problem.jacobian().unwrap());
