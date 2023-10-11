@@ -253,7 +253,7 @@ where
         }
     }
 
-    pub fn fit_with_statistics(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,FitStatistics<Model::ScalarType,Model::ModelDim, Model::ParameterDim>)
+    pub fn fit_with_statistics(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,FitStatistics<Model>)
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim> + Reallocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim,DimMaximum<Model::OutputDim,Model::ParameterDim>,Model::ParameterDim> + Allocator<usize,Model::ParameterDim>,

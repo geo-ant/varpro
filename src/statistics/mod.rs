@@ -2,7 +2,7 @@ use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
     ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector, RealField, Scalar,
 };
-use num_traits::{Float, Zero};
+use num_traits::{Float, FromPrimitive, Zero};
 
 #[cfg(test)]
 mod test;
@@ -11,14 +11,24 @@ mod test;
 /// a fit and some statistical properties like estimates uncerainties
 /// of the parameters
 #[derive(Debug, Clone)]
-pub struct FitStatistics<ScalarType, ModelDim, ParameterDim>
+pub struct FitStatistics<Model>
 where
-    ModelDim: Dim + DimAdd<ParameterDim>,
-    ParameterDim: Dim,
+    Model: SeparableNonlinearModel,
+    Model::ModelDim: DimAdd<Model::ParameterDim>,
+    Model::ParameterDim: Dim,
     DefaultAllocator: nalgebra::allocator::Allocator<
-        ScalarType,
-        <ModelDim as DimAdd<ParameterDim>>::Output,
-        <ModelDim as DimAdd<ParameterDim>>::Output,
+        Model::ScalarType,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+    >,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        <Model as SeparableNonlinearModel>::ScalarType,
+        <Model as SeparableNonlinearModel>::OutputDim,
+        <Model as SeparableNonlinearModel>::ModelDim,
+    >,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        <Model as SeparableNonlinearModel>::ScalarType,
+        <Model as SeparableNonlinearModel>::ParameterDim,
     >,
 {
     /// The covariance matrix of the parameter estimates. The linear
@@ -32,55 +42,64 @@ where
     /// See [O'Leary and Rust 2012](https://www.nist.gov/publications/variable-projection-nonlinear-least-squares-problems)
     /// for reference.
     pub covariance_matrix: OMatrix<
-        ScalarType,
-        <ModelDim as DimAdd<ParameterDim>>::Output,
-        <ModelDim as DimAdd<ParameterDim>>::Output,
+        Model::ScalarType,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
-    // pub weighted_residuals: OVector<ScalarType, ModelDim>,
+    // pub weighted_residuals: OVector<ScalarType, Model::ModelDim>,
     // /// The parameter `$R^2$`, also known as the coefficient of determination,
     // /// or the square of the multiple correlation coefficient. A commonly
     // /// used (and misused) measure of the quality of a regression.
     // pub r_squared: ScalarType,
 }
 
-impl<ScalarType, ModelDim, ParameterDim> FitStatistics<ScalarType, ModelDim, ParameterDim>
+impl<Model> FitStatistics<Model>
 where
-    ModelDim: Dim + DimAdd<ParameterDim>,
-    ParameterDim: Dim,
+    Model: SeparableNonlinearModel,
+    Model::ModelDim: DimAdd<Model::ParameterDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<
-        ScalarType,
-        <ModelDim as DimAdd<ParameterDim>>::Output,
-        <ModelDim as DimAdd<ParameterDim>>::Output,
+        Model::ScalarType,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+    >,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        <Model as SeparableNonlinearModel>::ScalarType,
+        <Model as SeparableNonlinearModel>::OutputDim,
+        <Model as SeparableNonlinearModel>::ModelDim,
+    >,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        <Model as SeparableNonlinearModel>::ScalarType,
+        <Model as SeparableNonlinearModel>::ParameterDim,
     >,
 {
-    pub(crate) fn try_calculate<Model>(
+    pub(crate) fn try_calculate(
         model: &Model,
-        weighted_residuals: OVector<ScalarType, Model::OutputDim>,
-        weights: &Weights<ScalarType, Model::OutputDim>,
-        linear_coefficients: OVector<ScalarType, ModelDim>,
+        weighted_residuals: OVector<Model::ScalarType, Model::OutputDim>,
+        weights: &Weights<Model::ScalarType, Model::OutputDim>,
+        linear_coefficients: OVector<Model::ScalarType, Model::ModelDim>,
     ) -> Result<Self, ()>
     where
-        ScalarType: Scalar + ComplexField + Float + Zero,
-        Model: SeparableNonlinearModel<
-            ScalarType = ScalarType,
-            ModelDim = ModelDim,
-            ParameterDim = ParameterDim,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ParameterDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, ModelDim>,
+        Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,
+        Model: SeparableNonlinearModel,
+        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
+        DefaultAllocator:
+            nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<
             Model::ScalarType,
             Model::OutputDim,
             <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         >,
-        DefaultAllocator:
-            nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, ParameterDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<
+            Model::ScalarType,
+            Model::OutputDim,
+            Model::ParameterDim,
+        >,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
         DefaultAllocator: nalgebra::allocator::Allocator<
-            ScalarType,
-            <ModelDim as DimAdd<ParameterDim>>::Output,
+            Model::ScalarType,
+            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
             <Model as SeparableNonlinearModel>::OutputDim,
         >,
     {
@@ -91,8 +110,8 @@ where
         if output_len <= degrees_of_freedom {
             todo!();
         }
-        let sigma: ScalarType = weighted_residuals.norm()
-            / Float::sqrt(ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
+        let sigma: Model::ScalarType = weighted_residuals.norm()
+            / Float::sqrt(Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
 
         let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
         let covariance_matrix = hth_inv * sigma * sigma;
