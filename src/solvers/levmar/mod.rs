@@ -157,7 +157,7 @@ where
 
     /// convenience function to get the linear coefficients after the fit has
     /// finished
-    pub fn linear_coefficients(&self) -> Option<OVector<Model::ScalarType, Model::ModelDim>> {
+    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Model::ModelDim>> {
         self.problem.linear_coefficients()
     }
 
@@ -559,10 +559,8 @@ where
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
     /// for the linear coefficients of the base functions.
-    pub fn linear_coefficients(&self) -> Option<OVector<Model::ScalarType, Model::ModelDim>> {
-        self.cached
-            .as_ref()
-            .map(|cache| cache.linear_coefficients.clone())
+    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Model::ModelDim>> {
+        self.cached.as_ref().map(|cache| &cache.linear_coefficients)
     }
 
     /// access the contained model immutably

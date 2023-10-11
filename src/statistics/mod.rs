@@ -18,9 +18,9 @@ pub enum Error<ModelError: std::error::Error> {
     Underdetermined,
 }
 
-/// this structure contains information about the goodness of
-/// a fit and some statistical properties like estimates uncerainties
-/// of the parameters
+/// this structure contains some additional statistical information
+/// about the fit, such as errors on the parameters and other useful
+/// information to assess the quality of the fit.
 #[derive(Debug, Clone)]
 pub struct FitStatistics<Model>
 where
@@ -78,11 +78,13 @@ where
     >,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
 {
+    /// Calculate the fit statistics from the model, the data and the linear coefficients.
+    /// The given parameters must be the ones after the the fit has completed.
     pub(crate) fn try_calculate(
         model: &Model,
         data: &OVector<Model::ScalarType, Model::OutputDim>,
         weights: &Weights<Model::ScalarType, Model::OutputDim>,
-        linear_coefficients: OVector<Model::ScalarType, Model::ModelDim>,
+        linear_coefficients: &OVector<Model::ScalarType, Model::ModelDim>,
     ) -> Result<Self, Error<Model::Error>>
     where
         Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,

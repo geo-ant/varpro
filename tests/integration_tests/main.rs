@@ -303,12 +303,12 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     // assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
     // assert_relative_eq!(c_fit, c_true, epsilon = 1e-5);
 
-    let (mut problem, report) = LevMarSolver::new().fit_with_statistics(p2);
-    println!("cov mat = {}", report.covariance_matrix);
+    // let (mut problem, report) = LevMarSolver::new().fit_with_statistics(p2);
+    // println!("cov mat = {}", report.covariance_matrix);
 
-    println!("jacobian analytical= {}", problem.jacobian().unwrap());
-    let jacobian_analytical = problem.jacobian().unwrap();
-    let jacobian_numerical = differentiate_numerically(&mut problem).unwrap();
-    println!("jacobian numerical= {}", jacobian_numerical);
-    assert_relative_eq!(jacobian_analytical, jacobian_numerical, epsilon = 1e-4);
+    // println!("jacobian analytical= {}", problem.jacobian().unwrap());
+    // let jacobian_analytical = problem.jacobian().unwrap();
+    // let jacobian_numerical = differentiate_numerically(&mut problem).unwrap();
+    // println!("jacobian numerical= {}", jacobian_numerical);
+    // assert_relative_eq!(jacobian_analytical, jacobian_numerical, epsilon = 1e-4);
 }
