@@ -1,5 +1,7 @@
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
-use nalgebra::{ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector, Scalar};
+use nalgebra::{
+    ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector, RealField, Scalar,
+};
 use num_traits::{Float, Zero};
 
 #[cfg(test)]
@@ -34,6 +36,7 @@ where
         <ModelDim as DimAdd<ParameterDim>>::Output,
         <ModelDim as DimAdd<ParameterDim>>::Output,
     >,
+    // pub weighted_residuals: OVector<ScalarType, ModelDim>,
     // /// The parameter `$R^2$`, also known as the coefficient of determination,
     // /// or the square of the multiple correlation coefficient. A commonly
     // /// used (and misused) measure of the quality of a regression.
@@ -52,11 +55,12 @@ where
 {
     pub(crate) fn try_calculate<Model>(
         model: &Model,
+        weighted_residuals: OVector<ScalarType, Model::OutputDim>,
         weights: &Weights<ScalarType, Model::OutputDim>,
         linear_coefficients: OVector<ScalarType, ModelDim>,
-    ) -> Option<Self>
+    ) -> Result<Self, ()>
     where
-        ScalarType: Scalar + ComplexField,
+        ScalarType: Scalar + ComplexField + Float + Zero,
         Model: SeparableNonlinearModel<
             ScalarType = ScalarType,
             ModelDim = ModelDim,
@@ -66,10 +70,34 @@ where
         DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ParameterDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, ModelDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<
+            Model::ScalarType,
+            Model::OutputDim,
+            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        >,
+        DefaultAllocator:
+            nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, ParameterDim>,
+        Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
+        DefaultAllocator: nalgebra::allocator::Allocator<
+            ScalarType,
+            <ModelDim as DimAdd<ParameterDim>>::Output,
+            <Model as SeparableNonlinearModel>::OutputDim,
+        >,
     {
-        // let hmat = weights
-        //     * model_function_jacobian(model, linear_coefficients.unwrap()).unwrap();
-        todo!()
+        let hmat = weights * model_function_jacobian(model, linear_coefficients).unwrap();
+        let output_len = model.output_len().value();
+        let degrees_of_freedom =
+            model.parameter_count().value() + model.base_function_count().value();
+        if output_len <= degrees_of_freedom {
+            todo!();
+        }
+        let sigma: ScalarType = weighted_residuals.norm()
+            / Float::sqrt(ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
+
+        let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
+        let covariance_matrix = hth_inv * sigma * sigma;
+
+        Ok(Self { covariance_matrix })
     }
 }
 
@@ -79,6 +107,7 @@ where
 // fitting problem, which is the jacobian `$\vec{f}(\vec{\alpha},\vec{c}(\vec{\alpha}))$`,
 // where `$\vec{c}(\vec{\alpha})$` is the linear coefficients that solve the linear problem.
 // see also the O'Leary matlab code.
+#[allow(clippy::type_complexity)]
 fn model_function_jacobian<Model>(
     model: &Model,
     c: OVector<Model::ScalarType, Model::ModelDim>,

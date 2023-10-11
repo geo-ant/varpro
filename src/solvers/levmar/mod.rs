@@ -149,8 +149,8 @@ where
         }
     }
 
-    /// convenience function to get the nonlinear parameters of the model
-    /// fitting process has finished.
+    /// convenience function to get the nonlinear parameters of the model after
+    /// the fitting process has finished.
     pub fn nonlinear_parameters(&self) -> OVector<Model::ScalarType, Model::ParameterDim> {
         self.problem.model().params()
     }
@@ -162,7 +162,8 @@ where
     }
 
     /// whether the fit was deemeed successful. The fit might still be not
-    /// be optimal.
+    /// be optimal for numerical reasons, but the minimization process
+    /// terminated successfully.
     pub fn was_successful(&self) -> bool {
         self.minimization_report.termination.was_successful()
     }
@@ -225,7 +226,7 @@ where
     /// correspond to a failed minimization in some cases.
     /// On failure (when the minimization was not deemeed successful), returns
     /// an error with the same information as in the success case.
-    pub fn fit(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,MinimizationReport<Model::ScalarType>)
+    pub fn fit(&self,problem : LevMarProblem<Model>) -> Result<FitResult<Model>,FitResult<Model>>
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim> + Reallocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim,DimMaximum<Model::OutputDim,Model::ParameterDim>,Model::ParameterDim> + Allocator<usize,Model::ParameterDim>,
@@ -245,11 +246,13 @@ where
     {
         let (problem, report) = self.solver.minimize(problem);
         let result = FitResult::new(problem, report);
-        todo!()
+        if result.was_successful() {
+            Ok(result)
+        } else {
+            Err(result)
+        }
     }
 
-    /// performs the minimization and also generates statistics about the minimization
-    /// iff the computation was successful
     pub fn fit_with_statistics(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,FitStatistics<Model::ScalarType,Model::ModelDim, Model::ParameterDim>)
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
