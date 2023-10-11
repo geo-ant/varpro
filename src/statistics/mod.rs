@@ -51,7 +51,13 @@ where
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
+    /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
+    /// where `$\vec{y}$` is the data, `$\vec{f}$` is the model function and `$W$` is the
+    /// weights
     pub weighted_residuals: OVector<Model::ScalarType, Model::OutputDim>,
+
+    /// the _weighted residual mean square_ or _regression standard error_.
+    pub sigma: Model::ScalarType,
     // /// The parameter `$R^2$`, also known as the coefficient of determination,
     // /// or the square of the multiple correlation coefficient. A commonly
     // /// used (and misused) measure of the quality of a regression.
@@ -106,7 +112,7 @@ where
             <Model as SeparableNonlinearModel>::OutputDim,
         >,
     {
-        let hmat = weights * model_function_jacobian(model, &linear_coefficients).unwrap();
+        let hmat = weights * model_function_jacobian(model, linear_coefficients).unwrap();
         let output_len = model.output_len().value();
         let weighted_residuals = weights * (data - model.eval().unwrap() * linear_coefficients);
         let degrees_of_freedom =
@@ -123,6 +129,7 @@ where
         Ok(Self {
             covariance_matrix,
             weighted_residuals,
+            sigma,
         })
     }
 }
