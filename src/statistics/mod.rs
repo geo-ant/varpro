@@ -80,7 +80,7 @@ where
 {
     pub(crate) fn try_calculate(
         model: &Model,
-        data: OVector<Model::ScalarType, Model::OutputDim>,
+        data: &OVector<Model::ScalarType, Model::OutputDim>,
         weights: &Weights<Model::ScalarType, Model::OutputDim>,
         linear_coefficients: OVector<Model::ScalarType, Model::ModelDim>,
     ) -> Result<Self, Error<Model::Error>>

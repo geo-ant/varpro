@@ -1,4 +1,4 @@
-use crate::statistics::FitStatistics;
+use crate::statistics::{self, FitStatistics};
 use crate::{model, prelude::*};
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::allocator::{Allocator, Reallocator};
@@ -253,7 +253,7 @@ where
         }
     }
 
-    pub fn fit_with_statistics(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,FitStatistics<Model>)
+    pub fn fit_with_statistics(&self,problem : LevMarProblem<Model>) -> Result<(FitResult<Model>,FitStatistics<Model>),FitResult<Model>>
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim> + Reallocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim,DimMaximum<Model::OutputDim,Model::ParameterDim>,Model::ParameterDim> + Allocator<usize,Model::ParameterDim>,
@@ -276,31 +276,20 @@ where
         DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType,  <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output,Model::OutputDim>,
     {
         let (problem, report) = self.solver.minimize(problem);
-
-        //todo remove unrwap!!!!!!!!!!!!!!
-        // !!!!!!!!!!!!!!!!
-
-        let hmat = problem.weights()
-            * model_function_jacobian(problem.model(), problem.linear_coefficients().unwrap())
-                .unwrap();
-        println!("H: {}", hmat);
-
-        let weighted_residuals = problem.residuals().unwrap();
-        let output_len = problem.model.output_len().value();
-        let degrees_of_freedom = problem.model().parameter_count().value()
-            + problem.model().base_function_count().value();
-        if output_len <= degrees_of_freedom {
-            todo!();
+        if !report.termination.was_successful() {
+            return Err(FitResult::new(problem, report));
         }
-        let sigma: Model::ScalarType = weighted_residuals.norm()
-            / Float::sqrt(Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
-        let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
-        let covariance_matrix = hth_inv * sigma * sigma;
-        let statistics = FitStatistics {
-            covariance_matrix,
-            weighted_residuals: todo!(),
-        };
-        (problem, statistics)
+
+        if let Ok(statistics) = FitStatistics::try_calculate(
+            problem.model(),
+            problem.data(),
+            problem.weights(),
+            problem.linear_coefficients().unwrap(),
+        ) {
+            Ok((FitResult::new(problem, report), statistics))
+        } else {
+            Err(FitResult::new(problem, report))
+        }
     }
 }
 
@@ -584,6 +573,11 @@ where
     /// get the weights of the data for the fitting problem
     pub fn weights(&self) -> &Weights<Model::ScalarType, Model::OutputDim> {
         &self.weights
+    }
+
+    /// the data that we are trying to fit
+    pub fn data(&self) -> &OVector<Model::ScalarType, Model::OutputDim> {
+        &self.y_w
     }
 }
 
