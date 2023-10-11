@@ -6,18 +6,21 @@
 [![Coverage Status](https://coveralls.io/repos/github/geo-ant/varpro/badge.svg?branch=main)](https://coveralls.io/github/geo-ant/varpro?branch=main)
 ![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 
-This library provides robust and fast least-squares fitting of nonlinear,
-separable model functions to observations. It uses the VarPro algorithm to achieve this.
+Nonlinear function fitting made simple. This library provides robust and fast 
+least-squares fitting of a wide class of model functions to data.
+It uses the VarPro algorithm to achieve this, hence the name.
 
 ## Brief Introduction
 
-The lack of formulas on this site makes it hard to get into the depth of the 
-what and how of this crate at this point.
+This crate implements a powerful algorithm
+to fit model functions to data, but it is restricted to so called _separable_
+models. See the next section for an explanation. The lack of formulas on this 
+site makes it hard to get into the depth of the what and how of this crate at this point.
 [Refer to the documentation](https://docs.rs/varpro/) for all the meaty details including the math.
 
-### What are Separable Model Functions?
+### What are Separable Models?
 
-Put simply, separable model functions are nonlinear functions that can be 
+Put simply, separable models are nonlinear functions that can be 
 written as a *linear combination* of some *nonlinear* basis functions.
 A common use case for VarPro is e.g. fitting sums of exponentials,
 which is a notoriously ill-conditioned problem.
@@ -25,20 +28,21 @@ which is a notoriously ill-conditioned problem.
 ### What is VarPro?
 
 Variable Projection (VarPro) is an algorithm that takes advantage of the fact 
-that the fitting problem can be separated into linear and truly nonlinear parameters.
-The linear parameters are eliminated and the fitting problem is cast into a 
-problem that only depends on the nonlinear parameters.
+that the given fitting problem can be separated into linear and truly nonlinear parameters.
+The linear parameters are eliminated using some clever linear algebra
+and the fitting problem is cast into a problem that only depends on the nonlinear parameters.
 This reduced problem is then solved by using a common nonlinear fitting algorithm,
 such as Levenberg-Marquardt (LM).
 
 ### When Should You Give it a Try?
 
 VarPro can dramatically increase the robustness and speed of the fitting process
-compared to using the nonlinear exclusively. When
-* the model function you want to fit is a linear combination of nonlinear functions
-* *and* you know the analytical derivatives of all those functions
+compared to using a "normal" nonlinear least squares fitting algorithm. When
 
-*then* you should give it a whirl.
+* the model function you want to fit is a linear combination of nonlinear functions
+* _and_ you know the analytical derivatives of all those functions
+
+_then_ you should give it a whirl.
 
 ## Example Usage
 
@@ -97,14 +101,14 @@ For more examples please refer to the crate documentation.
 
 ### Maximum Performance
 
-While the example code above should already run many times faster
-than an equivalent implementation using just a nonlinear solver
-without the magic of varpro, this crate offers a way of 
-squeezing out the last bits of performance.
-The `SeparableNonlinearModel` can be manually
-implemented to shave of the last hundreds of microseconds
-from the computation. The crate documentation contains detailed
-examples.
+The example code above will already run many times faster
+than just using a nonlinear solver without the magic of varpro.
+But this crate offers an additional way to eek out the last bits of  performance.
+
+The `SeparableNonlinearModel` trait can be manually
+implemented to describe a model function. This often allows us to shave of the 
+last hundreds of microseconds from the computation e.g. by caching intermediate
+calculations. The crate documentation contains detailed examples.
 
 ## References and Further Reading
 
