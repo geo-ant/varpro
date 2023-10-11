@@ -274,9 +274,9 @@ pub mod solvers;
 /// statistics of the fit
 pub mod statistics;
 
-/// private module that contains helper functionality for linear algebra that is not yet
+/// helper module containing some commonly useful types
 /// implemented in the nalgebra crate
-mod linalg_helpers;
+pub mod util;
 
 #[cfg(any(test, doctest))]
 pub mod test_helpers;

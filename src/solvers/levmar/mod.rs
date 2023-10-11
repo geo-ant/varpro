@@ -13,9 +13,8 @@ use thiserror::Error as ThisError;
 mod builder;
 #[cfg(any(test, doctest))]
 mod test;
-mod weights;
 
-use crate::solvers::levmar::weights::Weights;
+use crate::util::weights::Weights;
 pub use builder::LevMarProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
@@ -292,8 +291,8 @@ where
         let sigma: Model::ScalarType = weighted_residuals.norm()
             / Float::sqrt(Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
         let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
-        let covariance = hth_inv * sigma * sigma;
-        let statistics = FitStatistics { covariance };
+        let covariance_matrix = hth_inv * sigma * sigma;
+        let statistics = FitStatistics { covariance_matrix };
         (problem, statistics)
     }
 }

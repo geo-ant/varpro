@@ -24,7 +24,7 @@ where
     /// # References
     /// See [O'Leary and Rust 2012](https://www.nist.gov/publications/variable-projection-nonlinear-least-squares-problems)
     /// for reference.
-    pub covariance: OMatrix<
+    pub covariance_matrix: OMatrix<
         ScalarType,
         <ModelDim as DimAdd<ParameterDim>>::Output,
         <ModelDim as DimAdd<ParameterDim>>::Output,
@@ -34,3 +34,16 @@ where
     // /// used (and misused) measure of the quality of a regression.
     // pub r_squared: ScalarType,
 }
+
+// impl<ScalarType, ModelDim, ParameterDim> FitStatistics<ScalarType, ModelDim, ParameterDim>
+// where
+//     ModelDim: Dim + DimAdd<ParameterDim>,
+//     ParameterDim: Dim,
+//     DefaultAllocator: nalgebra::allocator::Allocator<
+//         ScalarType,
+//         <ModelDim as DimAdd<ParameterDim>>::Output,
+//         <ModelDim as DimAdd<ParameterDim>>::Output,
+//     >,
+// {
+//     pub(crate) fn try_calculate(model: &Model, weights: Weights, linear_coefficients: ()) {}
+// }

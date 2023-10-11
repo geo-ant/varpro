@@ -1,8 +1,8 @@
-use crate::linalg_helpers::DiagMatrix;
 use crate::model::test::MockSeparableNonlinearModel;
 use crate::solvers::levmar::builder::LevMarBuilderError;
-use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblemBuilder;
+use crate::util::weights::Weights;
+use crate::util::DiagMatrix;
 use assert_matches::assert_matches;
 use nalgebra::{DMatrix, DVector};
 

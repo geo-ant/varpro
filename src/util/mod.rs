@@ -1,6 +1,8 @@
 #[cfg(any(test, doctest))]
 mod test;
 
+pub mod weights;
+
 use nalgebra::{
     ClosedMul, ComplexField, DefaultAllocator, Dim, Matrix, OVector, RawStorageMut, Scalar,
 };

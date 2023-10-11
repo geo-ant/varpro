@@ -304,7 +304,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     // assert_relative_eq!(c_fit, c_true, epsilon = 1e-5);
 
     let (mut problem, report) = LevMarSolver::new().fit_with_statistics(p2);
-    println!("cov mat = {}", report.covariance);
+    println!("cov mat = {}", report.covariance_matrix);
 
     println!("jacobian analytical= {}", problem.jacobian().unwrap());
     let jacobian_analytical = problem.jacobian().unwrap();

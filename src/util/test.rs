@@ -1,4 +1,4 @@
-use crate::linalg_helpers::DiagMatrix;
+use crate::util::DiagMatrix;
 use approx::assert_relative_eq;
 use nalgebra::{ComplexField, DMatrix, DVector};
 
