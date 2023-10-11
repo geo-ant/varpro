@@ -1,12 +1,12 @@
 #[cfg(any(test, doctest))]
 mod test;
 
-pub mod weights;
-
 use nalgebra::{
     ClosedMul, ComplexField, DefaultAllocator, Dim, Matrix, OVector, RawStorageMut, Scalar,
 };
 use std::ops::Mul;
+
+pub mod weights;
 
 /// A square diagonal matrix with dynamic dimension. Off-diagonal entries are assumed zero.
 /// This internally stores only the diagonal elements

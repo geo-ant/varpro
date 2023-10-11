@@ -1,4 +1,6 @@
-use nalgebra::{DefaultAllocator, Dim, DimAdd, OMatrix};
+use nalgebra::{ComplexField, DefaultAllocator, Dim, DimAdd, OMatrix, OVector, Scalar};
+
+use crate::{prelude::SeparableNonlinearModel, util::weights::Weights};
 
 /// this structure contains information about the goodness of
 /// a fit and some statistical properties like estimates uncerainties
@@ -35,15 +37,33 @@ where
     // pub r_squared: ScalarType,
 }
 
-// impl<ScalarType, ModelDim, ParameterDim> FitStatistics<ScalarType, ModelDim, ParameterDim>
-// where
-//     ModelDim: Dim + DimAdd<ParameterDim>,
-//     ParameterDim: Dim,
-//     DefaultAllocator: nalgebra::allocator::Allocator<
-//         ScalarType,
-//         <ModelDim as DimAdd<ParameterDim>>::Output,
-//         <ModelDim as DimAdd<ParameterDim>>::Output,
-//     >,
-// {
-//     pub(crate) fn try_calculate(model: &Model, weights: Weights, linear_coefficients: ()) {}
-// }
+impl<ScalarType, ModelDim, ParameterDim> FitStatistics<ScalarType, ModelDim, ParameterDim>
+where
+    ModelDim: Dim + DimAdd<ParameterDim>,
+    ParameterDim: Dim,
+    DefaultAllocator: nalgebra::allocator::Allocator<
+        ScalarType,
+        <ModelDim as DimAdd<ParameterDim>>::Output,
+        <ModelDim as DimAdd<ParameterDim>>::Output,
+    >,
+{
+    pub(crate) fn try_calculate<Model>(
+        model: &Model,
+        weights: &Weights<ScalarType, Model::OutputDim>,
+        linear_coefficients: OVector<ScalarType, ModelDim>,
+    ) -> Option<Self>
+    where
+        ScalarType: Scalar + ComplexField,
+        Model: SeparableNonlinearModel<
+            ScalarType = ScalarType,
+            ModelDim = ModelDim,
+            ParameterDim = ParameterDim,
+        >,
+        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ParameterDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ModelDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, Model::OutputDim, ModelDim>,
+    {
+        todo!()
+    }
+}
