@@ -284,6 +284,7 @@ where
             * model_function_jacobian(problem.model(), problem.linear_coefficients().unwrap())
                 .unwrap();
         println!("H: {}", hmat);
+
         let weighted_residuals = problem.residuals().unwrap();
         let output_len = problem.model.output_len().value();
         let degrees_of_freedom = problem.model().parameter_count().value()
@@ -295,7 +296,10 @@ where
             / Float::sqrt(Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
         let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
         let covariance_matrix = hth_inv * sigma * sigma;
-        let statistics = FitStatistics { covariance_matrix };
+        let statistics = FitStatistics {
+            covariance_matrix,
+            weighted_residuals: todo!(),
+        };
         (problem, statistics)
     }
 }

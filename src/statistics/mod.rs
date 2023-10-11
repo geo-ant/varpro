@@ -1,11 +1,22 @@
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
-    ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector, RealField, Scalar,
+    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector,
+    RealField, Scalar,
 };
 use num_traits::{Float, FromPrimitive, Zero};
+use thiserror::Error as ThisError;
 
 #[cfg(test)]
 mod test;
+
+/// Information about an error that occurred during calculation
+/// of the fit statistics.
+pub enum Error<ModelError: std::error::Error> {
+    /// Model returned error when it was evaluated
+    ModelError(ModelError),
+    /// Fit is underdetermined
+    Underdetermined,
+}
 
 /// this structure contains information about the goodness of
 /// a fit and some statistical properties like estimates uncerainties
@@ -16,20 +27,14 @@ where
     Model: SeparableNonlinearModel,
     Model::ModelDim: DimAdd<Model::ParameterDim>,
     Model::ParameterDim: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<
+    DefaultAllocator: Allocator<
         Model::ScalarType,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as SeparableNonlinearModel>::ScalarType,
-        <Model as SeparableNonlinearModel>::OutputDim,
-        <Model as SeparableNonlinearModel>::ModelDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as SeparableNonlinearModel>::ScalarType,
-        <Model as SeparableNonlinearModel>::ParameterDim,
-    >,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
 {
     /// The covariance matrix of the parameter estimates. The linear
     /// parameters are ordered first, followed by the non-linear parameters
@@ -46,7 +51,7 @@ where
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
-    // pub weighted_residuals: OVector<ScalarType, Model::ModelDim>,
+    pub weighted_residuals: OVector<Model::ScalarType, Model::OutputDim>,
     // /// The parameter `$R^2$`, also known as the coefficient of determination,
     // /// or the square of the multiple correlation coefficient. A commonly
     // /// used (and misused) measure of the quality of a regression.
@@ -57,58 +62,55 @@ impl<Model> FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
     Model::ModelDim: DimAdd<Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
+    DefaultAllocator: Allocator<
         Model::ScalarType,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+    nalgebra::DefaultAllocator: Allocator<
         <Model as SeparableNonlinearModel>::ScalarType,
         <Model as SeparableNonlinearModel>::OutputDim,
         <Model as SeparableNonlinearModel>::ModelDim,
     >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+    nalgebra::DefaultAllocator: Allocator<
         <Model as SeparableNonlinearModel>::ScalarType,
         <Model as SeparableNonlinearModel>::ParameterDim,
     >,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
 {
     pub(crate) fn try_calculate(
         model: &Model,
-        weighted_residuals: OVector<Model::ScalarType, Model::OutputDim>,
+        data: OVector<Model::ScalarType, Model::OutputDim>,
         weights: &Weights<Model::ScalarType, Model::OutputDim>,
         linear_coefficients: OVector<Model::ScalarType, Model::ModelDim>,
-    ) -> Result<Self, ()>
+    ) -> Result<Self, Error<Model::Error>>
     where
         Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-        DefaultAllocator:
-            nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<
+        DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim>,
+        DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
+        DefaultAllocator: Allocator<Model::ScalarType, Model::ModelDim>,
+        DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+        DefaultAllocator: Allocator<
             Model::ScalarType,
             Model::OutputDim,
             <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            Model::ScalarType,
-            Model::OutputDim,
-            Model::ParameterDim,
-        >,
+        DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
-        DefaultAllocator: nalgebra::allocator::Allocator<
+        DefaultAllocator: Allocator<
             Model::ScalarType,
             <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
             <Model as SeparableNonlinearModel>::OutputDim,
         >,
     {
-        let hmat = weights * model_function_jacobian(model, linear_coefficients).unwrap();
+        let hmat = weights * model_function_jacobian(model, &linear_coefficients).unwrap();
         let output_len = model.output_len().value();
+        let weighted_residuals = weights * (data - model.eval().unwrap() * linear_coefficients);
         let degrees_of_freedom =
             model.parameter_count().value() + model.base_function_count().value();
         if output_len <= degrees_of_freedom {
-            todo!();
+            return Err(Error::Underdetermined);
         }
         let sigma: Model::ScalarType = weighted_residuals.norm()
             / Float::sqrt(Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
@@ -116,7 +118,10 @@ where
         let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
         let covariance_matrix = hth_inv * sigma * sigma;
 
-        Ok(Self { covariance_matrix })
+        Ok(Self {
+            covariance_matrix,
+            weighted_residuals,
+        })
     }
 }
 
@@ -129,7 +134,7 @@ where
 #[allow(clippy::type_complexity)]
 fn model_function_jacobian<Model>(
     model: &Model,
-    c: OVector<Model::ScalarType, Model::ModelDim>,
+    c: &OVector<Model::ScalarType, Model::ModelDim>,
 ) -> Result<
     OMatrix<
         Model::ScalarType,
@@ -141,24 +146,21 @@ fn model_function_jacobian<Model>(
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Float + Zero + Scalar + ComplexField,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
+    nalgebra::DefaultAllocator: Allocator<
         Model::ScalarType,
         Model::OutputDim,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
     <Model as SeparableNonlinearModel>::ModelDim:
         nalgebra::DimAdd<<Model as SeparableNonlinearModel>::ParameterDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+    nalgebra::DefaultAllocator: Allocator<
         <Model as SeparableNonlinearModel>::ScalarType,
         <Model as SeparableNonlinearModel>::ModelDim,
     >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+    nalgebra::DefaultAllocator: Allocator<
         <Model as SeparableNonlinearModel>::ScalarType,
         <Model as SeparableNonlinearModel>::OutputDim,
     >,
@@ -174,7 +176,7 @@ where
         .column_iter_mut()
         .enumerate()
     {
-        col.copy_from(&(model.eval_partial_deriv(idx)? * &c));
+        col.copy_from(&(model.eval_partial_deriv(idx)? * c));
     }
 
     Ok(concat_colwise(
@@ -195,9 +197,9 @@ where
     C1: Dim + DimAdd<C2>,
     C2: Dim,
     T: Scalar + Zero,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, <C1 as DimAdd<C2>>::Output>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, C1>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, C2>,
+    nalgebra::DefaultAllocator: Allocator<T, R, <C1 as DimAdd<C2>>::Output>,
+    nalgebra::DefaultAllocator: Allocator<T, R, C1>,
+    nalgebra::DefaultAllocator: Allocator<T, R, C2>,
     S2: nalgebra::RawStorage<T, R, C2>,
     S1: nalgebra::RawStorage<T, R, C1>,
 {
