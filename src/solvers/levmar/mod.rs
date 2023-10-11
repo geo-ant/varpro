@@ -14,7 +14,7 @@ mod builder;
 #[cfg(any(test, doctest))]
 mod test;
 
-use crate::util::weights::Weights;
+use crate::util::Weights;
 pub use builder::LevMarProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
@@ -310,12 +310,7 @@ where
     }
 }
 
-// a helper function that calculates the jacobian of the
-// model function `$\vec{f}(\vec{\alpha},\vec{c})$` evaluated at the parameters `$(\vec{c},\vec{\alpha})$`
-// This is not the same as the jacobian of the
-// fitting problem, which is the jacobian `$\vec{f}(\vec{\alpha},\vec{c}(\vec{\alpha}))$`,
-// where `$\vec{c}(\vec{\alpha})$` is the linear coefficients that solve the linear problem.
-// see also the O'Leary matlab code.
+//@todo remove
 fn model_function_jacobian<Model>(
     model: &Model,
     c: OVector<Model::ScalarType, Model::ModelDim>,
@@ -372,7 +367,7 @@ where
     ))
 }
 
-// helper function to concatenate two nalgebra matrices
+//@ todo remove
 fn concat_colwise<T, R, C1, C2, S1, S2>(
     left: Matrix<T, R, C1, S1>,
     right: Matrix<T, R, C2, S2>,

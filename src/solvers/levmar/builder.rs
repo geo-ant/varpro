@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
-use crate::util::weights::Weights;
+use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, Const, DefaultAllocator, Dim, DimMin, DimSub, OVector, Scalar};
 use num_traits::{Float, Zero};
