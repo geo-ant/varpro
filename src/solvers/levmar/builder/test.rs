@@ -124,7 +124,7 @@ fn builder_gives_errors_for_wrong_data_length() {
     let y = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
-    let _initial_guess = vec![1., 2.];
+    let _initial_guess = [1., 2.];
 
     let wrong_output_len = y.len() - 1;
     model
@@ -145,7 +145,7 @@ fn builder_gives_errors_for_zero_length_data() {
     let y = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
-    let _initial_guess = vec![1., 2.];
+    let _initial_guess = [1., 2.];
 
     let output_len = y.len();
     model.expect_output_len().returning(move || output_len);
@@ -166,7 +166,7 @@ fn builder_gives_errors_for_wrong_length_of_weights() {
     let y = DVector::from(vec![
         4.0000, 2.9919, 2.3423, 1.9186, 1.6386, 1.4507, 1.3227, 1.2342, 1.1720, 1.1276, 1.0956,
     ]);
-    let _initial_guess = vec![1., 2.];
+    let _initial_guess = [1., 2.];
 
     let output_len = y.len();
     model.expect_output_len().returning(move || output_len);

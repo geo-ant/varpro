@@ -1,7 +1,7 @@
-use levenberg_marquardt::differentiate_numerically;
+
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DVector;
-use nalgebra::DVectorSlice;
+
 use nalgebra::OVector;
 use nalgebra::Vector2;
 use nalgebra::Vector3;
@@ -18,7 +18,7 @@ use varpro::prelude::*;
 use varpro::solvers::levmar::*;
 
 use approx::assert_relative_eq;
-use std::time::Instant;
+
 
 #[test]
 // sanity check my calculations above
@@ -272,7 +272,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     ]);
     // and finally the weights for the observations
     // these do actually influence the fits in the second decimal place
-    let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
+    let _w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
 
     let model = OLearyExampleModel::new(t, initial_guess);
     let problem = LevMarProblemBuilder::new(model)
@@ -281,22 +281,22 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         .build()
         .unwrap();
 
-    let p2 = problem.clone();
+    let _p2 = problem.clone();
 
     let (problem, report) = LevMarSolver::new().minimize(problem);
     assert!(
         report.termination.was_successful(),
         "fitting did not terminate successfully"
     );
-    let alpha_fit = problem.params();
-    let c_fit = problem
+    let _alpha_fit = problem.params();
+    let _c_fit = problem
         .linear_coefficients()
         .expect("solved problem must have linear coefficients");
     // solved parameters from the matlab code
     // they note that many parameters fit the observations well
-    let alpha_true =
+    let _alpha_true =
         OVector::<f64, U3>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
-    let c_true = OVector::<f64, U2>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
+    let _c_true = OVector::<f64, U2>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     // @todo comment this in again
     // !!!!!!!!!!!!!!!!!!!!!!!!!!!!
     // !!!!!!!!!!!!!!!!!!!!!!!

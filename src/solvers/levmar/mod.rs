@@ -1,14 +1,12 @@
-use crate::statistics::{self, FitStatistics};
+use crate::statistics::FitStatistics;
 use crate::{model, prelude::*};
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::allocator::{Allocator, Reallocator};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, Const, DMatrix, DefaultAllocator, Dim, DimAdd, DimMax, DimMaximum, DimMin,
-    DimSub, Dyn, Matrix, OMatrix, OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix,
-    Vector, SVD, U3, U4,
+    ComplexField, Const, DefaultAllocator, Dim, DimAdd, DimMax, DimMaximum, DimMin, DimSub, Matrix,
+    OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD,
 };
-use thiserror::Error as ThisError;
 
 mod builder;
 #[cfg(any(test, doctest))]
@@ -19,7 +17,7 @@ pub use builder::LevMarProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
-use num_traits::{Float, FromPrimitive, Zero};
+use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;
 
 /// A thin wrapper around the
@@ -213,7 +211,11 @@ where
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMax<<Model as model::SeparableNonlinearModel>::ParameterDim>,
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMin<<Model as model::SeparableNonlinearModel>::ParameterDim>
     {
-        self.solver.minimize(problem)
+        let result = match self.fit(problem) {
+            Ok(result) => result,
+            Err(result) => result,
+        };
+        (result.problem, result.minimization_report)
     }
 
     /// Try to solve the given varpro minimization problem. The parameters of
@@ -304,102 +306,6 @@ where
     fn default() -> Self {
         Self::new()
     }
-}
-
-//@todo remove
-fn model_function_jacobian<Model>(
-    model: &Model,
-    c: OVector<Model::ScalarType, Model::ModelDim>,
-) -> Result<
-    OMatrix<
-        Model::ScalarType,
-        Model::OutputDim,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
-    Model::Error,
->
-where
-    Model: SeparableNonlinearModel,
-    Model::ScalarType: Float + Zero + Scalar + ComplexField,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        Model::OutputDim,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
-    <Model as model::SeparableNonlinearModel>::ModelDim:
-        nalgebra::DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::OutputDim,
-    >,
-{
-    // the part of the jacobian that contains the derivatives
-    // with respect to the nonlinear parameters
-    let mut jacobian_matrix_for_nonlinear_params =
-        OMatrix::<Model::ScalarType, Model::OutputDim, Model::ParameterDim>::zeros_generic(
-            model.output_len(),
-            model.parameter_count(),
-        );
-    for (idx, mut col) in jacobian_matrix_for_nonlinear_params
-        .column_iter_mut()
-        .enumerate()
-    {
-        col.copy_from(&(model.eval_partial_deriv(idx)? * &c));
-    }
-
-    Ok(concat_colwise(
-        model.eval()?,
-        jacobian_matrix_for_nonlinear_params,
-    ))
-}
-
-//@ todo remove
-fn concat_colwise<T, R, C1, C2, S1, S2>(
-    left: Matrix<T, R, C1, S1>,
-    right: Matrix<T, R, C2, S2>,
-) -> OMatrix<T, R, <C1 as DimAdd<C2>>::Output>
-where
-    R: Dim,
-    C1: Dim + DimAdd<C2>,
-    C2: Dim,
-    T: Scalar + Zero,
-    nalgebra::DefaultAllocator: Allocator<T, R, <C1 as DimAdd<C2>>::Output>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, C1>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, C2>,
-    S2: nalgebra::RawStorage<T, R, C2>,
-    S1: nalgebra::RawStorage<T, R, C1>,
-{
-    assert_eq!(
-        left.nrows(),
-        right.nrows(),
-        "left and right matrix must have the same number of rows"
-    );
-    let mut result = OMatrix::<T, R, <C1 as DimAdd<C2>>::Output>::zeros_generic(
-        R::from_usize(left.nrows()),
-        <C1 as DimAdd<C2>>::Output::from_usize(left.ncols() + right.ncols()),
-    );
-
-    for idx in 0..left.ncols() {
-        result.column_mut(idx).copy_from(&left.column(idx));
-    }
-
-    for idx in 0..right.ncols() {
-        result
-            .column_mut(idx + left.ncols())
-            .copy_from(&right.column(idx));
-    }
-
-    result
 }
 
 /// helper structure that stores the cached calculations,

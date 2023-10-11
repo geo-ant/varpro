@@ -4,7 +4,6 @@ use nalgebra::{
     RealField, Scalar,
 };
 use num_traits::{Float, FromPrimitive, Zero};
-use thiserror::Error as ThisError;
 
 #[cfg(test)]
 mod test;
@@ -46,7 +45,8 @@ where
     /// # References
     /// See [O'Leary and Rust 2012](https://www.nist.gov/publications/variable-projection-nonlinear-least-squares-problems)
     /// for reference.
-    pub covariance_matrix: OMatrix<
+    #[allow(clippy::type_complexity)]
+    covariance_matrix: OMatrix<
         Model::ScalarType,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
@@ -54,10 +54,10 @@ where
     /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
     /// where `$\vec{y}$` is the data, `$\vec{f}$` is the model function and `$W$` is the
     /// weights
-    pub weighted_residuals: OVector<Model::ScalarType, Model::OutputDim>,
+    weighted_residuals: OVector<Model::ScalarType, Model::OutputDim>,
 
     /// the _weighted residual mean square_ or _regression standard error_.
-    pub sigma: Model::ScalarType,
+    sigma: Model::ScalarType,
     // /// The parameter `$R^2$`, also known as the coefficient of determination,
     // /// or the square of the multiple correlation coefficient. A commonly
     // /// used (and misused) measure of the quality of a regression.
@@ -86,6 +86,7 @@ where
 {
     /// Calculate the fit statistics from the model, the data and the linear coefficients.
     /// The given parameters must be the ones after the the fit has completed.
+    #[allow(non_snake_case)]
     pub(crate) fn try_calculate(
         model: &Model,
         data: &OVector<Model::ScalarType, Model::OutputDim>,
@@ -112,7 +113,7 @@ where
             <Model as SeparableNonlinearModel>::OutputDim,
         >,
     {
-        let hmat = weights * model_function_jacobian(model, linear_coefficients).unwrap();
+        let H = weights * model_function_jacobian(model, linear_coefficients).unwrap();
         let output_len = model.output_len().value();
         let weighted_residuals = weights * (data - model.eval().unwrap() * linear_coefficients);
         let degrees_of_freedom =
@@ -123,8 +124,8 @@ where
         let sigma: Model::ScalarType = weighted_residuals.norm()
             / Float::sqrt(Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
 
-        let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
-        let covariance_matrix = hth_inv * sigma * sigma;
+        let HTH_inv = (H.transpose() * H).try_inverse().unwrap();
+        let covariance_matrix = HTH_inv * sigma * sigma;
 
         Ok(Self {
             covariance_matrix,
