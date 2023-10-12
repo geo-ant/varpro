@@ -1,25 +1,55 @@
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
     allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector,
-    RealField, Scalar,
+    RealField, Scalar, U1,
 };
 use num_traits::{Float, FromPrimitive, Zero};
+use thiserror::Error as ThisError;
 
 #[cfg(test)]
 mod test;
 
 /// Information about an error that occurred during calculation
 /// of the fit statistics.
+#[derive(Debug, Clone, ThisError)]
 pub enum Error<ModelError: std::error::Error> {
     /// Model returned error when it was evaluated
-    ModelError(ModelError),
+    #[error("Model returned error when it was evaluated:{}", .0)]
+    ModelError(#[from] ModelError),
     /// Fit is underdetermined
+    #[error("Fit is underdetermined")]
     Underdetermined,
+    #[error("Floating point unable to capture integral value {}", .0)]
+    /// the floating point type was unable to capture an integral value
+    FloatToIntError(usize),
+    /// Failed to calculate the inverse of a matrix
+    #[error("Matrix inversion error")]
+    MatrixInversionError,
 }
 
 /// this structure contains some additional statistical information
 /// about the fit, such as errors on the parameters and other useful
 /// information to assess the quality of the fit.
+///
+/// # Where is `$R^2$`?
+///
+/// We don't calculate `$R^2$` because "it is an inadequate measure for the
+/// goodness of the fit in nonlinear models" ([Spiess and Neumeyer 2010](https://doi.org/10.1186/1471-2210-10-6)).
+/// See also
+/// [here](https://statisticsbyjim.com/regression/r-squared-invalid-nonlinear-regression/),
+/// [here](https://blog.minitab.com/en/adventures-in-statistics-2/why-is-there-no-r-squared-for-nonlinear-regression)
+/// and [here](https://statisticsbyjim.com/regression/standard-error-regression-vs-r-squared/),
+/// where the recommendation is to use the standard error of the regression instead.
+/// See also the next section.
+///
+/// # Model Selection
+///
+/// If you want to want to use goodness of fit metrics to decide which of two
+/// models to use, please look into the [Akaike information criterion](https://en.wikipedia.org/wiki/Akaike_information_criterion),
+/// or the [Bayesian information criterion](https://en.wikipedia.org/wiki/Bayesian_information_criterion).
+/// Both of these can be calculated from standard error of the regression. Note
+/// that this fit uses least squares minimization so it assumes the errors are
+/// zero mean and normally distributed.
 #[derive(Debug, Clone)]
 pub struct FitStatistics<Model>
 where
@@ -51,6 +81,15 @@ where
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
+
+    /// the correlation matrix, ordered the same way as the covariance matrix.
+    #[allow(clippy::type_complexity)]
+    correlation_matrix: OMatrix<
+        Model::ScalarType,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+    >,
+
     /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
     /// where `$\vec{y}$` is the data, `$\vec{f}$` is the model function and `$W$` is the
     /// weights
@@ -62,6 +101,81 @@ where
     // /// or the square of the multiple correlation coefficient. A commonly
     // /// used (and misused) measure of the quality of a regression.
     // pub r_squared: ScalarType,
+}
+
+impl<Model> FitStatistics<Model>
+where
+    Model: SeparableNonlinearModel,
+    Model::ModelDim: DimAdd<Model::ParameterDim>,
+    Model::ParameterDim: Dim,
+    DefaultAllocator: Allocator<
+        Model::ScalarType,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+    >,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+{
+    /// The covariance matrix of the parameter estimates. Here the parameters
+    /// are both the linear as well as the nonlinear parameters of the model.
+    /// parameters are ordered first, followed by the non-linear parameters
+    /// as if we had one big parameter vector `$(\vec{c}, \vec{\alpha})^T$`.
+    /// See [O'Leary and Rust 2012](https://www.nist.gov/publications/variable-projection-nonlinear-least-squares-problems)
+    /// for reference.
+    ///
+    /// # Example
+    ///
+    /// Say our model has two linear coefficients `$\vec{c}=(c_1,c_2)^T$` and three nonlinear parameters
+    /// `$\vec{\alpha}=(\alpha_1,\alpha_2,\alpha_3)^T$`. Then the covariance matrix
+    /// is odered for the parameter vector `$(c_1,c_2,\alpha_1,\alpha_2,\alpha_3)^T$`.
+    /// The covariance matrix `$C$` (upper case C) is a square matrix of size `$5 \times 5$`.
+    /// Element `$C_{ij}$` is the covariance between the parameters `$i$` and `$j$`, so in this
+    /// example `$C_{11}$` is the variance of `$c_1$`, `$C_{12}$` is the covariance between `$c_1$`
+    /// and `$c_2$`, `$C_{13}$` is the covariance between `$c_1$` and `$\alpha_1$`, and so on.
+    #[allow(clippy::type_complexity)]
+    pub fn covariance_matrix(
+        &self,
+    ) -> &OMatrix<
+        Model::ScalarType,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+    > {
+        &self.covariance_matrix
+    }
+
+    /// the correlation matrix, ordered the same way as the covariance matrix.
+    #[allow(clippy::type_complexity)]
+    pub fn correlation_matrix(
+        &self,
+    ) -> &OMatrix<
+        Model::ScalarType,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+    > {
+        &self.correlation_matrix
+    }
+
+    /// the weighted residuals
+    /// ```math
+    /// \vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))
+    /// ```
+    /// at the best fit parameters.
+    pub fn weighted_residuals(&self) -> &OVector<Model::ScalarType, Model::OutputDim> {
+        &self.weighted_residuals
+    }
+
+    /// the _regression standard error_ (also called _weighted residual mean square_, or _sigma_).
+    /// Calculated as
+    /// ```math
+    /// \sigma = \frac{||\vec{r_w}||}{\sqrt{N_{data}}-N_{params}-N_{basis}},
+    /// ```
+    /// where `$N_{data}$` is the number of data points, `$N_{params}$` is the number of nonlinear
+    /// parameters, and `$N_{basis}$` is the number of linear parameters (i.e. the number
+    /// of basis functions).
+    pub fn regression_standard_error(&self) -> Model::ScalarType {
+        self.sigma.clone()
+    }
 }
 
 impl<Model> FitStatistics<Model>
@@ -84,8 +198,14 @@ where
     >,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
 {
-    /// Calculate the fit statistics from the model, the data and the linear coefficients.
+    /// Calculate the fit statistics from the model, the data, the weights, and the linear coefficients.
+    /// Note the nonlinear coefficients are part of state of the model.
     /// The given parameters must be the ones after the the fit has completed.
+    ///
+    /// # Errors
+    /// This gives an error if the fit is underdetermined or if
+    /// the model returns an error when it is evaluated. Both of those
+    /// are practically impossible after a successful fit, but better safe than sorry.
     #[allow(non_snake_case)]
     pub(crate) fn try_calculate(
         model: &Model,
@@ -113,26 +233,74 @@ where
             <Model as SeparableNonlinearModel>::OutputDim,
         >,
     {
-        let H = weights * model_function_jacobian(model, linear_coefficients).unwrap();
+        // see the OLeary and Rust Paper for reference
+        // the names are taken from the paper
+
+        let H = weights * model_function_jacobian(model, linear_coefficients)?;
         let output_len = model.output_len().value();
-        let weighted_residuals = weights * (data - model.eval().unwrap() * linear_coefficients);
+        let weighted_residuals = weights * (data - model.eval()? * linear_coefficients);
         let degrees_of_freedom =
             model.parameter_count().value() + model.base_function_count().value();
         if output_len <= degrees_of_freedom {
             return Err(Error::Underdetermined);
         }
-        let sigma: Model::ScalarType = weighted_residuals.norm()
-            / Float::sqrt(Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
 
-        let HTH_inv = (H.transpose() * H).try_inverse().unwrap();
+        let sigma: Model::ScalarType = weighted_residuals.norm()
+            / Float::sqrt(
+                Model::ScalarType::from_usize(output_len - degrees_of_freedom)
+                    .ok_or(Error::FloatToIntError(output_len - degrees_of_freedom))?,
+            );
+
+        let HTH_inv = (H.transpose() * H)
+            .try_inverse()
+            .ok_or(Error::MatrixInversionError)?;
         let covariance_matrix = HTH_inv * sigma * sigma;
+        let correlation_matrix = calc_correlation_matrix(&covariance_matrix);
+
+        // we don't calculate R^2, see the notes on the documentation
+        // of this struct
 
         Ok(Self {
             covariance_matrix,
+            correlation_matrix,
             weighted_residuals,
             sigma,
         })
     }
+}
+
+/// generate a vector of ones with the given dimension
+fn vector_of_ones<ScalarType, D>(len: D) -> OVector<ScalarType, D>
+where
+    DefaultAllocator: Allocator<ScalarType, D>,
+    ScalarType: Scalar + Zero + num_traits::identities::One,
+    D: Dim,
+{
+    let mut v = OVector::<ScalarType, D>::zeros_generic(len, U1);
+    v.fill_with(|| ScalarType::one());
+    v
+}
+
+/// helper function to calculate a correlation matrix from a covariance matrix.
+/// See the O'Leary and Rust paper for reference.
+fn calc_correlation_matrix<ScalarType, D>(
+    covariance_matrix: &OMatrix<ScalarType, D, D>,
+) -> OMatrix<ScalarType, D, D>
+where
+    ScalarType: Float,
+    D: Dim,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D, D>,
+{
+    let mut correlation_matrix = covariance_matrix.clone();
+    for i in 0..correlation_matrix.nrows() {
+        let c_ii = correlation_matrix[(i, i)];
+        for j in 0..correlation_matrix.ncols() {
+            let c_jj = correlation_matrix[(j, j)];
+            let sqrt_c_ii_c_jj = Float::sqrt(c_ii * c_jj);
+            correlation_matrix[(i, j)] = correlation_matrix[(i, j)] / sqrt_c_ii_c_jj;
+        }
+    }
+    correlation_matrix
 }
 
 // a helper function that calculates the jacobian of the
