@@ -269,18 +269,6 @@ where
     }
 }
 
-/// generate a vector of ones with the given dimension
-fn vector_of_ones<ScalarType, D>(len: D) -> OVector<ScalarType, D>
-where
-    DefaultAllocator: Allocator<ScalarType, D>,
-    ScalarType: Scalar + Zero + num_traits::identities::One,
-    D: Dim,
-{
-    let mut v = OVector::<ScalarType, D>::zeros_generic(len, U1);
-    v.fill_with(|| ScalarType::one());
-    v
-}
-
 /// helper function to calculate a correlation matrix from a covariance matrix.
 /// See the O'Leary and Rust paper for reference.
 fn calc_correlation_matrix<ScalarType, D>(
