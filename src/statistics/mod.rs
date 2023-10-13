@@ -1,21 +1,21 @@
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
     allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector,
-    RealField, Scalar, U1,
+    RealField, Scalar,
 };
 use num_traits::{Float, FromPrimitive, Zero};
 use thiserror::Error as ThisError;
 
-#[cfg(test)]
+#[cfg(any(test, doctest))]
 mod test;
 
-/// Information about an error that occurred during calculation
+/// Information about an error that can occur during calculation of the
 /// of the fit statistics.
 #[derive(Debug, Clone, ThisError)]
-pub enum Error<ModelError: std::error::Error> {
+pub(crate) enum Error<ModelError: std::error::Error> {
     /// Model returned error when it was evaluated
     #[error("Model returned error when it was evaluated:{}", .0)]
-    ModelError(#[from] ModelError),
+    ModelEvaluation(#[from] ModelError),
     /// Fit is underdetermined
     #[error("Fit is underdetermined")]
     Underdetermined,
@@ -27,17 +27,17 @@ pub enum Error<ModelError: std::error::Error> {
     MatrixInversionError,
 }
 
-/// this structure contains some additional statistical information
+/// This structure contains some additional statistical information
 /// about the fit, such as errors on the parameters and other useful
 /// information to assess the quality of the fit.
 ///
-/// # Where is `$R^2$`?
+/// # Where is R squared?
 ///
 /// We don't calculate `$R^2$` because "it is an inadequate measure for the
 /// goodness of the fit in nonlinear models" ([Spiess and Neumeyer 2010](https://doi.org/10.1186/1471-2210-10-6)).
 /// See also
 /// [here](https://statisticsbyjim.com/regression/r-squared-invalid-nonlinear-regression/),
-/// [here](https://blog.minitab.com/en/adventures-in-statistics-2/why-is-there-no-r-squared-for-nonlinear-regression)
+/// [here](https://blog.minitab.com/en/adventures-in-statistics-2/why-is-there-no-r-squared-for-nonlinear-regression),
 /// and [here](https://statisticsbyjim.com/regression/standard-error-regression-vs-r-squared/),
 /// where the recommendation is to use the standard error of the regression instead.
 /// See also the next section.
@@ -275,17 +275,25 @@ fn calc_correlation_matrix<ScalarType, D>(
     covariance_matrix: &OMatrix<ScalarType, D, D>,
 ) -> OMatrix<ScalarType, D, D>
 where
-    ScalarType: Float,
+    ScalarType: Float + Scalar + Zero,
     D: Dim,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D, D>,
 {
-    let mut correlation_matrix = covariance_matrix.clone();
+    assert_eq!(
+        covariance_matrix.nrows(),
+        covariance_matrix.ncols(),
+        "covariance matrix must be square"
+    );
+    let mut correlation_matrix = OMatrix::zeros_generic(
+        D::from_usize(covariance_matrix.nrows()),
+        D::from_usize(covariance_matrix.ncols()),
+    );
     for i in 0..correlation_matrix.nrows() {
-        let c_ii = correlation_matrix[(i, i)];
+        let c_ii = covariance_matrix[(i, i)];
         for j in 0..correlation_matrix.ncols() {
-            let c_jj = correlation_matrix[(j, j)];
+            let c_jj = covariance_matrix[(j, j)];
             let sqrt_c_ii_c_jj = Float::sqrt(c_ii * c_jj);
-            correlation_matrix[(i, j)] = correlation_matrix[(i, j)] / sqrt_c_ii_c_jj;
+            correlation_matrix[(i, j)] = covariance_matrix[(i, j)] / sqrt_c_ii_c_jj;
         }
     }
     correlation_matrix
