@@ -110,6 +110,14 @@ implemented to describe a model function. This often allows us to shave of the
 last hundreds of microseconds from the computation e.g. by caching intermediate
 calculations. The crate documentation contains detailed examples.
 
+## Acknowledgements
+
+I am grateful to Professor [Dianne P. O'Leary](http://www.cs.umd.edu/~oleary/)
+and [Bert W. Rust &#10013;](https://math.nist.gov/~BRust/) who published the paper that 
+enabled me to understand varpro and come up with this implementation.
+Professor O'Leary also graciously answered my questions on her paper and
+some implementation details.
+
 ## References and Further Reading
 
 (O'Leary2013) O’Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems.
