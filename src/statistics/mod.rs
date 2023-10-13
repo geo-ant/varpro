@@ -1,7 +1,7 @@
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
-    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector,
-    RealField, Scalar,
+    allocator::Allocator, ComplexField, DVector, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix,
+    OVector, RealField, Scalar,
 };
 use num_traits::{Float, FromPrimitive, Zero};
 use thiserror::Error as ThisError;
@@ -168,9 +168,9 @@ where
     /// the _regression standard error_ (also called _weighted residual mean square_, or _sigma_).
     /// Calculated as
     /// ```math
-    /// \sigma = \frac{||\vec{r_w}||}{\sqrt{N_{data}}-N_{params}-N_{basis}},
+    /// \sigma = \frac{||\vec{r_w}||}{\sqrt{N_{data}-N_{params}-N_{basis}}},
     /// ```
-    /// where `$N_{data}$` is the number of data points, `$N_{params}$` is the number of nonlinear
+    /// where `$N_{data}$` is the number of data points (observations), `$N_{params}$` is the number of nonlinear
     /// parameters, and `$N_{basis}$` is the number of linear parameters (i.e. the number
     /// of basis functions).
     pub fn regression_standard_error(&self) -> Model::ScalarType {
@@ -198,7 +198,7 @@ where
     >,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
 {
-    /// Calculate the fit statistics from the model, the data, the weights, and the linear coefficients.
+    /// Calculate the fit statistics from the model, the WEIGHTED data, the weights, and the linear coefficients.
     /// Note the nonlinear coefficients are part of state of the model.
     /// The given parameters must be the ones after the the fit has completed.
     ///
@@ -209,7 +209,7 @@ where
     #[allow(non_snake_case)]
     pub(crate) fn try_calculate(
         model: &Model,
-        data: &OVector<Model::ScalarType, Model::OutputDim>,
+        weighted_data: &OVector<Model::ScalarType, Model::OutputDim>,
         weights: &Weights<Model::ScalarType, Model::OutputDim>,
         linear_coefficients: &OVector<Model::ScalarType, Model::ModelDim>,
     ) -> Result<Self, Error<Model::Error>>
@@ -238,7 +238,9 @@ where
 
         let H = weights * model_function_jacobian(model, linear_coefficients)?;
         let output_len = model.output_len().value();
-        let weighted_residuals = weights * (data - model.eval()? * linear_coefficients);
+        let weighted_residuals: OVector<_, _> =
+            weighted_data - weights * model.eval()? * linear_coefficients;
+        println!("weighted_residuals: {}", weighted_residuals);
         let degrees_of_freedom =
             model.parameter_count().value() + model.base_function_count().value();
         if output_len <= degrees_of_freedom {
@@ -254,6 +256,7 @@ where
         let HTH_inv = (H.transpose() * H)
             .try_inverse()
             .ok_or(Error::MatrixInversionError)?;
+        println!("HTH_inv: {}", HTH_inv);
         let covariance_matrix = HTH_inv * sigma * sigma;
         let correlation_matrix = calc_correlation_matrix(&covariance_matrix);
 

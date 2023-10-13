@@ -285,7 +285,7 @@ where
 
         if let Ok(statistics) = FitStatistics::try_calculate(
             problem.model(),
-            problem.data(),
+            problem.weighted_data(),
             problem.weights(),
             problem.linear_coefficients().unwrap(),
         ) {
@@ -480,8 +480,10 @@ where
         &self.weights
     }
 
-    /// the data that we are trying to fit
-    pub fn data(&self) -> &OVector<Model::ScalarType, Model::OutputDim> {
+    /// the weighted data vector `$\vec{y}_w$` to which to fit the model. Note
+    /// that the weights are already applied to the data vector and this
+    /// is not the original data vector
+    pub fn weighted_data(&self) -> &OVector<Model::ScalarType, Model::OutputDim> {
         &self.y_w
     }
 }

@@ -266,39 +266,58 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     ]);
     // and finally the weights for the observations
     // these do actually influence the fits in the second decimal place
-    let _w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
+    let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
 
     let model = OLearyExampleModel::new(t, initial_guess);
     let problem = LevMarProblemBuilder::new(model)
         .observations(y)
-        // .weights(w)
+        .weights(w)
         .build()
         .unwrap();
 
-    let _p2 = problem.clone();
-
-    let (problem, report) = LevMarSolver::new().minimize(problem);
+    let (fit_result, statistics) = LevMarSolver::new()
+        .fit_with_statistics(problem)
+        .expect("fitting must exit succesfully");
     assert!(
-        report.termination.was_successful(),
+        fit_result.minimization_report.termination.was_successful(),
         "fitting did not terminate successfully"
     );
-    let _alpha_fit = problem.params();
-    let _c_fit = problem
+    let alpha_fit = fit_result.nonlinear_parameters();
+    let c_fit = fit_result
         .linear_coefficients()
         .expect("solved problem must have linear coefficients");
     // solved parameters from the matlab code
     // they note that many parameters fit the observations well
-    let _alpha_true =
+    let alpha_true =
         OVector::<f64, U3>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
-    let _c_true = OVector::<f64, U2>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
-    // @todo comment this in again
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // !!!!!!!!!!!!!!!!!!!!!!!
-    // assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
-    // assert_relative_eq!(c_fit, c_true, epsilon = 1e-5);
+    let c_true = OVector::<f64, U2>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
+    assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
+    assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
 
-    // let (mut problem, report) = LevMarSolver::new().fit_with_statistics(p2);
-    // println!("cov mat = {}", report.covariance_matrix);
+    println!("cov = {}", statistics.covariance_matrix());
+    println!("sigma = {}", statistics.regression_standard_error());
+    println!("wresid = {}", statistics.weighted_residuals());
+    let expected_weighted_residuals = DVector::from_column_slice(&[
+        -1.1211e-03,
+        3.1751e-03,
+        -2.7656e-03,
+        -1.4600e-03,
+        1.2081e-03,
+        2.2586e-03,
+        -1.1101e-03,
+        -2.2554e-03,
+        1.3257e-03,
+        1.4716e-03,
+    ]);
+    println!(
+        "problem wresid = {}",
+        fit_result.problem.residuals().unwrap()
+    );
+    assert_relative_eq!(
+        expected_weighted_residuals,
+        statistics.weighted_residuals(),
+        epsilon = 1e-5
+    );
 
     // println!("jacobian analytical= {}", problem.jacobian().unwrap());
     // let jacobian_analytical = problem.jacobian().unwrap();
