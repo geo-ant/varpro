@@ -38,11 +38,8 @@ fn matrix_concatenation_for_fixed_size_matrices() {
 fn correlation_matrix_is_calculated_correctly_from_a_covariance_matrix() {
     // covariance matrix
     let cov = DMatrix::from_row_slice(2, 2, &[2., 3., 4., 5.]);
-    println!("cov: {}", cov);
     // correlation matrix
     let corr = DMatrix::from_row_slice(2, 2, &[1.0, 3. / f64::sqrt(10.), 4. / f64::sqrt(10.), 1.0]);
     let calc = calc_correlation_matrix(&cov);
-    println!("corr: {}", corr);
-    println!("calc: {}", calc);
     assert_relative_eq!(corr, calc);
 }

@@ -158,7 +158,7 @@ where
 
     /// the weighted residuals
     /// ```math
-    /// \vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))
+    /// \vec{r_w} = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))
     /// ```
     /// at the best fit parameters.
     pub fn weighted_residuals(&self) -> &OVector<Model::ScalarType, Model::OutputDim> {
