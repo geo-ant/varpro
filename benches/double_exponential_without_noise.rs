@@ -118,13 +118,11 @@ where
 fn run_minimization_for_handrolled_separable_model(
     problem: LevMarProblem<DoubleExpModelWithConstantOffsetSepModel>,
 ) -> [f64; 5] {
-    let (problem, report) = LevMarSolver::new().minimize(problem);
-    assert!(
-        report.termination.was_successful(),
-        "Termination not successful"
-    );
-    let params = problem.params();
-    let coeff = problem.linear_coefficients().unwrap();
+    let result = LevMarSolver::new()
+        .fit(problem)
+        .expect("fitting must exit successfully");
+    let params = result.nonlinear_parameters();
+    let coeff = result.linear_coefficients().unwrap();
     [params[0], params[1], coeff[0], coeff[1], coeff[2]]
 }
 
@@ -134,13 +132,11 @@ fn run_minimization_for_handrolled_separable_model(
 fn run_minimization_for_builder_separable_model(
     problem: LevMarProblem<SeparableModel<f64>>,
 ) -> [f64; 5] {
-    let (problem, report) = LevMarSolver::new().minimize(problem);
-    assert!(
-        report.termination.was_successful(),
-        "Termination not successful"
-    );
-    let params = problem.params();
-    let coeff = problem.linear_coefficients().unwrap();
+    let result = LevMarSolver::new()
+        .fit(problem)
+        .expect("fitting must exit successfully");
+    let params = result.nonlinear_parameters();
+    let coeff = result.linear_coefficients().unwrap();
     [params[0], params[1], coeff[0], coeff[1], coeff[2]]
 }
 

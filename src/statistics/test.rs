@@ -1,12 +1,10 @@
 use std::convert::Infallible;
 
-use crate::{
-    model::SeparableModel, prelude::SeparableNonlinearModel, statistics::model_function_jacobian,
-};
+use crate::{prelude::SeparableNonlinearModel, statistics::model_function_jacobian};
 
 use super::{calc_correlation_matrix, concat_colwise};
 use approx::assert_relative_eq;
-use nalgebra::{matrix, DMatrix, DVector, Dim, Dyn, OMatrix, U2, U3, U5};
+use nalgebra::{DMatrix, DVector, Dim, Dyn, OMatrix, U2, U3, U5};
 #[test]
 fn matrix_concatenation_for_dynamic_matrices() {
     // two DMatrix instances with the same number of rows but

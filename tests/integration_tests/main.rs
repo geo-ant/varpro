@@ -1,4 +1,3 @@
-
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DVector;
 
@@ -18,7 +17,6 @@ use varpro::prelude::*;
 use varpro::solvers::levmar::*;
 
 use approx::assert_relative_eq;
-
 
 #[test]
 // sanity check my calculations above
@@ -70,29 +68,29 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         .build()
         .expect("Building valid problem should not panic");
 
-    let (problem, report) = LevMarSolver::new().minimize(problem);
+    let result = LevMarSolver::new()
+        .fit(problem)
+        .expect("fit must complete succesfully");
     assert!(
-        report.termination.was_successful(),
+        result.minimization_report.termination.was_successful(),
         "Levenberg Marquardt did not converge"
     );
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
-    let (tau1_index, tau2_index) = if problem.params()[0] < problem.params()[1] {
-        (0usize, 1usize)
-    } else {
-        (1, 0)
-    };
-    let tau1_calc = problem.params()[tau1_index];
-    let tau2_calc = problem.params()[tau2_index];
-    let c1_calc = problem
+    let (tau1_index, tau2_index) =
+        if result.nonlinear_parameters()[0] < result.nonlinear_parameters()[1] {
+            (0usize, 1usize)
+        } else {
+            (1, 0)
+        };
+    let tau1_calc = result.nonlinear_parameters()[tau1_index];
+    let tau2_calc = result.nonlinear_parameters()[tau2_index];
+    let c = result
         .linear_coefficients()
-        .expect("linear coeffs must exist")[tau1_index];
-    let c2_calc = problem
-        .linear_coefficients()
-        .expect("linear coeffs must exist")[tau2_index];
-    let c3_calc = problem
-        .linear_coefficients()
-        .expect("linear coeffs must exist")[2];
+        .expect("linear coeffs must exist");
+    let c1_calc = c[tau1_index];
+    let c2_calc = c[tau2_index];
+    let c3_calc = c[2];
 
     // assert that the calculated coefficients and nonlinear model parameters are correct
     assert_relative_eq!(c1, c1_calc, epsilon = 1e-8);
@@ -100,10 +98,6 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     assert_relative_eq!(c3, c3_calc, epsilon = 1e-8);
     assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
-    assert!(
-        report.termination.was_successful(),
-        "Termination not successful"
-    );
 }
 
 #[test]
@@ -135,25 +129,25 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         .build()
         .expect("Building valid problem should not panic");
 
-    let (problem, report) = LevMarSolver::new().minimize(problem);
+    let result = LevMarSolver::new()
+        .fit(problem)
+        .expect("fitting must exit succesfully");
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
-    let (tau1_index, tau2_index) = if problem.params()[0] < problem.params()[1] {
-        (0usize, 1usize)
-    } else {
-        (1, 0)
-    };
-    let tau1_calc = problem.params()[tau1_index];
-    let tau2_calc = problem.params()[tau2_index];
-    let c1_calc = problem
+    let (tau1_index, tau2_index) =
+        if result.nonlinear_parameters()[0] < result.nonlinear_parameters()[1] {
+            (0usize, 1usize)
+        } else {
+            (1, 0)
+        };
+    let tau1_calc = result.nonlinear_parameters()[tau1_index];
+    let tau2_calc = result.nonlinear_parameters()[tau2_index];
+    let c = result
         .linear_coefficients()
-        .expect("linear coeffs must exist")[tau1_index];
-    let c2_calc = problem
-        .linear_coefficients()
-        .expect("linear coeffs must exist")[tau2_index];
-    let c3_calc = problem
-        .linear_coefficients()
-        .expect("linear coeffs must exist")[2];
+        .expect("linear coeffs must exist");
+    let c1_calc = c[tau1_index];
+    let c2_calc = c[tau2_index];
+    let c3_calc = c[2];
 
     // assert that the calculated coefficients and nonlinear model parameters are correct
     assert_relative_eq!(c1, c1_calc, epsilon = 1e-8);
@@ -163,7 +157,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
 
     assert!(
-        report.termination.was_successful(),
+        result.minimization_report.termination.was_successful(),
         "Termination not successful"
     );
 }

@@ -12,6 +12,7 @@ use varpro::{model::errors::ModelError, prelude::*};
 /// using the trait directly without using the builder.
 /// This allows us to use caching of the intermediate results
 /// to calculate the derivatives more efficiently.
+#[derive(Debug, PartialEq)]
 pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// the x vector associated with this model.
     /// We make this configurable to enable models to

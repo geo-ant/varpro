@@ -36,6 +36,7 @@ where
 
 /// A helper type that contains the fitting problem after the
 /// minimization, as well as a report and some convenience functions
+#[derive(Debug)]
 pub struct FitResult<Model>
 where
     Model: SeparableNonlinearModel,
