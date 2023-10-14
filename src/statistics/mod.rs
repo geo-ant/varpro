@@ -1,7 +1,7 @@
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
-    allocator::Allocator, ComplexField, DVector, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix,
-    OVector, RealField, Scalar,
+    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector,
+    RealField, Scalar,
 };
 use num_traits::{Float, FromPrimitive, Zero};
 use thiserror::Error as ThisError;

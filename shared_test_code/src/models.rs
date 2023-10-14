@@ -1,5 +1,4 @@
 use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector2, Vector3, U2, U3};
-use varpro::model::builder::SeparableModelBuilderProxyWithDerivatives;
 use varpro::model::SeparableModel;
 use varpro::{model::errors::ModelError, prelude::*};
 
