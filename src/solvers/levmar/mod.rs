@@ -278,9 +278,12 @@ where
         DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType, Model::OutputDim, <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output>,
         DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType,  <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output,Model::OutputDim>,
     {
-        let (problem, report) = self.solver.minimize(problem);
-        if !report.termination.was_successful() {
-            return Err(FitResult::new(problem, report));
+        let FitResult {
+            problem,
+            minimization_report,
+        } = self.fit(problem)?;
+        if !minimization_report.termination.was_successful() {
+            return Err(FitResult::new(problem, minimization_report));
         }
 
         if let Ok(statistics) = FitStatistics::try_calculate(
@@ -289,9 +292,9 @@ where
             problem.weights(),
             problem.linear_coefficients().unwrap(),
         ) {
-            Ok((FitResult::new(problem, report), statistics))
+            Ok((FitResult::new(problem, minimization_report), statistics))
         } else {
-            Err(FitResult::new(problem, report))
+            Err(FitResult::new(problem, minimization_report))
         }
     }
 }

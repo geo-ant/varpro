@@ -240,7 +240,6 @@ where
         let output_len = model.output_len().value();
         let weighted_residuals: OVector<_, _> =
             weighted_data - weights * model.eval()? * linear_coefficients;
-        println!("weighted_residuals: {}", weighted_residuals);
         let degrees_of_freedom =
             model.parameter_count().value() + model.base_function_count().value();
         if output_len <= degrees_of_freedom {
@@ -256,7 +255,6 @@ where
         let HTH_inv = (H.transpose() * H)
             .try_inverse()
             .ok_or(Error::MatrixInversionError)?;
-        println!("HTH_inv: {}", HTH_inv);
         let covariance_matrix = HTH_inv * sigma * sigma;
         let correlation_matrix = calc_correlation_matrix(&covariance_matrix);
 

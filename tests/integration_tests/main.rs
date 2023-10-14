@@ -68,24 +68,29 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         .build()
         .expect("Building valid problem should not panic");
 
-    let result = LevMarSolver::new()
-        .fit(problem)
+    let (fit_result, statistics) = LevMarSolver::new()
+        .fit_with_statistics(problem)
         .expect("fit must complete succesfully");
     assert!(
-        result.minimization_report.termination.was_successful(),
+        fit_result.minimization_report.termination.was_successful(),
         "Levenberg Marquardt did not converge"
+    );
+    assert_relative_eq!(
+        fit_result.problem.residuals().unwrap(),
+        statistics.weighted_residuals(),
+        epsilon = 1e-5
     );
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
     let (tau1_index, tau2_index) =
-        if result.nonlinear_parameters()[0] < result.nonlinear_parameters()[1] {
+        if fit_result.nonlinear_parameters()[0] < fit_result.nonlinear_parameters()[1] {
             (0usize, 1usize)
         } else {
             (1, 0)
         };
-    let tau1_calc = result.nonlinear_parameters()[tau1_index];
-    let tau2_calc = result.nonlinear_parameters()[tau2_index];
-    let c = result
+    let tau1_calc = fit_result.nonlinear_parameters()[tau1_index];
+    let tau2_calc = fit_result.nonlinear_parameters()[tau2_index];
+    let c = fit_result
         .linear_coefficients()
         .expect("linear coeffs must exist");
     let c1_calc = c[tau1_index];
@@ -129,20 +134,26 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         .build()
         .expect("Building valid problem should not panic");
 
-    let result = LevMarSolver::new()
-        .fit(problem)
+    let (fit_result, statistics) = LevMarSolver::new()
+        .fit_with_statistics(problem)
         .expect("fitting must exit succesfully");
+
+    assert_relative_eq!(
+        fit_result.problem.residuals().unwrap(),
+        statistics.weighted_residuals(),
+        epsilon = 1e-5
+    );
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
     let (tau1_index, tau2_index) =
-        if result.nonlinear_parameters()[0] < result.nonlinear_parameters()[1] {
+        if fit_result.nonlinear_parameters()[0] < fit_result.nonlinear_parameters()[1] {
             (0usize, 1usize)
         } else {
             (1, 0)
         };
-    let tau1_calc = result.nonlinear_parameters()[tau1_index];
-    let tau2_calc = result.nonlinear_parameters()[tau2_index];
-    let c = result
+    let tau1_calc = fit_result.nonlinear_parameters()[tau1_index];
+    let tau2_calc = fit_result.nonlinear_parameters()[tau2_index];
+    let c = fit_result
         .linear_coefficients()
         .expect("linear coeffs must exist");
     let c1_calc = c[tau1_index];
@@ -157,7 +168,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
 
     assert!(
-        result.minimization_report.termination.was_successful(),
+        fit_result.minimization_report.termination.was_successful(),
         "Termination not successful"
     );
 }
@@ -295,8 +306,6 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
 
     println!("cov = {}", statistics.covariance_matrix());
-    println!("sigma = {}", statistics.regression_standard_error());
-    println!("wresid = {}", statistics.weighted_residuals());
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,
         3.1751e-03,
@@ -318,10 +327,42 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         statistics.weighted_residuals(),
         epsilon = 1e-5
     );
+    assert_relative_eq!(
+        fit_result.problem.residuals().unwrap(),
+        statistics.weighted_residuals(),
+        epsilon = 1e-5
+    );
 
-    // println!("jacobian analytical= {}", problem.jacobian().unwrap());
-    // let jacobian_analytical = problem.jacobian().unwrap();
-    // let jacobian_numerical = differentiate_numerically(&mut problem).unwrap();
-    // println!("jacobian numerical= {}", jacobian_numerical);
-    // assert_relative_eq!(jacobian_analytical, jacobian_numerical, epsilon = 1e-4);
+    let expected_sigma = 2.7539e-03;
+    assert_relative_eq!(
+        statistics.regression_standard_error(),
+        expected_sigma,
+        epsilon = 1e-5
+    );
+
+    let expected_covariance_matrix = nalgebra::matrix![
+    4.4887e-03,  -4.4309e-03,  -2.1613e-04,  -4.6980e-04,  -1.9052e-03;
+      -4.4309e-03,   4.3803e-03,   2.1087e-04,   4.7170e-04,   1.8828e-03;
+      -2.1613e-04,   2.1087e-04,   2.6925e-04,  -3.6450e-05,   5.1919e-05;
+      -4.6980e-04,   4.7170e-04,  -3.6450e-05,   8.5784e-05,   2.0534e-04;
+      -1.9052e-03,   1.8828e-03,   5.1919e-05,   2.0534e-04,   8.2272e-04;
+    ];
+    assert_relative_eq!(
+        statistics.covariance_matrix(),
+        &expected_covariance_matrix,
+        epsilon = 1e-5,
+    );
+
+    let expected_correlation_matrix = nalgebra::matrix![
+     1.0000,  -0.9993,  -0.1966,  -0.7571,  -0.9914;
+    -0.9993,   1.0000,   0.1942,   0.7695,   0.9918;
+    -0.1966,   0.1942,   1.0000,  -0.2398,   0.1103;
+    -0.7571,   0.7695,  -0.2398,   1.0000,   0.7729;
+    -0.9914,   0.9918,   0.1103,   0.7729,   1.0000;
+      ];
+    assert_relative_eq!(
+        statistics.correlation_matrix(),
+        &expected_correlation_matrix,
+        epsilon = 1e-4
+    );
 }
