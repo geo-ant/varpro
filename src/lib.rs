@@ -257,11 +257,11 @@
 //! let c = fit_result.linear_coefficients().unwrap();
 //! ```
 //!
-//! # Example 2: A Mixed exponential and trigonometric model
+//! # Example 2: Mixed exponential and trigonometric model
 //!
 //! This example is taken from the matlab code that is published as part of the
 //! O'Leary 2013 paper and fits a mixed exponential and trigonometric model to
-//! some noisy data.
+//! some noisy and weighted data.
 //!
 //! In keeping with the element-wise notation above, we can write the model
 //! as
