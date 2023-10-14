@@ -140,6 +140,10 @@
 //! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
 //! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
 //!
+//! **Fit Statistics:** To get additional statistical information after the fit
+//! has finished, use the [LevMarSolver::fit_with_statistics](crate::solvers::levmar::LevMarSolver::fit_with_statistics)
+//! method.
+//!
 //! ```no_run
 //! # use varpro::model::SeparableModel;
 //! # use varpro::prelude::*;
@@ -152,7 +156,7 @@
 //! If the minimization was successful, the nonlinear parameters `$\vec{\alpha}$`
 //! are now stored in the variable `alpha` and the linear coefficients `$\vec{c}$` are stored in `coeff`.
 //!
-//! # Example
+//! # Example: Double Exponential Fitting
 //!
 //! ## Preliminaries
 //! The following example demonstrates how to fit a double exponential decay model with constant offset
@@ -251,6 +255,84 @@
 //! // the linear coefficients after fitting
 //! // they are in the same order as the basis functions that were added to the model
 //! let c = fit_result.linear_coefficients().unwrap();
+//! ```
+//!
+//! # Example 2: A Mixed exponential and trigonometric model
+//!
+//! This example is taken from the matlab code that is published as part of the
+//! O'Leary 2013 paper and fits a mixed exponential and trigonometric model to
+//! some noisy data.
+//!
+//! In keeping with the element-wise notation above, we can write the model
+//! as
+//!
+//! ```math
+//! (\vec{f}(\vec{x},\vec{\alpha},\vec{c}))_k = c_1 \exp(-\alpha_2 x_k)\cdot\cos(\alpha_3 x_k)
+//!     + c_2 \exp(-\alpha_1 x_k)\cdot\cos(\alpha_2 x_k).
+//! ```
+//!
+//! The code to fit this model to some data is given below. Note also that
+//! weights are given for the data points.
+//!
+//! ```rust
+//! use nalgebra::DVector;
+//! use varpro::prelude::*;
+//! use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+//!
+//! // build the model
+//! fn phi1(t: &DVector<f64>, alpha2: f64, alpha3: f64) -> DVector<f64> {
+//!     t.map(|t| f64::exp(-alpha2 * t) * f64::cos(alpha3 * t))
+//! }
+//! fn phi2(t: &DVector<f64>, alpha1: f64, alpha2: f64) -> DVector<f64> {
+//!     t.map(|t| f64::exp(-alpha1 * t) * f64::cos(alpha2 * t))
+//! }
+//! // the data, weight and initial guesses for our fitting problem
+//!
+//! let t = DVector::from_vec(vec![
+//!     0., 0.1, 0.22, 0.31, 0.46, 0.50, 0.63, 0.78, 0.85, 0.97,
+//! ]);
+//! let y = DVector::from_vec(vec![
+//!     6.9842, 5.1851, 2.8907, 1.4199, -0.2473, -0.5243, -1.0156, -1.0260, -0.9165, -0.6805,
+//! ]);
+//! let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
+//! let initial_guess = vec![0.5, 2., 3.];
+//!
+//! let model = SeparableModelBuilder::new(["alpha1", "alpha2", "alpha3"])
+//!     .initial_parameters(initial_guess)
+//!     .independent_variable(t)
+//!     // phi 1
+//!     .function(["alpha2", "alpha3"], phi1)
+//!     .partial_deriv("alpha2", |t: &DVector<f64>, alpha2: f64, alpha3: f64| {
+//!         phi1(t, alpha2, alpha3).component_mul(&(-1. * t))
+//!     })
+//!     .partial_deriv("alpha3", |t: &DVector<f64>, alpha2: f64, alpha3: f64| {
+//!         t.map(|t| -t * (-alpha2 * t).exp() * (alpha3 * t).sin())
+//!     })
+//!     .function(["alpha1", "alpha2"], phi2)
+//!     .partial_deriv("alpha1", |t: &DVector<f64>, alpha1: f64, alpha2: f64| {
+//!         phi2(t, alpha1, alpha2).component_mul(&(-1. * t))
+//!     })
+//!     .partial_deriv("alpha2", |t: &DVector<f64>, alpha1: f64, alpha2: f64| {
+//!         t.map(|t| -t * (-alpha1 * t).exp() * (alpha2 * t).sin())
+//!     })
+//!     .build()
+//!     .unwrap();
+//!
+//! // describe the fitting problem
+//! let problem = LevMarProblemBuilder::new(model)
+//!     .observations(y)
+//!     .weights(w)
+//!     .build()
+//!     .unwrap();
+//!
+//! // fit the data
+//! let fit_result = LevMarSolver::new()
+//!                 .fit(problem)
+//!                 .expect("fit must succeed");
+//! // the nonlinear parameters
+//! let alpha = fit_result.nonlinear_parameters();
+//! // the linear coefficients
+//! let c  = fit_result.linear_coefficients().unwrap();
 //! ```
 //!
 //! # References and Further Reading
