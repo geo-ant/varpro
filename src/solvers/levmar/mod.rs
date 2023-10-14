@@ -221,6 +221,7 @@ where
 
     /// Try to solve the given varpro minimization problem. The parameters of
     /// the problem which are set when this function is called are used as the initial guess
+    ///
     /// # Returns
     /// On success, returns an Ok value containing the fit result, which contains
     /// the final state of the problem as well as some convenience functions that
@@ -256,6 +257,12 @@ where
         }
     }
 
+    /// Same as the [LevMarProblem::fit] function but also calculates some additional
+    /// statistical information about the fit, if the fit was successful.
+    ///
+    /// # Returns
+    /// See also the [LevMarProblem::fit] function, but also returns statistical
+    /// information about the fit that can be queried, if the fit was successful.
     pub fn fit_with_statistics(&self,problem : LevMarProblem<Model>) -> Result<(FitResult<Model>,FitStatistics<Model>),FitResult<Model>>
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
