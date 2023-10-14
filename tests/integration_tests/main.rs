@@ -1,4 +1,5 @@
 use levenberg_marquardt::LevenbergMarquardt;
+use nalgebra::DMatrix;
 use nalgebra::DVector;
 
 use nalgebra::OVector;
@@ -10,6 +11,7 @@ use nalgebra::U3;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::linspace;
+use shared_test_code::models::o_leary_example_model;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::models::OLearyExampleModel;
@@ -49,6 +51,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let tau2_guess = 6.5;
     let mut model =
         get_double_exponential_model_with_constant_offset(x, vec![tau1_guess, tau2_guess]);
+    _ = format!("{:?}", model);
     // true parameters
     let tau1 = 1.;
     let tau2 = 3.;
@@ -305,7 +308,6 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
     assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
 
-    println!("cov = {}", statistics.covariance_matrix());
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,
         3.1751e-03,
@@ -318,10 +320,6 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         1.3257e-03,
         1.4716e-03,
     ]);
-    println!(
-        "problem wresid = {}",
-        fit_result.problem.residuals().unwrap()
-    );
     assert_relative_eq!(
         expected_weighted_residuals,
         statistics.weighted_residuals(),
@@ -360,6 +358,131 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     -0.7571,   0.7695,  -0.2398,   1.0000,   0.7729;
     -0.9914,   0.9918,   0.1103,   0.7729,   1.0000;
       ];
+    assert_relative_eq!(
+        statistics.correlation_matrix(),
+        &expected_correlation_matrix,
+        epsilon = 1e-4
+    );
+}
+
+#[test]
+// this also tests the correct application of weights
+fn test_oleary_example_with_separable_model() {
+    // those are the initial guesses from the example in the oleary matlab code
+    let initial_guess = vec![0.5, 2., 3.];
+    // these are the original timepoints from the matlab code
+    let t = DVector::from_vec(vec![
+        0., 0.1, 0.22, 0.31, 0.46, 0.50, 0.63, 0.78, 0.85, 0.97,
+    ]);
+    // the observations from the initial matlab
+    let y = DVector::from_vec(vec![
+        6.9842, 5.1851, 2.8907, 1.4199, -0.2473, -0.5243, -1.0156, -1.0260, -0.9165, -0.6805,
+    ]);
+    // and finally the weights for the observations
+    // these do actually influence the fits in the second decimal place
+    let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
+
+    let model = o_leary_example_model(t, initial_guess);
+    let problem = LevMarProblemBuilder::new(model)
+        .observations(y)
+        .weights(w)
+        .build()
+        .unwrap();
+
+    let (fit_result, statistics) = LevMarSolver::new()
+        .fit_with_statistics(problem)
+        .expect("fitting must exit succesfully");
+    assert!(
+        fit_result.minimization_report.termination.was_successful(),
+        "fitting did not terminate successfully"
+    );
+    let alpha_fit = fit_result.nonlinear_parameters();
+    let c_fit = fit_result
+        .linear_coefficients()
+        .expect("solved problem must have linear coefficients");
+    // solved parameters from the matlab code
+    // they note that many parameters fit the observations well
+    let alpha_true = DVector::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
+    let c_true = DVector::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
+    assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
+    assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
+
+    let expected_weighted_residuals = DVector::from_column_slice(&[
+        -1.1211e-03,
+        3.1751e-03,
+        -2.7656e-03,
+        -1.4600e-03,
+        1.2081e-03,
+        2.2586e-03,
+        -1.1101e-03,
+        -2.2554e-03,
+        1.3257e-03,
+        1.4716e-03,
+    ]);
+    assert_relative_eq!(
+        expected_weighted_residuals,
+        statistics.weighted_residuals(),
+        epsilon = 1e-5
+    );
+    assert_relative_eq!(
+        fit_result.problem.residuals().unwrap(),
+        statistics.weighted_residuals(),
+        epsilon = 1e-5
+    );
+
+    let expected_sigma = 2.7539e-03;
+    assert_relative_eq!(
+        statistics.regression_standard_error(),
+        expected_sigma,
+        epsilon = 1e-5
+    );
+
+    let expected_covariance_matrix = DMatrix::from_row_slice(
+        5,
+        5,
+        &[
+            4.4887e-03,
+            -4.4309e-03,
+            -2.1613e-04,
+            -4.6980e-04,
+            -1.9052e-03,
+            -4.4309e-03,
+            4.3803e-03,
+            2.1087e-04,
+            4.7170e-04,
+            1.8828e-03,
+            -2.1613e-04,
+            2.1087e-04,
+            2.6925e-04,
+            -3.6450e-05,
+            5.1919e-05,
+            -4.6980e-04,
+            4.7170e-04,
+            -3.6450e-05,
+            8.5784e-05,
+            2.0534e-04,
+            -1.9052e-03,
+            1.8828e-03,
+            5.1919e-05,
+            2.0534e-04,
+            8.2272e-04,
+        ],
+    );
+    assert_relative_eq!(
+        statistics.covariance_matrix(),
+        &expected_covariance_matrix,
+        epsilon = 1e-5,
+    );
+
+    let expected_correlation_matrix = DMatrix::from_row_slice(
+        5,
+        5,
+        &[
+            1.0000, -0.9993, -0.1966, -0.7571, -0.9914, -0.9993, 1.0000, 0.1942, 0.7695, 0.9918,
+            -0.1966, 0.1942, 1.0000, -0.2398, 0.1103, -0.7571, 0.7695, -0.2398, 1.0000, 0.7729,
+            -0.9914, 0.9918, 0.1103, 0.7729, 1.0000,
+        ],
+    );
     assert_relative_eq!(
         statistics.correlation_matrix(),
         &expected_correlation_matrix,

@@ -1,4 +1,6 @@
 use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector2, Vector3, U2, U3};
+use varpro::model::builder::SeparableModelBuilderProxyWithDerivatives;
+use varpro::model::SeparableModel;
 use varpro::{model::errors::ModelError, prelude::*};
 
 #[derive(Clone)]
@@ -403,4 +405,36 @@ impl SeparableNonlinearModel for OLearyExampleModel {
 
         Ok(derivs)
     }
+}
+
+/// the oleary example model as above but this time it is generated using
+/// the separable model builder
+pub fn o_leary_example_model(t: DVector<f64>, initial_guesses: Vec<f64>) -> SeparableModel<f64> {
+    fn phi1(t: &DVector<f64>, alpha2: f64, alpha3: f64) -> DVector<f64> {
+        t.map(|t| f64::exp(-alpha2 * t) * f64::cos(alpha3 * t))
+    }
+    fn phi2(t: &DVector<f64>, alpha1: f64, alpha2: f64) -> DVector<f64> {
+        t.map(|t| f64::exp(-alpha1 * t) * f64::cos(alpha2 * t))
+    }
+
+    SeparableModelBuilder::new(["alpha1", "alpha2", "alpha3"])
+        .initial_parameters(initial_guesses)
+        .independent_variable(t)
+        // phi 1
+        .function(["alpha2", "alpha3"], phi1)
+        .partial_deriv("alpha2", |t: &DVector<f64>, alpha2: f64, alpha3: f64| {
+            phi1(t, alpha2, alpha3).component_mul(&(-1. * t))
+        })
+        .partial_deriv("alpha3", |t: &DVector<f64>, alpha2: f64, alpha3: f64| {
+            t.map(|t| -t * (-alpha2 * t).exp() * (alpha3 * t).sin())
+        })
+        .function(["alpha1", "alpha2"], phi2)
+        .partial_deriv("alpha1", |t: &DVector<f64>, alpha1: f64, alpha2: f64| {
+            phi2(t, alpha1, alpha2).component_mul(&(-1. * t))
+        })
+        .partial_deriv("alpha2", |t: &DVector<f64>, alpha1: f64, alpha2: f64| {
+            t.map(|t| -t * (-alpha1 * t).exp() * (alpha2 * t).sin())
+        })
+        .build()
+        .unwrap()
 }
