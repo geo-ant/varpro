@@ -31,7 +31,7 @@ pub(crate) enum Error<ModelError: std::error::Error> {
 /// about the fit, such as errors on the parameters and other useful
 /// information to assess the quality of the fit.
 ///
-/// # Where is R squared?
+/// # Where is `$R^2$`?
 ///
 /// We don't calculate `$R^2$` because "it is an inadequate measure for the
 /// goodness of the fit in nonlinear models" ([Spiess and Neumeyer 2010](https://doi.org/10.1186/1471-2210-10-6)).
@@ -130,9 +130,12 @@ where
     /// `$\vec{\alpha}=(\alpha_1,\alpha_2,\alpha_3)^T$`. Then the covariance matrix
     /// is odered for the parameter vector `$(c_1,c_2,\alpha_1,\alpha_2,\alpha_3)^T$`.
     /// The covariance matrix `$C$` (upper case C) is a square matrix of size `$5 \times 5$`.
-    /// Element `$C_{ij}$` is the covariance between the parameters `$i$` and `$j$`, so in this
-    /// example `$C_{11}$` is the variance of `$c_1$`, `$C_{12}$` is the covariance between `$c_1$`
-    /// and `$c_2$`, `$C_{13}$` is the covariance between `$c_1$` and `$\alpha_1$`, and so on.
+    /// Element `$C_{ij}$` is the covariance between the parameters at indices `$i$` and `$j$`, so in this
+    /// example:
+    /// * `$C_{11}$` is the variance of `$c_1$`,
+    /// * `$C_{12}$` is the covariance between `$c_1$`,
+    /// * and `$c_2$`, `$C_{13}$` is the covariance between `$c_1$` and `$\alpha_1$`,
+    /// * and so on.
     #[allow(clippy::type_complexity)]
     pub fn covariance_matrix(
         &self,
@@ -158,9 +161,9 @@ where
 
     /// the weighted residuals
     /// ```math
-    /// \vec{r_w} = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))
+    /// \vec{r_w} = W * (\vec{y} - \vec{f}(\vec{\alpha},\vec{c}))
     /// ```
-    /// at the best fit parameters.
+    /// at the best fit parameters `$\vec{alpha}$` and `$\vec{c}$`.
     pub fn weighted_residuals(&self) -> &OVector<Model::ScalarType, Model::OutputDim> {
         &self.weighted_residuals
     }
@@ -175,6 +178,13 @@ where
     /// of basis functions).
     pub fn regression_standard_error(&self) -> Model::ScalarType {
         self.sigma.clone()
+    }
+
+    /// helper function to extract the estimated standard deviation
+    /// of the nonlinear model parameters. Those could also be
+    /// manually extracted from the diagonal of the covariance matrix.
+    pub fn stdev_nonlinear_parameters(&self) -> OVector<Model::ScalarType, Model::ParameterDim> {
+        todo!()
     }
 }
 
