@@ -89,15 +89,22 @@ let problem = LevMarProblemBuilder::new(model)
   .build()
   .unwrap();
 // 3. Solve the fitting problem
-let (solved_problem, report) = LevMarSolver::new().minimize(problem);
-assert!(report.termination.was_successful());
+let fit_result = LevMarSolver::new()
+    .fit(problem)
+    .expect("fit must exit successfully");
 // 4. obtain the nonlinear parameters after fitting
-let alpha = solved_problem.params();
+let alpha = fit_result.nonlinear_parameters();
 // 5. obtain the linear parameters
-let c = solved_problem.linear_coefficients().unwrap();
+let c = fit_result.linear_coefficients().unwrap();
 ```
 
 For more examples please refer to the crate documentation.
+
+### Fit Statistics
+
+Additionally to the `fit` member function, the `LevMarSolver` also provides a 
+`fit_with_statistics` function that calculations some additional statistical
+information after the fit has finished.
 
 ### Maximum Performance
 

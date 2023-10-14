@@ -223,6 +223,7 @@ where
     /// the problem which are set when this function is called are used as the initial guess
     ///
     /// # Returns
+    ///
     /// On success, returns an Ok value containing the fit result, which contains
     /// the final state of the problem as well as some convenience functions that
     /// allow to query the optimal parameters. Note that success of failure is
@@ -261,8 +262,9 @@ where
     /// statistical information about the fit, if the fit was successful.
     ///
     /// # Returns
-    /// See also the [LevMarProblem::fit] function, but also returns statistical
-    /// information about the fit that can be queried, if the fit was successful.
+    ///
+    /// See also the [LevMarProblem::fit] function, but on success also returns statistical
+    /// information about the fit.
     pub fn fit_with_statistics(&self,problem : LevMarProblem<Model>) -> Result<(FitResult<Model>,FitStatistics<Model>),FitResult<Model>>
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
@@ -293,11 +295,15 @@ where
             return Err(FitResult::new(problem, minimization_report));
         }
 
+        let Some(coefficients) = problem.linear_coefficients() else {
+            return Err(FitResult::new(problem, minimization_report));
+        };
+
         if let Ok(statistics) = FitStatistics::try_calculate(
             problem.model(),
             problem.weighted_data(),
             problem.weights(),
-            problem.linear_coefficients().unwrap(),
+            coefficients,
         ) {
             Ok((FitResult::new(problem, minimization_report), statistics))
         } else {

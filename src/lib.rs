@@ -134,7 +134,7 @@
 //! # use varpro::model::*;
 //! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
 //! use varpro::solvers::levmar::LevMarSolver;
-//! let (problem, report) = LevMarSolver::new().minimize(problem);
+//! let fit_result = LevMarSolver::new().fit(problem).unwrap();
 //! ```
 //! Finally, check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
 //! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
@@ -145,13 +145,9 @@
 //! # use varpro::prelude::*;
 //! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
 //! # use varpro::solvers::levmar::LevMarSolver;
-//! # let (problem, report) = LevMarSolver::new().minimize(problem);
-//! assert!(
-//!     report.termination.was_successful(),
-//!     "Termination not successful"
-//! );
-//! let alpha = problem.params();
-//! let coeff = problem.linear_coefficients().unwrap();
+//! # let fit_result = LevMarSolver::new().fit(problem).unwrap();
+//! let alpha = fit_result.nonlinear_parameters();
+//! let coeff = fit_result.linear_coefficients().unwrap();
 //! ```
 //! If the minimization was successful, the nonlinear parameters `$\vec{\alpha}$`
 //! are now stored in the variable `alpha` and the linear coefficients `$\vec{c}$` are stored in `coeff`.
@@ -246,14 +242,15 @@
 //!     .build()
 //!     .unwrap();
 //! // 4. Solve using the fitting problem
-//! let (solved_problem, report) = LevMarSolver::new().minimize(problem);
-//! assert!(report.termination.was_successful());
+//! let fit_result = LevMarSolver::new()
+//!     .fit(problem)
+//!     .expect("fit must succeed");
 //! // the nonlinear parameters after fitting
 //! // they are in the same order as the parameter names given to the model
-//! let alpha = solved_problem.params();
+//! let alpha = fit_result.nonlinear_parameters();
 //! // the linear coefficients after fitting
 //! // they are in the same order as the basis functions that were added to the model
-//! let c = solved_problem.linear_coefficients().unwrap();
+//! let c = fit_result.linear_coefficients().unwrap();
 //! ```
 //!
 //! # References and Further Reading
