@@ -71,6 +71,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         .observations(y)
         .build()
         .expect("Building valid problem should not panic");
+    _ = format!("{:?}", problem);
 
     let (fit_result, statistics) = LevMarSolver::new()
         .fit_with_statistics(problem)

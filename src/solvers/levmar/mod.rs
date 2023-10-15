@@ -212,11 +212,7 @@ where
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMax<<Model as model::SeparableNonlinearModel>::ParameterDim>,
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMin<<Model as model::SeparableNonlinearModel>::ParameterDim>
     {
-        let result = match self.fit(problem) {
-            Ok(result) => result,
-            Err(result) => result,
-        };
-        (result.problem, result.minimization_report)
+        self.solver.minimize(problem)
     }
 
     /// Try to solve the given varpro minimization problem. The parameters of
@@ -249,7 +245,8 @@ where
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMax<<Model as model::SeparableNonlinearModel>::ParameterDim>,
         <Model as model::SeparableNonlinearModel>::OutputDim: DimMin<<Model as model::SeparableNonlinearModel>::ParameterDim>
     {
-        let (problem, report) = self.solver.minimize(problem);
+        #[allow(deprecated)]
+        let (problem, report) = self.minimize(problem);
         let result = FitResult::new(problem, report);
         if result.was_successful() {
             Ok(result)
