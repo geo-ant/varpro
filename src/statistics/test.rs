@@ -1,10 +1,13 @@
 use std::convert::Infallible;
 
-use crate::{prelude::SeparableNonlinearModel, statistics::model_function_jacobian};
+use crate::{
+    prelude::SeparableNonlinearModel,
+    statistics::{extract_range, model_function_jacobian},
+};
 
 use super::{calc_correlation_matrix, concat_colwise};
 use approx::assert_relative_eq;
-use nalgebra::{DMatrix, DVector, Dim, Dyn, OMatrix, U2, U3, U5};
+use nalgebra::{vector, DMatrix, DVector, Dim, Dyn, OMatrix, U0, U1, U2, U3, U4, U5, U6, U7};
 #[test]
 fn matrix_concatenation_for_dynamic_matrices() {
     // two DMatrix instances with the same number of rows but
@@ -116,4 +119,65 @@ fn model_function_jacobian_is_calculated_correctly() {
     );
     let calculated_jac = model_function_jacobian(&model, &c);
     assert_relative_eq!(expected_jac, calculated_jac.unwrap());
+}
+
+#[test]
+fn extract_range_for_dynamic_vector() {
+    // test range extraction for fixed size and dynamic vectors with different
+    // parameters
+    let vec = DVector::from_column_slice(&[1., 2., 3., 4., 5., 6.]);
+    let expected = DVector::from_column_slice(&[2., 3., 4.]);
+    assert_relative_eq!(expected, extract_range(&vec, Dyn(1), Dyn(4)));
+    assert_relative_eq!(vec, extract_range(&vec, Dyn(0), Dyn(6)));
+    let expected = vector![2., 3., 4.];
+    assert_relative_eq!(expected, extract_range(&vec, U1, U4));
+    let expected = vector![1., 2., 3., 4., 5., 6.];
+    assert_relative_eq!(expected, extract_range(&vec, U0, U6));
+}
+
+#[test]
+#[should_panic]
+fn extract_range_for_dynamic_vector_fails_for_out_of_bounds_dynamic() {
+    let vec = DVector::from_column_slice(&[1., 2., 3., 4., 5., 6.]);
+    _ = extract_range(&vec, Dyn(0), Dyn(7));
+}
+
+#[test]
+#[should_panic]
+fn extract_range_for_dynamic_vector_fails_for_out_of_bounds_static() {
+    let vec = DVector::from_column_slice(&[1., 2., 3., 4., 5., 6.]);
+    _ = extract_range(&vec, U0, U7);
+}
+
+// same tests as above for statically sized vector
+#[test]
+fn extract_range_for_static_vector() {
+    let vec = vector![1., 2., 3., 4., 5., 6.];
+    let expected = vector![2., 3., 4.];
+    assert_relative_eq!(expected, extract_range(&vec, U1, U4));
+    let expected = vector![1., 2., 3., 4., 5., 6.];
+    assert_relative_eq!(expected, extract_range(&vec, U0, U6));
+    let expected = DVector::from_column_slice(&[2., 3., 4.]);
+    assert_relative_eq!(expected, extract_range(&vec, Dyn(1), U4));
+}
+
+#[test]
+#[should_panic]
+fn extract_range_for_static_vector_fails_for_out_of_bounds_static() {
+    let vec = vector![1., 2., 3., 4., 5., 6.];
+    _ = extract_range(&vec, Dyn(0), U7);
+}
+
+#[test]
+#[should_panic]
+fn extract_range_for_static_vector_fails_for_out_of_bounds_dynamic() {
+    let vec = vector![1., 2., 3., 4., 5., 6.];
+    _ = extract_range(&vec, U0, Dyn(7));
+}
+
+#[test]
+#[should_panic]
+fn extract_range_for_static_vector_fails_for_out_of_bounds_dynamic_2() {
+    let vec = vector![1., 2., 3., 4., 5., 6.];
+    _ = extract_range(&vec, U0, U7);
 }

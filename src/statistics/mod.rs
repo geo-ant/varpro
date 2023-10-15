@@ -1,7 +1,7 @@
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
-    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, Matrix, OMatrix, OVector,
-    RealField, Scalar,
+    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, DimSum,
+    Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
 };
 use num_traits::{Float, FromPrimitive, Zero};
 use thiserror::Error as ThisError;
@@ -97,10 +97,12 @@ where
 
     /// the _weighted residual mean square_ or _regression standard error_.
     sigma: Model::ScalarType,
-    // /// The parameter `$R^2$`, also known as the coefficient of determination,
-    // /// or the square of the multiple correlation coefficient. A commonly
-    // /// used (and misused) measure of the quality of a regression.
-    // pub r_squared: ScalarType,
+
+    /// the number of linear coefficients
+    linear_coefficient_count: Model::ModelDim,
+
+    /// the number of nonlinear parameters
+    nonlinear_parameter_count: Model::ParameterDim,
 }
 
 impl<Model> FitStatistics<Model>
@@ -119,8 +121,8 @@ where
 {
     /// The covariance matrix of the parameter estimates. Here the parameters
     /// are both the linear as well as the nonlinear parameters of the model.
-    /// parameters are ordered first, followed by the non-linear parameters
-    /// as if we had one big parameter vector `$(\vec{c}, \vec{\alpha})^T$`.
+    /// The linear parameters are ordered first, followed by the non-linear parameters
+    /// as if we had one combined parameter vector `$(\vec{c}, \vec{\alpha})$`.
     /// See [O'Leary and Rust 2012](https://www.nist.gov/publications/variable-projection-nonlinear-least-squares-problems)
     /// for reference.
     ///
@@ -130,11 +132,11 @@ where
     /// `$\vec{\alpha}=(\alpha_1,\alpha_2,\alpha_3)^T$`. Then the covariance matrix
     /// is odered for the parameter vector `$(c_1,c_2,\alpha_1,\alpha_2,\alpha_3)^T$`.
     /// The covariance matrix `$C$` (upper case C) is a square matrix of size `$5 \times 5$`.
-    /// Element `$C_{ij}$` is the covariance between the parameters at indices `$i$` and `$j$`, so in this
+    /// Matrix element `$C_{ij}$` is the covariance between the parameters at indices `$i$` and `$j$`, so in this
     /// example:
     /// * `$C_{11}$` is the variance of `$c_1$`,
-    /// * `$C_{12}$` is the covariance between `$c_1$`,
-    /// * and `$c_2$`, `$C_{13}$` is the covariance between `$c_1$` and `$\alpha_1$`,
+    /// * `$C_{12}$` is the covariance between `$c_1$`and `$c_2$`,
+    /// * `$C_{13}$` is the covariance between `$c_1$` and `$\alpha_1$`,
     /// * and so on.
     #[allow(clippy::type_complexity)]
     pub fn covariance_matrix(
@@ -183,9 +185,84 @@ where
     /// helper function to extract the estimated standard deviation
     /// of the nonlinear model parameters. Those could also be
     /// manually extracted from the diagonal of the covariance matrix.
-    pub fn stdev_nonlinear_parameters(&self) -> OVector<Model::ScalarType, Model::ParameterDim> {
-        todo!()
+    pub fn stdev_nonlinear_parameters(&self) -> OVector<Model::ScalarType, Model::ParameterDim>
+    where
+        Model::ScalarType: Scalar + Zero,
+        nalgebra::DefaultAllocator:
+            Allocator<Model::ScalarType, <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output>,
+        <Model::ModelDim as nalgebra::DimAdd<Model::ParameterDim>>::Output:
+            DimSub<Model::ModelDim, Output = Model::ParameterDim>,
+        Model::ModelDim:
+            nalgebra::DimMin<<Model::ModelDim as nalgebra::DimAdd<Model::ParameterDim>>::Output>,
+        <Model::ModelDim as nalgebra::DimAdd<Model::ParameterDim>>::Output:
+            nalgebra::DimMin<Model::ModelDim>,
+        nalgebra::DefaultAllocator:
+            nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+        DefaultAllocator:
+            nalgebra::allocator::Allocator<
+                Model::ScalarType,
+                <<Model::ModelDim as DimAdd<Model::ParameterDim>>::Output as DimSub<
+                    Model::ModelDim,
+                >>::Output,
+            >,
+    {
+        let total_parameter_count =
+            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output::from_usize(
+                self.linear_coefficient_count.value() + self.nonlinear_parameter_count.value(),
+            );
+        let diagonal = self.covariance_matrix.diagonal();
+        extract_range(
+            &diagonal,
+            self.linear_coefficient_count,
+            total_parameter_count,
+        )
     }
+
+    /// helper function to extract the estimated standard deviation
+    /// of the linear model parameters.
+    pub fn stdev_linear_parameters(&self) -> OVector<Model::ScalarType, Model::ModelDim>
+    where
+        Model::ScalarType: Scalar + Zero,
+        DefaultAllocator: Allocator<Model::ScalarType, Model::ModelDim>,
+        DefaultAllocator: nalgebra::allocator::Allocator<
+            Model::ScalarType,
+            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
+        >,
+        Model::ModelDim: DimSub<U0, Output = Model::ModelDim>,
+        Model::ModelDim: DimMin<nalgebra::Const<0>>,
+    {
+        let diagonal = self.covariance_matrix.diagonal();
+        extract_range(&diagonal, U0, self.linear_coefficient_count)
+    }
+}
+
+/// extrant the half  open range `[Start,End)` from the given vector.
+fn extract_range<ScalarType, D, Start, End>(
+    vector: &OVector<ScalarType, D>,
+    start: Start,
+    end: End,
+) -> OVector<ScalarType, <End as DimSub<Start>>::Output>
+where
+    ScalarType: Scalar + Zero,
+    D: Dim,
+    Start: Dim,
+    End: DimMin<Start>,
+    End: DimSub<Start>,
+    nalgebra::DefaultAllocator: Allocator<ScalarType, D>,
+    nalgebra::DefaultAllocator:
+        nalgebra::allocator::Allocator<ScalarType, <End as nalgebra::DimSub<Start>>::Output>,
+{
+    assert!(end.value() >= start.value());
+    assert!(end.value() <= vector.nrows());
+    //@todo this could be more efficient
+    let mut range = OVector::<ScalarType, <End as DimSub<Start>>::Output>::zeros_generic(
+        <End as DimSub<Start>>::Output::from_usize(end.value() - start.value()),
+        U1,
+    );
+    for (idx, val) in range.iter_mut().enumerate() {
+        *val = vector[(idx + start.value(), 0)].clone();
+    }
+    range
 }
 
 impl<Model> FitStatistics<Model>
@@ -276,6 +353,8 @@ where
             correlation_matrix,
             weighted_residuals,
             sigma,
+            linear_coefficient_count: model.base_function_count(),
+            nonlinear_parameter_count: model.parameter_count(),
         })
     }
 }
