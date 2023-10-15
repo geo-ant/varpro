@@ -182,10 +182,10 @@ where
         self.sigma.clone()
     }
 
-    /// helper function to extract the estimated standard deviation
+    /// helper function to extract the estimated _variance_
     /// of the nonlinear model parameters. Those could also be
     /// manually extracted from the diagonal of the covariance matrix.
-    pub fn stdev_nonlinear_parameters(&self) -> OVector<Model::ScalarType, Model::ParameterDim>
+    pub fn nonlinear_parameters_variance(&self) -> OVector<Model::ScalarType, Model::ParameterDim>
     where
         Model::ScalarType: Scalar + Zero,
         nalgebra::DefaultAllocator:
@@ -218,9 +218,9 @@ where
         )
     }
 
-    /// helper function to extract the estimated standard deviation
+    /// helper function to extract the estimated _variance_
     /// of the linear model parameters.
-    pub fn stdev_linear_parameters(&self) -> OVector<Model::ScalarType, Model::ModelDim>
+    pub fn linear_coefficients_variance(&self) -> OVector<Model::ScalarType, Model::ModelDim>
     where
         Model::ScalarType: Scalar + Zero,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ModelDim>,

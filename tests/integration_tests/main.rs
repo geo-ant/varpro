@@ -2,6 +2,7 @@ use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DMatrix;
 use nalgebra::DVector;
 
+use nalgebra::vector;
 use nalgebra::OVector;
 use nalgebra::Vector2;
 use nalgebra::Vector3;
@@ -351,6 +352,17 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         epsilon = 1e-5,
     );
 
+    assert_relative_eq!(
+        statistics.nonlinear_parameters_variance(),
+        vector![2.6925e-04, 8.5784e-05, 8.2272e-04],
+        epsilon = 1e-5,
+    );
+    assert_relative_eq!(
+        statistics.linear_coefficients_variance(),
+        vector![4.4887e-03, 4.3803e-03],
+        epsilon = 1e-5,
+    );
+
     let expected_correlation_matrix = nalgebra::matrix![
      1.0000,  -0.9993,  -0.1966,  -0.7571,  -0.9914;
     -0.9993,   1.0000,   0.1942,   0.7695,   0.9918;
@@ -471,6 +483,17 @@ fn test_oleary_example_with_separable_model() {
     assert_relative_eq!(
         statistics.covariance_matrix(),
         &expected_covariance_matrix,
+        epsilon = 1e-5,
+    );
+
+    assert_relative_eq!(
+        statistics.nonlinear_parameters_variance(),
+        DVector::from_row_slice(&[2.6925e-04, 8.5784e-05, 8.2272e-04]),
+        epsilon = 1e-5,
+    );
+    assert_relative_eq!(
+        statistics.linear_coefficients_variance(),
+        DVector::from_row_slice(&[4.4887e-03, 4.3803e-03]),
         epsilon = 1e-5,
     );
 
