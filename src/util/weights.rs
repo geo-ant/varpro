@@ -1,4 +1,4 @@
-use crate::linalg_helpers::DiagMatrix;
+use crate::util::DiagMatrix;
 use nalgebra::{
     ClosedMul, ComplexField, DefaultAllocator, Dim, Matrix, OVector, RawStorageMut, Scalar,
 };
@@ -102,7 +102,7 @@ where
 
 #[cfg(any(test, doctest))]
 mod test {
-    use crate::solvers::levmar::weights::Weights;
+    use crate::util::weights::Weights;
     use nalgebra::{DMatrix, DVector};
 
     #[test]

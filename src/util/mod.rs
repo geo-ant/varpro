@@ -6,6 +6,9 @@ use nalgebra::{
 };
 use std::ops::Mul;
 
+mod weights;
+pub use weights::Weights;
+
 /// A square diagonal matrix with dynamic dimension. Off-diagonal entries are assumed zero.
 /// This internally stores only the diagonal elements
 /// # Types

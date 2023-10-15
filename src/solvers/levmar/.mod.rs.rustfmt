@@ -4,20 +4,22 @@ use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::allocator::{Allocator, Reallocator};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, Const, DefaultAllocator, Dim, DimAdd, DimMax, DimMaximum, DimMin, DimSub, Matrix,
-    OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD,
+    ComplexField, Const, DMatrix, DefaultAllocator, Dim, DimAdd, DimMax, DimMaximum, DimMin,
+    DimSub, Dyn, Matrix, OMatrix, OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix,
+    Vector, SVD, U3, U4,
 };
 
 mod builder;
 #[cfg(any(test, doctest))]
 mod test;
+mod weights;
 
-use crate::util::Weights;
+use crate::solvers::levmar::weights::Weights;
 pub use builder::LevMarProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
-use num_traits::{Float, FromPrimitive};
+use num_traits::{Float, FromPrimitive, Zero};
 use std::ops::Mul;
 
 /// A thin wrapper around the
@@ -34,138 +36,15 @@ where
     solver: LevenbergMarquardt<Model::ScalarType>,
 }
 
-/// A helper type that contains the fitting problem after the
-/// minimization, as well as a report and some convenience functions
-#[derive(Debug)]
-pub struct FitResult<Model>
+pub struct SolverReport<ScalarType>
 where
-    Model: SeparableNonlinearModel,
-    Model::ScalarType: RealField + Scalar + Float,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ParameterDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::OutputDim,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
-    <Model as model::SeparableNonlinearModel>::OutputDim:
-        nalgebra::DimMin<<Model as model::SeparableNonlinearModel>::ModelDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <<Model as model::SeparableNonlinearModel>::OutputDim as nalgebra::DimMin<
-            <Model as model::SeparableNonlinearModel>::ModelDim,
-        >>::Output,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::OutputDim,
-        <<Model as model::SeparableNonlinearModel>::OutputDim as nalgebra::DimMin<
-            <Model as model::SeparableNonlinearModel>::ModelDim,
-        >>::Output,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <<Model as model::SeparableNonlinearModel>::OutputDim as nalgebra::DimMin<
-            <Model as model::SeparableNonlinearModel>::ModelDim,
-        >>::Output,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::OutputDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
+    ScalarType: RealField,
 {
-    /// the final state of the fitting problem after the
-    /// minimization finished (regardless of whether fitting was successful or not)
-    pub problem: LevMarProblem<Model>,
-
     /// the minimization report of the underlying solver.
     /// It contains information about the minimization process
     /// and should be queried to see whether the minimization
-    /// was considered successful
-    pub minimization_report: MinimizationReport<Model::ScalarType>,
-}
-
-impl<Model> FitResult<Model>
-// take trait bounds from above:
-where
-    Model: SeparableNonlinearModel,
-    Model::ScalarType: RealField + Scalar + Float,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ParameterDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::OutputDim,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
-    <Model as model::SeparableNonlinearModel>::OutputDim:
-        nalgebra::DimMin<<Model as model::SeparableNonlinearModel>::ModelDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <<Model as model::SeparableNonlinearModel>::OutputDim as nalgebra::DimMin<
-            <Model as model::SeparableNonlinearModel>::ModelDim,
-        >>::Output,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::OutputDim,
-        <<Model as model::SeparableNonlinearModel>::OutputDim as nalgebra::DimMin<
-            <Model as model::SeparableNonlinearModel>::ModelDim,
-        >>::Output,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <<Model as model::SeparableNonlinearModel>::OutputDim as nalgebra::DimMin<
-            <Model as model::SeparableNonlinearModel>::ModelDim,
-        >>::Output,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::OutputDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
-{
-    /// internal helper for constructing an instance
-    fn new(
-        problem: LevMarProblem<Model>,
-        minimization_report: MinimizationReport<Model::ScalarType>,
-    ) -> Self {
-        Self {
-            problem,
-            minimization_report,
-        }
-    }
-
-    /// convenience function to get the nonlinear parameters of the model after
-    /// the fitting process has finished.
-    pub fn nonlinear_parameters(&self) -> OVector<Model::ScalarType, Model::ParameterDim> {
-        self.problem.model().params()
-    }
-
-    /// convenience function to get the linear coefficients after the fit has
-    /// finished
-    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Model::ModelDim>> {
-        self.problem.linear_coefficients()
-    }
-
-    /// whether the fit was deemeed successful. The fit might still be not
-    /// be optimal for numerical reasons, but the minimization process
-    /// terminated successfully.
-    pub fn was_successful(&self) -> bool {
-        self.minimization_report.termination.was_successful()
-    }
+    /// was considered successful.
+    pub minimization_report: MinimizationReport<ScalarType>,
 }
 
 impl<Model> LevMarSolver<Model>
@@ -192,8 +71,16 @@ where
         Self { solver }
     }
 
-    /// Solve the fitting problem. This method is deprecated, use the fit method instead.
-    #[deprecated(since = "0.7.0", note = "use the fit(...) method instead")]
+    /// Try to solve the given varpro minimization problem. The parameters of
+    /// the problem which are set when this function is called are used as the initial guess
+    /// # Returns
+    /// a tuple containing the problem at the end of the minimization and a report
+    /// that should be used to query if the minimization was successful. If the
+    /// minimization was successful, the model contains the best fit parameters
+    /// for the linear and nonlinear coefficients.
+    /// # Note
+    /// This interface is the same as using the underlying solver directly,
+    /// but it might change in future revisions.
     pub fn minimize(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,MinimizationReport<Model::ScalarType>)
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
@@ -215,54 +102,9 @@ where
         self.solver.minimize(problem)
     }
 
-    /// Try to solve the given varpro minimization problem. The parameters of
-    /// the problem which are set when this function is called are used as the initial guess
-    ///
-    /// # Returns
-    ///
-    /// On success, returns an Ok value containing the fit result, which contains
-    /// the final state of the problem as well as some convenience functions that
-    /// allow to query the optimal parameters. Note that success of failure is
-    /// determined from the minimization report. A successful result might still
-    /// correspond to a failed minimization in some cases.
-    /// On failure (when the minimization was not deemeed successful), returns
-    /// an error with the same information as in the success case.
-    pub fn fit(&self,problem : LevMarProblem<Model>) -> Result<FitResult<Model>,FitResult<Model>>
-    where Model:SeparableNonlinearModel,
-        LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim> + Reallocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim,DimMaximum<Model::OutputDim,Model::ParameterDim>,Model::ParameterDim> + Allocator<usize,Model::ParameterDim>,
-        Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float + FromPrimitive,
-        <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField: Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
-        Model: SeparableNonlinearModel,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
-        <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>>::Buffer: Storage<Model::ScalarType, Model::OutputDim>,
-            <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>>::Buffer: RawStorageMut<Model::ScalarType, Model::OutputDim>,
-        Model::OutputDim: DimMin<Model::ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-        DefaultAllocator: nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-        <Model as model::SeparableNonlinearModel>::OutputDim: DimMax<<Model as model::SeparableNonlinearModel>::ParameterDim>,
-        <Model as model::SeparableNonlinearModel>::OutputDim: DimMin<<Model as model::SeparableNonlinearModel>::ParameterDim>
-    {
-        #[allow(deprecated)]
-        let (problem, report) = self.minimize(problem);
-        let result = FitResult::new(problem, report);
-        if result.was_successful() {
-            Ok(result)
-        } else {
-            Err(result)
-        }
-    }
-
-    /// Same as the [LevMarProblem::fit] function but also calculates some additional
-    /// statistical information about the fit, if the fit was successful.
-    ///
-    /// # Returns
-    ///
-    /// See also the [LevMarProblem::fit] function, but on success also returns statistical
-    /// information about the fit.
-    pub fn fit_with_statistics(&self,problem : LevMarProblem<Model>) -> Result<(FitResult<Model>,FitStatistics<Model>),FitResult<Model>>
+    /// performs the minimization and also generates statistics about the minimization
+    /// iff the computation was successful
+    pub fn minimize_with_statistics(&self,problem : LevMarProblem<Model>) -> (LevMarProblem<Model>,FitStatistics<Model::ScalarType,Model::ModelDim, Model::ParameterDim>)
     where Model:SeparableNonlinearModel,
         LevMarProblem<Model>:LeastSquaresProblem<Model::ScalarType,Model::OutputDim, Model::ParameterDim>,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim> + Reallocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim,DimMaximum<Model::OutputDim,Model::ParameterDim>,Model::ParameterDim> + Allocator<usize,Model::ParameterDim>,
@@ -284,42 +126,90 @@ where
         DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType, Model::OutputDim, <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output>,
         DefaultAllocator: nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType,  <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>>::Output,Model::OutputDim>,
     {
-        let FitResult {
-            problem,
-            minimization_report,
-        } = self.fit(problem)?;
-        if !minimization_report.termination.was_successful() {
-            return Err(FitResult::new(problem, minimization_report));
-        }
+        let (problem, report) = self.solver.minimize(problem);
 
-        let Some(coefficients) = problem.linear_coefficients() else {
-            return Err(FitResult::new(problem, minimization_report));
-        };
+        //todo remove unrwap!!!!!!!!!!!!!!
+        // !!!!!!!!!!!!!!!!
 
-        if let Ok(statistics) = FitStatistics::try_calculate(
-            problem.model(),
-            problem.weighted_data(),
-            problem.weights(),
-            coefficients,
-        ) {
-            Ok((FitResult::new(problem, minimization_report), statistics))
-        } else {
-            Err(FitResult::new(problem, minimization_report))
+        let hmat = &problem.weights
+            * concat_colwise(problem.model().eval().unwrap(), problem.jacobian().unwrap());
+        println!("H: {}", hmat);
+        let weighted_residuals = problem.residuals().unwrap();
+        let output_len = problem.model.output_len().value();
+        let degrees_of_freedom = problem.model().parameter_count().value()
+            + problem.model().base_function_count().value();
+        if output_len <= degrees_of_freedom {
+            todo!();
         }
+        let sigma: Model::ScalarType = weighted_residuals.norm()
+            / Float::sqrt(Model::ScalarType::from_usize(output_len - degrees_of_freedom).unwrap());
+        let hth_inv = (hmat.transpose() * hmat).try_inverse().unwrap();
+        let covariance = hth_inv * sigma * sigma;
+        let statistics = FitStatistics { covariance };
+        (problem, statistics)
     }
 }
 
-impl<Model> Default for LevMarSolver<Model>
+// a helper function that calculates the jacobian of the
+// model function `$\vec{f}(\vec{\alpha},\vec{c})$` evaluated at the parameters `$(\vec{c},\vec{\alpha})$`
+// This is not the same as the jacobian of the
+// fitting problem, which is the jacobian `$\vec{f}(\vec{\alpha},\vec{c}(\vec{\alpha}))$`,
+// where `$\vec{c}(\vec{\alpha})$` is the linear coefficients that solve the linear problem.
+// see also the O'Leary matlab code.
+fn model_function_jacobian<Model>(model: Model) -> OMatrix<Model::ScalarType, Model::OutputDim, <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output>
 where
     Model: SeparableNonlinearModel,
-    Model::ScalarType: RealField + Float,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        Model::ScalarType,
+        Model::ParameterDim,
+    >,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        Model::ScalarType,
+        Model::OutputDim,
+        Model::ModelDim,
+    >,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
+        Model::ScalarType,
+        Model::OutputDim,
+    <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output
+    >,
+    <Model as model::SeparableNonlinearModel>::ModelDim: nalgebra::DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>,
 {
-    fn default() -> Self {
-        Self::new()
+    todo!()
+}
+
+// helper function to concatenate two nalgebra matrices
+fn concat_colwise<T, R, C1, C2, S1, S2>(
+    left: Matrix<T, R, C1, S1>,
+    right: Matrix<T, R, C2, S2>,
+) -> OMatrix<T, R, <C1 as DimAdd<C2>>::Output>
+where
+    R: Dim,
+    C1: Dim + DimAdd<C2>,
+    C2: Dim,
+    T: Scalar + Zero,
+    nalgebra::DefaultAllocator: Allocator<T, R, <C1 as DimAdd<C2>>::Output>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, C1>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<T, R, C2>,
+    S2: nalgebra::RawStorage<T, R, C2>,
+    S1: nalgebra::RawStorage<T, R, C1>,
+{
+    let mut result = OMatrix::<T, R, <C1 as DimAdd<C2>>::Output>::zeros_generic(
+        R::from_usize(left.nrows()),
+        <C1 as DimAdd<C2>>::Output::from_usize(left.ncols() + right.ncols()),
+    );
+
+    for idx in 0..left.ncols() {
+        result.column_mut(idx).copy_from(&left.column(idx));
     }
+
+    for idx in 0..right.ncols() {
+        result
+            .column_mut(idx + left.ncols())
+            .copy_from(&right.column(idx));
+    }
+
+    result
 }
 
 /// helper structure that stores the cached calculations,
@@ -479,25 +369,15 @@ where
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
     /// for the linear coefficients of the base functions.
-    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Model::ModelDim>> {
-        self.cached.as_ref().map(|cache| &cache.linear_coefficients)
+    pub fn linear_coefficients(&self) -> Option<OVector<Model::ScalarType, Model::ModelDim>> {
+        self.cached
+            .as_ref()
+            .map(|cache| cache.linear_coefficients.clone())
     }
 
     /// access the contained model immutably
     pub fn model(&self) -> &Model {
         &self.model
-    }
-
-    /// get the weights of the data for the fitting problem
-    pub fn weights(&self) -> &Weights<Model::ScalarType, Model::OutputDim> {
-        &self.weights
-    }
-
-    /// the weighted data vector `$\vec{y}_w$` to which to fit the model. Note
-    /// that the weights are already applied to the data vector and this
-    /// is not the original data vector
-    pub fn weighted_data(&self) -> &OVector<Model::ScalarType, Model::OutputDim> {
-        &self.y_w
     }
 }
 

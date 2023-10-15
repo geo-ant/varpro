@@ -71,7 +71,7 @@ pub mod error;
 /// ```
 /// using single precision (`f32`) floats.
 ///
-/// ** Linear Independence**
+/// **Linear Independence**
 ///
 /// The basis functions must be linearly independent. That means adding `$\vec{f_1}(\vec{x})=\vec{x}$`
 /// and `$\vec{f_1}(\vec{x})=2\,\vec{x}$` is forbidden. Adding functions that

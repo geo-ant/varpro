@@ -33,7 +33,7 @@ pub mod test;
 /// \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(S_j(\vec{\alpha})),
 /// ```
 ///
-/// where `$\vec{c}=(c_1,\dots,\c_M)$` are the coefficients of the model base functions `$f_j$` and
+/// where `$\vec{c}=(c_1,\dots,c_M)$` are the coefficients of the model base functions `$f_j$` and
 /// `$S_j(\vec{\alpha})$` is a subset of the nonlinear model parameters that may be different
 /// for each model function. The base functions should depend on the model parameters nonlinearly.
 /// Linear parameters should be in the coefficient vector `$\vec{c}$` only.

@@ -1,4 +1,5 @@
-use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector2, U2, U3};
+use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector2, Vector3, U2, U3};
+use varpro::model::SeparableModel;
 use varpro::{model::errors::ModelError, prelude::*};
 
 #[derive(Clone)]
@@ -12,6 +13,7 @@ use varpro::{model::errors::ModelError, prelude::*};
 /// using the trait directly without using the builder.
 /// This allows us to use caching of the intermediate results
 /// to calculate the derivatives more efficiently.
+#[derive(Debug, PartialEq)]
 pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// the x vector associated with this model.
     /// We make this configurable to enable models to
@@ -265,4 +267,173 @@ impl LeastSquaresProblem<f64, Dyn, U5> for DoubleExponentialDecayFittingWithOffs
 
         Some(jacobian)
     }
+}
+
+/// example function from the matlab code that was published as part of the
+/// O'Leary paper here: https://www.cs.umd.edu/~oleary/software/varpro/
+/// The model function is
+///
+///   f(t) = c1 exp(-alpha2 t)*cos(alpha3 t)
+///         + c2 exp(-alpha1 t)*cos(alpha2 t)
+/// # performance
+/// this model does reuse calculations but I think it could be optimized
+/// further
+#[derive(Clone, Debug, PartialEq)]
+pub struct OLearyExampleModel {
+    /// the t vector
+    t: DVector<f64>,
+    /// the current parameters (alpha1,alpha2,alpha3,alpha4)
+    alpha: Vector3<f64>,
+    /// the current evaluation of the model
+    phi: OMatrix<f64, Dyn, U2>,
+}
+
+impl OLearyExampleModel {
+    /// create a new model with the given t vector and initial guesses
+    pub fn new(t: DVector<f64>, initial_guesses: Vector3<f64>) -> Self {
+        let t_len = t.len();
+        let mut ret = Self {
+            t,
+            alpha: initial_guesses,
+            phi: OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(t_len), U2),
+        };
+        ret.set_params(initial_guesses).unwrap();
+        ret
+    }
+}
+
+impl SeparableNonlinearModel for OLearyExampleModel {
+    type ScalarType = f64;
+    type Error = ModelError;
+    type ParameterDim = U3;
+    type ModelDim = U2;
+    type OutputDim = Dyn;
+
+    fn parameter_count(&self) -> Self::ParameterDim {
+        U3 {}
+    }
+
+    fn base_function_count(&self) -> Self::ModelDim {
+        U2 {}
+    }
+
+    fn output_len(&self) -> Self::OutputDim {
+        Dyn(self.t.len())
+    }
+
+    fn set_params(
+        &mut self,
+        parameters: OVector<Self::ScalarType, Self::ParameterDim>,
+    ) -> Result<(), Self::Error> {
+        self.alpha = parameters;
+        let alpha1 = self.alpha[0];
+        let alpha2 = self.alpha[1];
+        let alpha3 = self.alpha[2];
+
+        let f1 = self.t.map(|t| f64::exp(-alpha2 * t) * f64::cos(alpha3 * t));
+        let f2 = self.t.map(|t| f64::exp(-alpha1 * t) * f64::cos(alpha2 * t));
+
+        self.phi = OMatrix::<f64, Dyn, U2>::from_columns(&[f1, f2]);
+        Ok(())
+    }
+
+    fn params(&self) -> OVector<Self::ScalarType, Self::ParameterDim> {
+        self.alpha
+    }
+
+    fn eval(
+        &self,
+    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+        Ok(self.phi.clone())
+    }
+
+    fn eval_partial_deriv(
+        &self,
+        derivative_index: usize,
+    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+        let mut derivs = OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(self.t.len()), U2);
+        let alpha1 = self.alpha[0];
+        let alpha2 = self.alpha[1];
+        let alpha3 = self.alpha[2];
+
+        // from the original matlab impl:
+        // % The nonzero partial derivatives of Phi with respect to alpha are
+        // %              d Phi_1 / d alpha_2 ,
+        // %              d Phi_1 / d alpha_3 ,
+        // %              d Phi_2 / d alpha_1 ,
+        // %              d Phi_2 / d alpha_2 ,
+        // % and this determines Ind.
+        // % The ordering of the columns of Ind is arbitrary but must match dPhi.
+
+        // % Evaluate the four nonzero partial derivatives of Phi at each of
+        // % the data points and store them in dPhi.
+
+        // dPhi 1 / dalpha 2 = -t .* Phi(:,1);
+        // dPhi 1 / dalpha 3 = -t .* exp(-alpha(2)*t).*sin(alpha(3)*t);
+        // dPhi 2 / dalpha 1 = -t .* Phi(:,2);
+        // dPhi 2 / dalpha 2 = -t .* exp(-alpha(1)*t).*sin(alpha(2)*t);
+
+        match derivative_index {
+            0 => {
+                // d/d alpha1
+                derivs.set_column(1, &self.phi.column(1).component_mul(&(-1. * &self.t)));
+            }
+            1 => {
+                // d/d alpha2
+                derivs.set_column(0, &self.phi.column(0).component_mul(&(-1. * &self.t)));
+                derivs.set_column(
+                    1,
+                    &self
+                        .t
+                        .map(|t| -t * (-alpha1 * t).exp() * (alpha2 * t).sin()),
+                );
+            }
+            2 => {
+                // d/d alpha3
+                derivs.set_column(
+                    0,
+                    &self
+                        .t
+                        .map(|t| -t * (-alpha2 * t).exp() * (alpha3 * t).sin()),
+                );
+            }
+            _ => {
+                unreachable!("derivative index must be 0,1,2");
+            }
+        }
+
+        Ok(derivs)
+    }
+}
+
+/// the oleary example model as above but this time it is generated using
+/// the separable model builder
+pub fn o_leary_example_model(t: DVector<f64>, initial_guesses: Vec<f64>) -> SeparableModel<f64> {
+    fn phi1(t: &DVector<f64>, alpha2: f64, alpha3: f64) -> DVector<f64> {
+        t.map(|t| f64::exp(-alpha2 * t) * f64::cos(alpha3 * t))
+    }
+    fn phi2(t: &DVector<f64>, alpha1: f64, alpha2: f64) -> DVector<f64> {
+        t.map(|t| f64::exp(-alpha1 * t) * f64::cos(alpha2 * t))
+    }
+
+    SeparableModelBuilder::new(["alpha1", "alpha2", "alpha3"])
+        .initial_parameters(initial_guesses)
+        .independent_variable(t)
+        // phi 1
+        .function(["alpha2", "alpha3"], phi1)
+        .partial_deriv("alpha2", |t: &DVector<f64>, alpha2: f64, alpha3: f64| {
+            phi1(t, alpha2, alpha3).component_mul(&(-1. * t))
+        })
+        .partial_deriv("alpha3", |t: &DVector<f64>, alpha2: f64, alpha3: f64| {
+            t.map(|t| -t * (-alpha2 * t).exp() * (alpha3 * t).sin())
+        })
+        .function(["alpha1", "alpha2"], phi2)
+        .partial_deriv("alpha1", |t: &DVector<f64>, alpha1: f64, alpha2: f64| {
+            phi2(t, alpha1, alpha2).component_mul(&(-1. * t))
+        })
+        .partial_deriv("alpha2", |t: &DVector<f64>, alpha1: f64, alpha2: f64| {
+            t.map(|t| -t * (-alpha1 * t).exp() * (alpha2 * t).sin())
+        })
+        .build()
+        .unwrap()
 }

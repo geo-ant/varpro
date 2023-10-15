@@ -1,6 +1,6 @@
 use crate::prelude::*;
-use crate::solvers::levmar::weights::Weights;
 use crate::solvers::levmar::LevMarProblem;
+use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, Const, DefaultAllocator, Dim, DimMin, DimSub, OVector, Scalar};
 use num_traits::{Float, Zero};
@@ -62,6 +62,7 @@ pub enum LevMarBuilderError {
 /// the [build](LevMarProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
 /// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
 /// it contains an error variant.
+#[derive(Clone)]
 pub struct LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -87,27 +88,6 @@ where
     /// all weights were 1.
     /// Must have the same length as x and y.
     weights: Weights<Model::ScalarType, Model::OutputDim>,
-}
-
-impl<Model> Clone for LevMarProblemBuilder<Model>
-where
-    Model::ScalarType: Scalar + ComplexField + Copy,
-    <Model::ScalarType as ComplexField>::RealField:
-        Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
-    Model: SeparableNonlinearModel + Clone,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-{
-    fn clone(&self) -> Self {
-        Self {
-            y: self.y.clone(),
-            separable_model: self.separable_model.clone(),
-            epsilon: self.epsilon,
-            weights: self.weights.clone(),
-        }
-    }
 }
 
 impl<Model> LevMarProblemBuilder<Model>
