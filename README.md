@@ -103,7 +103,7 @@ For more examples please refer to the crate documentation.
 ### Fit Statistics
 
 Additionally to the `fit` member function, the `LevMarSolver` also provides a 
-`fit_with_statistics` function that calculations some additional statistical
+`fit_with_statistics` function that calculates some additional statistical
 information after the fit has finished.
 
 ### Maximum Performance
