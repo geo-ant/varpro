@@ -8,6 +8,8 @@ use nalgebra::{
     OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD,
 };
 
+// use rayon::prelude::*;
+
 mod builder;
 #[cfg(any(test, doctest))]
 mod test;
@@ -528,7 +530,6 @@ where
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, <Model::OutputDim as DimMin<Model::ModelDim>>::Output, Model::ModelDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
     DefaultAllocator: nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-
 {
     type ResidualStorage = Owned<Model::ScalarType, Model::OutputDim>;
     type JacobianStorage = Owned<Model::ScalarType, Model::OutputDim, Model::ParameterDim>;
