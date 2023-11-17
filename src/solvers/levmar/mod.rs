@@ -12,6 +12,8 @@ mod builder;
 #[cfg(any(test, doctest))]
 mod test;
 
+pub mod multipe_rhs;
+
 use crate::util::Weights;
 pub use builder::LevMarProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
@@ -540,6 +542,7 @@ where
     fn set_params(&mut self, params: &Vector<Model::ScalarType, Model::ParameterDim, Self::ParameterStorage>) {
         if self.model.set_params(params.clone()).is_err() {
             self.cached = None;
+            return;
         }
         // matrix of weighted model function values
         let Phi_w = self
@@ -622,7 +625,8 @@ where
             //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
             //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
-            for (k, mut jacobian_col) in jacobian_matrix.column_iter_mut().enumerate() {
+            //@todo use rayon in future to parallelize this
+            jacobian_matrix.column_iter_mut().enumerate().map(|(k,mut jacobian_col)|{
                 // weighted derivative matrix
                 let Dk = &self.weights
                     * self
@@ -636,7 +640,12 @@ where
                 //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
                 //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
                 jacobian_col.copy_from(&(minus_ak));
-            }
+                // we use this return value to indicate success
+                // and a None indicates that the jacobian column could not be calculated
+                // this won't early return on failure, but that's ok, since we don't 
+                // expect this to fail, so we need the happy path to be fast
+                Some(())
+            }).collect::<Option<Vec<_>>>()?;
             Some(jacobian_matrix)
         } else {
             None
