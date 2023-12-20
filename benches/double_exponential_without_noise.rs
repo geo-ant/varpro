@@ -9,6 +9,7 @@ use nalgebra::DefaultAllocator;
 use nalgebra::DimMin;
 use nalgebra::DimSub;
 
+use nalgebra::Dyn;
 use nalgebra::OVector;
 use nalgebra::RawStorageMut;
 
@@ -42,53 +43,42 @@ fn build_problem<Model>(
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn, Model::ModelDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim>,
-    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer:
-        Storage<f64, Model::OutputDim>,
-    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer:
-        RawStorageMut<f64, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Dyn>>::Buffer: Storage<f64, Dyn>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Dyn>>::Buffer: RawStorageMut<f64, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, <Dyn as DimMin<Model::ModelDim>>::Output>,
     DefaultAllocator:
-        nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        (usize, usize),
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        f64,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-        Model::OutputDim,
-    >,
+        nalgebra::allocator::Allocator<(usize, usize), <Dyn as DimMin<Model::ModelDim>>::Output>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<f64, <Dyn as DimMin<Model::ModelDim>>::Output, Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<
         <f64 as ComplexField>::RealField,
-        <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
+        <<Dyn as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
     >,
     DefaultAllocator: nalgebra::allocator::Allocator<
         f64,
-        <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
+        <<Dyn as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
     >,
     DefaultAllocator: nalgebra::allocator::Allocator<
         (<f64 as ComplexField>::RealField, usize),
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+        <Dyn as DimMin<Model::ModelDim>>::Output,
     >,
-    <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>>,
-    Model::OutputDim: DimMin<Model::ModelDim>,
+    <Dyn as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>>,
+    Dyn: DimMin<Model::ModelDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<
         f64,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+        <Dyn as DimMin<Model::ModelDim>>::Output,
         Model::ModelDim,
     >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        f64,
-        Model::OutputDim,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<f64, Dyn, <Dyn as DimMin<Model::ModelDim>>::Output>,
     DefaultAllocator: nalgebra::allocator::Allocator<
         <f64 as ComplexField>::RealField,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
+        <Dyn as DimMin<Model::ModelDim>>::Output,
     >,
 {
     let DoubleExponentialParameters {

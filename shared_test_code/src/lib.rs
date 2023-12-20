@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 //! a helper crate which carries common code used by the benchtests and the
 //! integration tests.
-use nalgebra::{ComplexField, DVector, DefaultAllocator, OVector, Scalar};
+use nalgebra::{ComplexField, DVector, DefaultAllocator, Dyn, OVector, Scalar};
 use num_traits::Float;
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
@@ -35,15 +35,14 @@ pub fn evaluate_complete_model_at_params<Model>(
     model: &'_ mut Model,
     params: OVector<Model::ScalarType, Model::ParameterDim>,
     linear_coeffs: &OVector<Model::ScalarType, Model::ModelDim>,
-) -> OVector<Model::ScalarType, Model::OutputDim>
+) -> OVector<Model::ScalarType, Dyn>
 where
     Model::ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
 {
     let original_params = model.params();
     model

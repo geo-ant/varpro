@@ -59,7 +59,6 @@ impl SeparableNonlinearModel for DummyModel {
     type Error = Infallible;
     type ParameterDim = Dyn;
     type ModelDim = Dyn;
-    type OutputDim = Dyn;
 
     fn parameter_count(&self) -> Self::ParameterDim {
         Dyn(2)
@@ -69,8 +68,8 @@ impl SeparableNonlinearModel for DummyModel {
         Dyn(3)
     }
 
-    fn output_len(&self) -> Self::OutputDim {
-        Dyn(3)
+    fn output_len(&self) -> usize {
+        3
     }
 
     fn set_params(
@@ -84,9 +83,7 @@ impl SeparableNonlinearModel for DummyModel {
         todo!()
     }
 
-    fn eval(
-        &self,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+    fn eval(&self) -> Result<OMatrix<Self::ScalarType, Dyn, Self::ModelDim>, Self::Error> {
         Ok(DMatrix::from_row_slice(
             3,
             3,
@@ -97,7 +94,7 @@ impl SeparableNonlinearModel for DummyModel {
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+    ) -> Result<OMatrix<Self::ScalarType, Dyn, Self::ModelDim>, Self::Error> {
         let mut jacobian = DMatrix::zeros(3, 3);
         jacobian.column_mut(derivative_index).fill(1.0);
         jacobian

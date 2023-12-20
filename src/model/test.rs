@@ -54,7 +54,6 @@ impl SeparableNonlinearModel for MockSeparableNonlinearModel {
     type Error = MockModelError;
     type ParameterDim = Dyn;
     type ModelDim = Dyn;
-    type OutputDim = Dyn;
     type ScalarType = f64;
 
     fn parameter_count(&self) -> Dyn {
@@ -65,8 +64,8 @@ impl SeparableNonlinearModel for MockSeparableNonlinearModel {
         Dyn(self.base_function_count())
     }
 
-    fn output_len(&self) -> Dyn {
-        Dyn(self.output_len())
+    fn output_len(&self) -> usize {
+        self.output_len()
     }
 
     fn set_params(&mut self, parameters: DVector<f64>) -> Result<(), Self::Error> {

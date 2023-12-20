@@ -1,6 +1,6 @@
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
-    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Matrix,
+    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix,
     OMatrix, OVector, RealField, Scalar, U0, U1,
 };
 use num_traits::{Float, FromPrimitive, Zero};
@@ -61,9 +61,9 @@ where
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
     nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
 {
     /// The covariance matrix of the parameter estimates. The linear
     /// parameters are ordered first, followed by the non-linear parameters
@@ -93,7 +93,7 @@ where
     /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
     /// where `$\vec{y}$` is the data, `$\vec{f}$` is the model function and `$W$` is the
     /// weights
-    weighted_residuals: OVector<Model::ScalarType, Model::OutputDim>,
+    weighted_residuals: OVector<Model::ScalarType, Dyn>,
 
     /// the _weighted residual mean square_ or _regression standard error_.
     sigma: Model::ScalarType,
@@ -115,9 +115,9 @@ where
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
     >,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
     nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
 {
     /// The covariance matrix of the parameter estimates. Here the parameters
     /// are both the linear as well as the nonlinear parameters of the model.
@@ -166,7 +166,7 @@ where
     /// \vec{r_w} = W * (\vec{y} - \vec{f}(\vec{\alpha},\vec{c}))
     /// ```
     /// at the best fit parameters `$\vec{alpha}$` and `$\vec{c}$`.
-    pub fn weighted_residuals(&self) -> &OVector<Model::ScalarType, Model::OutputDim> {
+    pub fn weighted_residuals(&self) -> &OVector<Model::ScalarType, Dyn> {
         &self.weighted_residuals
     }
 
@@ -196,8 +196,7 @@ where
             nalgebra::DimMin<<Model::ModelDim as nalgebra::DimAdd<Model::ParameterDim>>::Output>,
         <Model::ModelDim as nalgebra::DimAdd<Model::ParameterDim>>::Output:
             nalgebra::DimMin<Model::ModelDim>,
-        nalgebra::DefaultAllocator:
-            nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
         DefaultAllocator:
             nalgebra::allocator::Allocator<
                 Model::ScalarType,
@@ -276,14 +275,14 @@ where
     >,
     nalgebra::DefaultAllocator: Allocator<
         <Model as SeparableNonlinearModel>::ScalarType,
-        <Model as SeparableNonlinearModel>::OutputDim,
+        Dyn,
         <Model as SeparableNonlinearModel>::ModelDim,
     >,
     nalgebra::DefaultAllocator: Allocator<
         <Model as SeparableNonlinearModel>::ScalarType,
         <Model as SeparableNonlinearModel>::ParameterDim,
     >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
 {
     /// Calculate the fit statistics from the model, the WEIGHTED data, the weights, and the linear coefficients.
     /// Note the nonlinear coefficients are part of state of the model.
@@ -296,35 +295,35 @@ where
     #[allow(non_snake_case)]
     pub(crate) fn try_calculate(
         model: &Model,
-        weighted_data: &OVector<Model::ScalarType, Model::OutputDim>,
-        weights: &Weights<Model::ScalarType, Model::OutputDim>,
+        weighted_data: &OVector<Model::ScalarType, Dyn>,
+        weights: &Weights<Model::ScalarType, Dyn>,
         linear_coefficients: &OVector<Model::ScalarType, Model::ModelDim>,
     ) -> Result<Self, Error<Model::Error>>
     where
         Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim>,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
         DefaultAllocator: Allocator<Model::ScalarType, Model::ModelDim>,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
         DefaultAllocator: Allocator<
             Model::ScalarType,
-            Model::OutputDim,
+            Dyn,
             <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
         >,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ParameterDim>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
         DefaultAllocator: Allocator<
             Model::ScalarType,
             <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-            <Model as SeparableNonlinearModel>::OutputDim,
+            Dyn,
         >,
     {
         // see the OLeary and Rust Paper for reference
         // the names are taken from the paper
 
         let H = weights * model_function_jacobian(model, linear_coefficients)?;
-        let output_len = model.output_len().value();
+        let output_len = model.output_len();
         let weighted_residuals: OVector<_, _> =
             weighted_data - weights * model.eval()? * linear_coefficients;
         let degrees_of_freedom =
@@ -400,40 +399,30 @@ fn model_function_jacobian<Model>(
     model: &Model,
     c: &OVector<Model::ScalarType, Model::ModelDim>,
 ) -> Result<
-    OMatrix<
-        Model::ScalarType,
-        Model::OutputDim,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
+    OMatrix<Model::ScalarType, Dyn, <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output>,
     Model::Error,
 >
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Float + Zero + Scalar + ComplexField,
     nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: Allocator<
-        Model::ScalarType,
-        Model::OutputDim,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ParameterDim>,
+    nalgebra::DefaultAllocator:
+        Allocator<Model::ScalarType, Dyn, <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output>,
     <Model as SeparableNonlinearModel>::ModelDim:
         nalgebra::DimAdd<<Model as SeparableNonlinearModel>::ParameterDim>,
     nalgebra::DefaultAllocator: Allocator<
         <Model as SeparableNonlinearModel>::ScalarType,
         <Model as SeparableNonlinearModel>::ModelDim,
     >,
-    nalgebra::DefaultAllocator: Allocator<
-        <Model as SeparableNonlinearModel>::ScalarType,
-        <Model as SeparableNonlinearModel>::OutputDim,
-    >,
+    nalgebra::DefaultAllocator: Allocator<<Model as SeparableNonlinearModel>::ScalarType, Dyn>,
 {
     // the part of the jacobian that contains the derivatives
     // with respect to the nonlinear parameters
     let mut jacobian_matrix_for_nonlinear_params =
-        OMatrix::<Model::ScalarType, Model::OutputDim, Model::ParameterDim>::zeros_generic(
-            model.output_len(),
+        OMatrix::<Model::ScalarType, Dyn, Model::ParameterDim>::zeros_generic(
+            Dyn(model.output_len()),
             model.parameter_count(),
         );
     for (idx, mut col) in jacobian_matrix_for_nonlinear_params

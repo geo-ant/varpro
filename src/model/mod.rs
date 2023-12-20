@@ -150,12 +150,6 @@ pub mod test;
 ///     /// the model dimension is the number of base functions.
 ///     /// We also use a type to indicate its size at compile time
 ///     type ModelDim = U3;
-///     /// the ouput dim is the number of elements that each base function
-///     /// produces. We have made this dynamic here since it has
-///     /// the same length as the x vector given to the model. We made it
-///     /// so that the length of the x vector is only runtime known.
-///     /// We could just as well have made it compile time known.
-///     type OutputDim = Dyn;
 ///     /// the actual scalar type that our model uses for calculations
 ///     type ScalarType = f64;
 ///
@@ -240,10 +234,10 @@ pub mod test;
 ///         Ok(derivatives)
 ///     }
 ///
-///     fn output_len(&self) -> Self::OutputDim {
+///     fn output_len(&self) -> usize {
 ///         // this is how we give a length that is only known at runtime.
 ///         // We wrap it in a `Dyn` instance.
-///         Dyn(self.x_vector.len())
+///         self.x_vector.len()
 ///     }
 /// }
 /// ```
@@ -251,8 +245,7 @@ pub mod test;
 pub trait SeparableNonlinearModel
 where
     DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Self::ParameterDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Self::ScalarType, Self::OutputDim, Self::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Dyn, Self::ModelDim>,
 {
     /// the scalar number type for this model, which should be
     /// a real or complex number type, commonly either `f64` or `f32`.
@@ -277,12 +270,6 @@ where
     /// type.
     type ModelDim: Dim;
 
-    /// The dimension `$n$` of the output of the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c}) \in \mathbb{R}^n$`.
-    /// If the output dimension is not known at compile time, then use the [nalgebra::Dyn](nalgebra::Dyn),
-    /// which is likely the right choice for this dimension as a default
-    /// unless you have a good reason to do otherwise.
-    type OutputDim: Dim;
-
     /// return the number of *nonlinear* parameters that this model depends on.
     fn parameter_count(&self) -> Self::ParameterDim;
 
@@ -291,7 +278,7 @@ where
 
     /// return the dimension `$n$` of the output of the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c}) \in \mathbb{R}^n$`.
     /// This is also the dimension of every single base function.
-    fn output_len(&self) -> Self::OutputDim;
+    fn output_len(&self) -> usize;
 
     /// Set the nonlinear parameters `$\vec{\alpha}$` of the model to the given vector .
     fn set_params(
@@ -338,9 +325,7 @@ where
     /// ## Errors
     /// An error can be returned if the evaluation fails for  some reason.
     ///
-    fn eval(
-        &self,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error>;
+    fn eval(&self) -> Result<OMatrix<Self::ScalarType, Dyn, Self::ModelDim>, Self::Error>;
 
     /// Evaluate the partial derivatives for the base function at for the
     /// currently set parameters and return them in matrix form.
@@ -395,7 +380,7 @@ where
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error>;
+    ) -> Result<OMatrix<Self::ScalarType, Dyn, Self::ModelDim>, Self::Error>;
 }
 
 /// The type returned from building a model using the
@@ -452,7 +437,6 @@ where
     type Error = ModelError;
     type ParameterDim = Dyn;
     type ModelDim = Dyn;
-    type OutputDim = Dyn;
 
     fn parameter_count(&self) -> Dyn {
         Dyn(self.parameter_names.len())
@@ -549,7 +533,7 @@ where
         Ok(derivative_function_value_matrix)
     }
 
-    fn output_len(&self) -> Self::OutputDim {
-        Self::OutputDim::from_usize(self.x_vector.len())
+    fn output_len(&self) -> usize {
+        self.x_vector.len()
     }
 }

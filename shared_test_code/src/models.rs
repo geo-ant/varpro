@@ -66,12 +66,6 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     /// the model dimension is the number of base functions.
     /// We also use a type to indicate its size at compile time
     type ModelDim = U3;
-    /// the ouput dim is the number of elements that each base function
-    /// produces. We have made this dynamic here since it has
-    /// the same length as the x vector given to the model. We made it
-    /// so that the length of the x vector is only runtime known.
-    /// We could just as well have made it compile time known.
-    type OutputDim = Dyn;
     /// the actual scalar type that our model uses for calculations
     type ScalarType = f64;
 
@@ -157,10 +151,10 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
         Ok(derivatives)
     }
 
-    fn output_len(&self) -> Self::OutputDim {
+    fn output_len(&self) -> usize {
         // this is how we give a length that is only known at runtime.
         // We wrap it in a `Dyn` instance.
-        Dyn(self.x_vector.len())
+        self.x_vector.len()
     }
 }
 
@@ -307,7 +301,6 @@ impl SeparableNonlinearModel for OLearyExampleModel {
     type Error = ModelError;
     type ParameterDim = U3;
     type ModelDim = U2;
-    type OutputDim = Dyn;
 
     fn parameter_count(&self) -> Self::ParameterDim {
         U3 {}
@@ -317,8 +310,8 @@ impl SeparableNonlinearModel for OLearyExampleModel {
         U2 {}
     }
 
-    fn output_len(&self) -> Self::OutputDim {
-        Dyn(self.t.len())
+    fn output_len(&self) -> usize {
+        self.t.len()
     }
 
     fn set_params(
@@ -341,16 +334,14 @@ impl SeparableNonlinearModel for OLearyExampleModel {
         self.alpha
     }
 
-    fn eval(
-        &self,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+    fn eval(&self) -> Result<OMatrix<Self::ScalarType, Dyn, Self::ModelDim>, Self::Error> {
         Ok(self.phi.clone())
     }
 
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+    ) -> Result<OMatrix<Self::ScalarType, Dyn, Self::ModelDim>, Self::Error> {
         let mut derivs = OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(self.t.len()), U2);
         let alpha1 = self.alpha[0];
         let alpha2 = self.alpha[1];
