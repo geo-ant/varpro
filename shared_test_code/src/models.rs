@@ -1,4 +1,4 @@
-use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector2, Vector3, U2, U3};
+use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector3, U1, U2, U3};
 use varpro::model::SeparableModel;
 use varpro::{model::errors::ModelError, prelude::*};
 
@@ -25,7 +25,7 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
     x_vector: DVector<f64>,
     /// current parameters [tau1,tau2] of the exponential
     /// functions
-    params: Vector2<f64>,
+    params: OVector<f64, Dyn>,
     /// cached evaluation of the model
     /// the matrix columns contain the complete evaluation
     /// of the model. That is the first column contains the
@@ -46,11 +46,15 @@ impl DoubleExpModelWithConstantOffsetSepModel {
         let x_len = x_vector.len();
         let mut ret = Self {
             x_vector,
-            params: Vector2::zeros(), //<-- will be overwritten by set_params
+            params: OVector::zeros_generic(Dyn(2), U1), //<-- will be overwritten by set_params
             eval: OMatrix::<f64, Dyn, U3>::zeros_generic(Dyn(x_len), U3),
         };
-        ret.set_params(Vector2::new(tau1_guess, tau2_guess))
-            .unwrap();
+        ret.set_params(OVector::from_column_slice_generic(
+            Dyn(2),
+            U1,
+            &[tau1_guess, tau2_guess],
+        ))
+        .unwrap();
         ret
     }
 }
@@ -62,7 +66,7 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     type Error = ModelError;
     /// We use a compile time constant (2) to indicate the
     /// number of parameters at compile time
-    type ParameterDim = U2;
+    type ParameterDim = Dyn;
     /// the model dimension is the number of base functions.
     /// We also use a type to indicate its size at compile time
     type ModelDim = U3;
@@ -70,11 +74,11 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     type ScalarType = f64;
 
     #[inline]
-    fn parameter_count(&self) -> U2 {
+    fn parameter_count(&self) -> Dyn {
         // regardless of the fact that we know at compile time
         // that the length is 2, we still have to return an instance
         // of that type
-        U2 {}
+        Dyn(2)
     }
 
     #[inline]
@@ -87,7 +91,7 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     // model but we also cache some calculations. The advantage is that
     // we don't have to recalculate the exponential terms for either
     // the evaluations or the derivatives for the same parameters.
-    fn set_params(&mut self, parameters: Vector2<f64>) -> Result<(), Self::Error> {
+    fn set_params(&mut self, parameters: OVector<f64, Dyn>) -> Result<(), Self::Error> {
         // even if it is not the only thing we do, we still
         // have to update the internal parameters of the model
         self.params = parameters;
@@ -110,7 +114,7 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     }
 
     fn params(&self) -> OVector<f64, Self::ParameterDim> {
-        self.params
+        self.params.clone()
     }
 
     // since we cached the model evaluation, we can just return

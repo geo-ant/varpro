@@ -3,8 +3,8 @@ use nalgebra::DMatrix;
 use nalgebra::DVector;
 
 use nalgebra::vector;
+use nalgebra::Dyn;
 use nalgebra::OVector;
-use nalgebra::Vector2;
 use nalgebra::Vector3;
 use nalgebra::U1;
 use nalgebra::U2;
@@ -130,7 +130,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     // generate some data without noise
     let y = evaluate_complete_model_at_params(
         &mut model,
-        Vector2::new(tau1, tau2),
+        OVector::from_column_slice_generic(Dyn(2), U1, &[tau1, tau2]),
         &OVector::from_vec_generic(base_func_count, U1, vec![c1, c2, c3]),
     );
 
