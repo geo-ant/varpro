@@ -10,3 +10,4 @@ varpro = {path = "../"}
 nalgebra = "0.32"
 num-traits = "0.2"
 levenberg-marquardt = "0.13"
+approx = "0.5"

@@ -1,4 +1,4 @@
-use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector3, U1, U2, U3};
+use nalgebra::{DVector, Dyn, OMatrix, OVector, U1, U2, U3};
 use varpro::model::SeparableModel;
 use varpro::{model::errors::ModelError, prelude::*};
 
@@ -281,18 +281,18 @@ pub struct OLearyExampleModel {
     /// the t vector
     t: DVector<f64>,
     /// the current parameters (alpha1,alpha2,alpha3,alpha4)
-    alpha: Vector3<f64>,
+    alpha: OVector<f64, Dyn>,
     /// the current evaluation of the model
     phi: OMatrix<f64, Dyn, U2>,
 }
 
 impl OLearyExampleModel {
     /// create a new model with the given t vector and initial guesses
-    pub fn new(t: DVector<f64>, initial_guesses: Vector3<f64>) -> Self {
+    pub fn new(t: DVector<f64>, initial_guesses: OVector<f64, Dyn>) -> Self {
         let t_len = t.len();
         let mut ret = Self {
             t,
-            alpha: initial_guesses,
+            alpha: initial_guesses.clone(),
             phi: OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(t_len), U2),
         };
         ret.set_params(initial_guesses).unwrap();
@@ -303,11 +303,11 @@ impl OLearyExampleModel {
 impl SeparableNonlinearModel for OLearyExampleModel {
     type ScalarType = f64;
     type Error = ModelError;
-    type ParameterDim = U3;
+    type ParameterDim = Dyn;
     type ModelDim = U2;
 
     fn parameter_count(&self) -> Self::ParameterDim {
-        U3 {}
+        Dyn(3)
     }
 
     fn base_function_count(&self) -> Self::ModelDim {
@@ -335,7 +335,7 @@ impl SeparableNonlinearModel for OLearyExampleModel {
     }
 
     fn params(&self) -> OVector<Self::ScalarType, Self::ParameterDim> {
-        self.alpha
+        self.alpha.clone()
     }
 
     fn eval(&self) -> Result<OMatrix<Self::ScalarType, Dyn, Self::ModelDim>, Self::Error> {

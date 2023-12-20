@@ -5,10 +5,9 @@ use nalgebra::DVector;
 use nalgebra::vector;
 use nalgebra::Dyn;
 use nalgebra::OVector;
-use nalgebra::Vector3;
 use nalgebra::U1;
 use nalgebra::U2;
-use nalgebra::U3;
+use shared_test_code::check_relative_matrix_eq;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::linspace;
@@ -271,7 +270,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_leven
 // this also tests the correct application of weights
 fn oleary_example_with_handrolled_model_produces_correct_results() {
     // those are the initial guesses from the example in the oleary matlab code
-    let initial_guess = Vector3::new(0.5, 2., 3.);
+    let initial_guess = OVector::from_column_slice_generic(Dyn(3), U1, &[0.5, 2., 3.]);
     // these are the original timepoints from the matlab code
     let t = DVector::from_vec(vec![
         0., 0.1, 0.22, 0.31, 0.46, 0.50, 0.63, 0.78, 0.85, 0.97,
@@ -305,7 +304,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     // solved parameters from the matlab code
     // they note that many parameters fit the observations well
     let alpha_true =
-        OVector::<f64, U3>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
+        OVector::<f64, Dyn>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
     let c_true = OVector::<f64, U2>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
     assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
@@ -347,22 +346,38 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
       -4.6980e-04,   4.7170e-04,  -3.6450e-05,   8.5784e-05,   2.0534e-04;
       -1.9052e-03,   1.8828e-03,   5.1919e-05,   2.0534e-04,   8.2272e-04;
     ];
-    assert_relative_eq!(
-        statistics.covariance_matrix(),
+    check_relative_matrix_eq(
+        &statistics.covariance_matrix(),
         &expected_covariance_matrix,
-        epsilon = 1e-5,
+        1e-5,
     );
+    // assert_relative_eq!(
+    //     statistics.covariance_matrix(),
+    //     &expected_covariance_matrix,
+    //     epsilon = 1e-5,
+    // );
 
-    assert_relative_eq!(
-        statistics.nonlinear_parameters_variance(),
-        vector![2.6925e-04, 8.5784e-05, 8.2272e-04],
-        epsilon = 1e-5,
+    check_relative_matrix_eq(
+        &statistics.nonlinear_parameters_variance(),
+        &vector![2.6925e-04, 8.5784e-05, 8.2272e-04],
+        1e-5,
     );
-    assert_relative_eq!(
-        statistics.linear_coefficients_variance(),
-        vector![4.4887e-03, 4.3803e-03],
-        epsilon = 1e-5,
+    // assert_relative_eq!(
+    //     statistics.nonlinear_parameters_variance(),
+    //     vector![2.6925e-04, 8.5784e-05, 8.2272e-04],
+    //     epsilon = 1e-5,
+    // );
+
+    check_relative_matrix_eq(
+        &statistics.linear_coefficients_variance(),
+        &vector![4.4887e-03, 4.3803e-03],
+        1e-5,
     );
+    // assert_relative_eq!(
+    //     statistics.linear_coefficients_variance(),
+    //     vector![4.4887e-03, 4.3803e-03],
+    //     epsilon = 1e-5,
+    // );
 
     let expected_correlation_matrix = nalgebra::matrix![
      1.0000,  -0.9993,  -0.1966,  -0.7571,  -0.9914;
@@ -371,11 +386,16 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     -0.7571,   0.7695,  -0.2398,   1.0000,   0.7729;
     -0.9914,   0.9918,   0.1103,   0.7729,   1.0000;
       ];
-    assert_relative_eq!(
+    check_relative_matrix_eq(
         statistics.correlation_matrix(),
         &expected_correlation_matrix,
-        epsilon = 1e-4
+        1e-4,
     );
+    // assert_relative_eq!(
+    //     statistics.correlation_matrix(),
+    //     &expected_correlation_matrix,
+    //     epsilon = 1e-4
+    // );
 }
 
 #[test]
