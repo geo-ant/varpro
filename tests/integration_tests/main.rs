@@ -6,7 +6,6 @@ use nalgebra::vector;
 use nalgebra::Dyn;
 use nalgebra::OVector;
 use nalgebra::U1;
-use nalgebra::U2;
 use shared_test_code::check_relative_matrix_eq;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
@@ -305,7 +304,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     // they note that many parameters fit the observations well
     let alpha_true =
         OVector::<f64, Dyn>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
-    let c_true = OVector::<f64, U2>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
+    let c_true = OVector::<f64, Dyn>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
     assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
 

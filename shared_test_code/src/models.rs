@@ -1,4 +1,4 @@
-use nalgebra::{DVector, Dyn, OMatrix, OVector, U1, U2, U3};
+use nalgebra::{DVector, Dyn, OMatrix, OVector, U1};
 use varpro::model::SeparableModel;
 use varpro::{model::errors::ModelError, prelude::*};
 
@@ -36,7 +36,7 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
     ///
     /// This value is calculated in the set_params method, which is
     /// the only method with mutable access to the model state.
-    eval: OMatrix<f64, Dyn, U3>,
+    eval: OMatrix<f64, Dyn, Dyn>,
 }
 
 impl DoubleExpModelWithConstantOffsetSepModel {
@@ -47,7 +47,7 @@ impl DoubleExpModelWithConstantOffsetSepModel {
         let mut ret = Self {
             x_vector,
             params: OVector::zeros_generic(Dyn(2), U1), //<-- will be overwritten by set_params
-            eval: OMatrix::<f64, Dyn, U3>::zeros_generic(Dyn(x_len), U3),
+            eval: OMatrix::<f64, Dyn, Dyn>::zeros_generic(Dyn(x_len), Dyn(3)),
         };
         ret.set_params(OVector::from_column_slice_generic(
             Dyn(2),
@@ -69,7 +69,7 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     type ParameterDim = Dyn;
     /// the model dimension is the number of base functions.
     /// We also use a type to indicate its size at compile time
-    type ModelDim = U3;
+    type ModelDim = Dyn;
     /// the actual scalar type that our model uses for calculations
     type ScalarType = f64;
 
@@ -82,9 +82,9 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     }
 
     #[inline]
-    fn base_function_count(&self) -> U3 {
+    fn base_function_count(&self) -> Dyn {
         // same as above
-        U3 {}
+        Dyn(3)
     }
 
     // we use this method not only to set the parameters inside the
@@ -149,7 +149,7 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
         // with respect to tau_1 or tau_2. Remember the constant term
         // also occupies one column and will always be zero when differentiated
         // with respect to the nonlinear params of the model
-        let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), U3);
+        let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), Dyn(3));
 
         derivatives.set_column(derivative_index, &df);
         Ok(derivatives)
@@ -283,7 +283,7 @@ pub struct OLearyExampleModel {
     /// the current parameters (alpha1,alpha2,alpha3,alpha4)
     alpha: OVector<f64, Dyn>,
     /// the current evaluation of the model
-    phi: OMatrix<f64, Dyn, U2>,
+    phi: OMatrix<f64, Dyn, Dyn>,
 }
 
 impl OLearyExampleModel {
@@ -293,7 +293,7 @@ impl OLearyExampleModel {
         let mut ret = Self {
             t,
             alpha: initial_guesses.clone(),
-            phi: OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(t_len), U2),
+            phi: OMatrix::<f64, Dyn, Dyn>::zeros_generic(Dyn(t_len), Dyn(2)),
         };
         ret.set_params(initial_guesses).unwrap();
         ret
@@ -304,14 +304,14 @@ impl SeparableNonlinearModel for OLearyExampleModel {
     type ScalarType = f64;
     type Error = ModelError;
     type ParameterDim = Dyn;
-    type ModelDim = U2;
+    type ModelDim = Dyn;
 
     fn parameter_count(&self) -> Self::ParameterDim {
         Dyn(3)
     }
 
-    fn base_function_count(&self) -> Self::ModelDim {
-        U2 {}
+    fn base_function_count(&self) -> Dyn {
+        Dyn(2)
     }
 
     fn output_len(&self) -> usize {
@@ -330,7 +330,7 @@ impl SeparableNonlinearModel for OLearyExampleModel {
         let f1 = self.t.map(|t| f64::exp(-alpha2 * t) * f64::cos(alpha3 * t));
         let f2 = self.t.map(|t| f64::exp(-alpha1 * t) * f64::cos(alpha2 * t));
 
-        self.phi = OMatrix::<f64, Dyn, U2>::from_columns(&[f1, f2]);
+        self.phi = OMatrix::<f64, Dyn, Dyn>::from_columns(&[f1, f2]);
         Ok(())
     }
 
@@ -346,7 +346,7 @@ impl SeparableNonlinearModel for OLearyExampleModel {
         &self,
         derivative_index: usize,
     ) -> Result<OMatrix<Self::ScalarType, Dyn, Self::ModelDim>, Self::Error> {
-        let mut derivs = OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(self.t.len()), U2);
+        let mut derivs = OMatrix::<f64, Dyn, Dyn>::zeros_generic(Dyn(self.t.len()), Dyn(2));
         let alpha1 = self.alpha[0];
         let alpha2 = self.alpha[1];
         let alpha3 = self.alpha[2];
