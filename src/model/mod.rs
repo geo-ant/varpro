@@ -110,7 +110,7 @@ pub mod test;
 ///     x_vector : DVector<f64>,
 ///     /// current parameters [tau1,tau2] of the exponential
 ///     /// functions
-///     params : Vector2<f64>,
+///     params : OVector<f64,Dyn>,
 ///     /// cached evaluation of the model
 ///     /// the matrix columns contain the complete evaluation
 ///     /// of the model. That is the first column contains the
@@ -121,7 +121,7 @@ pub mod test;
 ///     ///
 ///     /// This value is calculated in the set_params method, which is
 ///     /// the only method with mutable access to the model state.
-///     eval : OMatrix<f64,Dyn,U3>,
+///     eval : OMatrix<f64,Dyn,Dyn>,
 /// }
 ///
 /// impl DoubleExpModelWithConstantOffsetSepModel {
@@ -131,10 +131,10 @@ pub mod test;
 ///         let x_len = x_vector.len();
 ///         let mut ret = Self {
 ///             x_vector,
-///             params : Vector2::zeros(),//<-- will be overwritten by set_params
-///             eval : OMatrix::<f64,Dyn,U3>::zeros_generic(Dyn(x_len), U3)
+///             params : OVector::<f64,Dyn>::from_column_slice(&[tau1_guess,tau2_guess]),//<-- will be overwritten by set_params
+///             eval : OMatrix::zeros_generic(Dyn(x_len), Dyn(3))
 ///         };
-///         ret.set_params(Vector2::new(tau1_guess, tau2_guess)).unwrap();
+///         ret.set_params(OVector::<f64,Dyn>::from_column_slice(&[tau1_guess,tau2_guess])).unwrap();
 ///         ret
 ///     }
 /// }
@@ -144,34 +144,27 @@ pub mod test;
 ///     /// could also have indicated that our calculations cannot
 ///     /// fail by using [`std::convert::Infallible`].
 ///     type Error = varpro::model::errors::ModelError;
-///     /// We use a compile time constant (2) to indicate the
-///     /// number of parameters at compile time
-///     type ParameterDim = U2;
-///     /// the model dimension is the number of base functions.
-///     /// We also use a type to indicate its size at compile time
-///     type ModelDim = U3;
 ///     /// the actual scalar type that our model uses for calculations
 ///     type ScalarType = f64;
 ///
 ///     #[inline]
-///     fn parameter_count(&self) -> U2 {
+///     fn parameter_count(&self) -> usize {
 ///         // regardless of the fact that we know at compile time
-///         // that the length is 2, we still have to return an instance
-///         // of that type
-///         U2{}
+///         // that the length is 2, we still have to return it
+///         2
 ///     }
 ///
 ///     #[inline]
-///     fn base_function_count(&self) -> U3 {
+///     fn base_function_count(&self) -> usize {
 ///         // same as above
-///         U3{}
+///         3
 ///     }
 ///     
 ///     // we use this method not only to set the parameters inside the
 ///     // model but we also cache some calculations. The advantage is that
 ///     // we don't have to recalculate the exponential terms for either
 ///     // the evaluations or the derivatives for the same parameters.
-///     fn set_params(&mut self, parameters : Vector2<f64>) -> Result<(),Self::Error> {
+///     fn set_params(&mut self, parameters : OVector<f64,Dyn>) -> Result<(),Self::Error> {
 ///         // even if it is not the only thing we do, we still
 ///         // have to update the internal parameters of the model
 ///         self.params = parameters;
@@ -192,7 +185,7 @@ pub mod test;
 ///         Ok(())
 ///     }
 ///
-///     fn params(&self) -> OVector<f64, Self::ParameterDim> {
+///     fn params(&self) -> OVector<f64, Dyn> {
 ///         self.params.clone()
 ///     }
 ///     
@@ -200,7 +193,7 @@ pub mod test;
 ///     // it here
 ///     fn eval(
 ///         &self,
-///     ) -> Result<OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
+///     ) -> Result<OMatrix<f64,Dyn,Dyn>, Self::Error> {
 ///         Ok(self.eval.clone())
 ///     }
 ///     
@@ -210,7 +203,7 @@ pub mod test;
 ///     fn eval_partial_deriv(
 ///         &self,
 ///         derivative_index: usize,
-///     ) -> Result<nalgebra::OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
+///     ) -> Result<nalgebra::OMatrix<f64,Dyn,Dyn>, Self::Error> {
 ///         let location = &self.x_vector;
 ///         let parameters = &self.params;
 ///         // derivative index can be either 0,1 (corresponding to the linear parameters
@@ -228,7 +221,7 @@ pub mod test;
 ///         // with respect to tau_1 or tau_2. Remember the constant term
 ///         // also occupies one column and will always be zero when differentiated
 ///         // with respect to the nonlinear params of the model
-///         let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), U3);
+///         let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), Dyn(3));
 ///
 ///         derivatives.set_column(derivative_index, &df);
 ///         Ok(derivatives)
