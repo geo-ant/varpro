@@ -4,7 +4,7 @@ use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::allocator::{Allocator, Reallocator};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix, OVector,
+    ComplexField, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector,
     RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD,
 };
 

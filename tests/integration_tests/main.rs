@@ -346,7 +346,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
       -1.9052e-03,   1.8828e-03,   5.1919e-05,   2.0534e-04,   8.2272e-04;
     ];
     check_relative_matrix_eq(
-        &statistics.covariance_matrix(),
+        statistics.covariance_matrix(),
         &expected_covariance_matrix,
         1e-5,
     );
