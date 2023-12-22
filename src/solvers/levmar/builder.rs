@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, Const, DefaultAllocator, DimMin, DimSub, Dyn, OVector, Scalar};
+use nalgebra::{ComplexField, DefaultAllocator, DimMin, DimSub, Dyn, OVector, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -69,8 +69,7 @@ where
     <Model::ScalarType as ComplexField>::RealField:
         Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
 {
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
@@ -95,45 +94,20 @@ where
     <Model::ScalarType as ComplexField>::RealField:
         Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-        Model::ModelDim,
-    >,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
 
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), Dyn>,
     DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, <Dyn as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<(usize, usize), <Dyn as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-        Dyn,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <<Dyn as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <<Dyn as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
+        nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<
         (<Model::ScalarType as ComplexField>::RealField, usize),
-        <Dyn as DimMin<Model::ModelDim>>::Output,
+        Dyn,
     >,
-    <Dyn as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>>,
 {
     /// Create a new builder based on the given model
     pub fn new(model: Model) -> Self {

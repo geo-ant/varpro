@@ -3,11 +3,7 @@ use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::ComplexField;
 
-use nalgebra::Const;
 use nalgebra::DefaultAllocator;
-
-use nalgebra::DimMin;
-use nalgebra::DimSub;
 
 use nalgebra::Dyn;
 use nalgebra::OVector;
@@ -42,44 +38,12 @@ fn build_problem<Model>(
 ) -> LevMarProblem<Model>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn, Dyn>,
     <DefaultAllocator as nalgebra::allocator::Allocator<f64, Dyn>>::Buffer: Storage<f64, Dyn>,
     <DefaultAllocator as nalgebra::allocator::Allocator<f64, Dyn>>::Buffer: RawStorageMut<f64, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, <Dyn as DimMin<Model::ModelDim>>::Output>,
     DefaultAllocator:
-        nalgebra::allocator::Allocator<(usize, usize), <Dyn as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<f64, <Dyn as DimMin<Model::ModelDim>>::Output, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <f64 as ComplexField>::RealField,
-        <<Dyn as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        f64,
-        <<Dyn as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        (<f64 as ComplexField>::RealField, usize),
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
-    <Dyn as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>>,
-    Dyn: DimMin<Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        f64,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-        Model::ModelDim,
-    >,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<f64, Dyn, <Dyn as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <f64 as ComplexField>::RealField,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
+        nalgebra::allocator::Allocator<(<f64 as ComplexField>::RealField, usize), Dyn>,
 {
     let DoubleExponentialParameters {
         tau1,
@@ -90,13 +54,13 @@ where
     } = true_parameters;
 
     // save the initial guess so that we can reset the model to those
-    let params = OVector::from_vec_generic(model.parameter_count(), U1, vec![tau1, tau2]);
+    let params = OVector::from_vec_generic(Dyn(model.parameter_count()), U1, vec![tau1, tau2]);
 
     let base_function_count = model.base_function_count();
     let y = evaluate_complete_model_at_params(
         &mut model,
         params,
-        &OVector::from_vec_generic(base_function_count, U1, vec![c1, c2, c3]),
+        &OVector::from_vec_generic(Dyn(base_function_count), U1, vec![c1, c2, c3]),
     );
     LevMarProblemBuilder::new(model)
         .observations(y)

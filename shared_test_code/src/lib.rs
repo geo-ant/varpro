@@ -36,15 +36,13 @@ pub fn linspace<ScalarType: Float + Scalar>(
 /// with the given linear coefficients `linear_coeffs`.
 pub fn evaluate_complete_model_at_params<Model>(
     model: &'_ mut Model,
-    params: OVector<Model::ScalarType, Model::ParameterDim>,
-    linear_coeffs: &OVector<Model::ScalarType, Model::ModelDim>,
+    params: OVector<Model::ScalarType, Dyn>,
+    linear_coeffs: &OVector<Model::ScalarType, Dyn>,
 ) -> OVector<Model::ScalarType, Dyn>
 where
     Model::ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
 {
     let original_params = model.params();

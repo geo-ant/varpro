@@ -54,16 +54,8 @@ pub(crate) enum Error<ModelError: std::error::Error> {
 pub struct FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    Model::ModelDim: DimAdd<Model::ParameterDim>,
-    Model::ParameterDim: Dim,
-    DefaultAllocator: Allocator<
-        Model::ScalarType,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
+    DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
 {
     /// The covariance matrix of the parameter estimates. The linear
     /// parameters are ordered first, followed by the non-linear parameters
@@ -76,19 +68,11 @@ where
     /// See [O'Leary and Rust 2012](https://www.nist.gov/publications/variable-projection-nonlinear-least-squares-problems)
     /// for reference.
     #[allow(clippy::type_complexity)]
-    covariance_matrix: OMatrix<
-        Model::ScalarType,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
+    covariance_matrix: OMatrix<Model::ScalarType, Dyn, Dyn>,
 
     /// the correlation matrix, ordered the same way as the covariance matrix.
     #[allow(clippy::type_complexity)]
-    correlation_matrix: OMatrix<
-        Model::ScalarType,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
+    correlation_matrix: OMatrix<Model::ScalarType, Dyn, Dyn>,
 
     /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
     /// where `$\vec{y}$` is the data, `$\vec{f}$` is the model function and `$W$` is the
@@ -99,25 +83,17 @@ where
     sigma: Model::ScalarType,
 
     /// the number of linear coefficients
-    linear_coefficient_count: Model::ModelDim,
+    linear_coefficient_count: usize,
 
     /// the number of nonlinear parameters
-    nonlinear_parameter_count: Model::ParameterDim,
+    nonlinear_parameter_count: usize,
 }
 
 impl<Model> FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    Model::ModelDim: DimAdd<Model::ParameterDim>,
-    Model::ParameterDim: Dim,
-    DefaultAllocator: Allocator<
-        Model::ScalarType,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
+    DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
 {
     /// The covariance matrix of the parameter estimates. Here the parameters
     /// are both the linear as well as the nonlinear parameters of the model.
@@ -139,25 +115,13 @@ where
     /// * `$C_{13}$` is the covariance between `$c_1$` and `$\alpha_1$`,
     /// * and so on.
     #[allow(clippy::type_complexity)]
-    pub fn covariance_matrix(
-        &self,
-    ) -> &OMatrix<
-        Model::ScalarType,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    > {
+    pub fn covariance_matrix(&self) -> &OMatrix<Model::ScalarType, Dyn, Dyn> {
         &self.covariance_matrix
     }
 
     /// the correlation matrix, ordered the same way as the covariance matrix.
     #[allow(clippy::type_complexity)]
-    pub fn correlation_matrix(
-        &self,
-    ) -> &OMatrix<
-        Model::ScalarType,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    > {
+    pub fn correlation_matrix(&self) -> &OMatrix<Model::ScalarType, Dyn, Dyn> {
         &self.correlation_matrix
     }
 
@@ -185,53 +149,29 @@ where
     /// helper function to extract the estimated _variance_
     /// of the nonlinear model parameters. Those could also be
     /// manually extracted from the diagonal of the covariance matrix.
-    pub fn nonlinear_parameters_variance(&self) -> OVector<Model::ScalarType, Model::ParameterDim>
+    pub fn nonlinear_parameters_variance(&self) -> OVector<Model::ScalarType, Dyn>
     where
         Model::ScalarType: Scalar + Zero,
-        nalgebra::DefaultAllocator:
-            Allocator<Model::ScalarType, <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output>,
-        <Model::ModelDim as nalgebra::DimAdd<Model::ParameterDim>>::Output:
-            DimSub<Model::ModelDim, Output = Model::ParameterDim>,
-        Model::ModelDim:
-            nalgebra::DimMin<<Model::ModelDim as nalgebra::DimAdd<Model::ParameterDim>>::Output>,
-        <Model::ModelDim as nalgebra::DimAdd<Model::ParameterDim>>::Output:
-            nalgebra::DimMin<Model::ModelDim>,
-        nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
-        DefaultAllocator:
-            nalgebra::allocator::Allocator<
-                Model::ScalarType,
-                <<Model::ModelDim as DimAdd<Model::ParameterDim>>::Output as DimSub<
-                    Model::ModelDim,
-                >>::Output,
-            >,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
     {
-        let total_parameter_count =
-            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output::from_usize(
-                self.linear_coefficient_count.value() + self.nonlinear_parameter_count.value(),
-            );
+        let total_parameter_count = self.linear_coefficient_count + self.nonlinear_parameter_count;
         let diagonal = self.covariance_matrix.diagonal();
         extract_range(
             &diagonal,
-            self.linear_coefficient_count,
-            total_parameter_count,
+            Dyn(self.linear_coefficient_count),
+            Dyn(total_parameter_count),
         )
     }
 
     /// helper function to extract the estimated _variance_
     /// of the linear model parameters.
-    pub fn linear_coefficients_variance(&self) -> OVector<Model::ScalarType, Model::ModelDim>
+    pub fn linear_coefficients_variance(&self) -> OVector<Model::ScalarType, Dyn>
     where
         Model::ScalarType: Scalar + Zero,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            Model::ScalarType,
-            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        >,
-        Model::ModelDim: DimSub<U0, Output = Model::ModelDim>,
-        Model::ModelDim: DimMin<nalgebra::Const<0>>,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
     {
         let diagonal = self.covariance_matrix.diagonal();
-        extract_range(&diagonal, U0, self.linear_coefficient_count)
+        extract_range(&diagonal, U0, Dyn(self.linear_coefficient_count))
     }
 }
 
@@ -267,22 +207,8 @@ where
 impl<Model> FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    Model::ModelDim: DimAdd<Model::ParameterDim>,
-    DefaultAllocator: Allocator<
-        Model::ScalarType,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-    >,
-    nalgebra::DefaultAllocator: Allocator<
-        <Model as SeparableNonlinearModel>::ScalarType,
-        Dyn,
-        <Model as SeparableNonlinearModel>::ModelDim,
-    >,
-    nalgebra::DefaultAllocator: Allocator<
-        <Model as SeparableNonlinearModel>::ScalarType,
-        <Model as SeparableNonlinearModel>::ParameterDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
+    DefaultAllocator: Allocator<<Model as SeparableNonlinearModel>::ScalarType, Dyn>,
 {
     /// Calculate the fit statistics from the model, the WEIGHTED data, the weights, and the linear coefficients.
     /// Note the nonlinear coefficients are part of state of the model.
@@ -297,27 +223,14 @@ where
         model: &Model,
         weighted_data: &OVector<Model::ScalarType, Dyn>,
         weights: &Weights<Model::ScalarType, Dyn>,
-        linear_coefficients: &OVector<Model::ScalarType, Model::ModelDim>,
+        linear_coefficients: &OVector<Model::ScalarType, Dyn>,
     ) -> Result<Self, Error<Model::Error>>
     where
         Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,
         Model: SeparableNonlinearModel,
         DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::ModelDim>,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
-        DefaultAllocator: Allocator<
-            Model::ScalarType,
-            Dyn,
-            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-        >,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ParameterDim>,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
-        DefaultAllocator: Allocator<
-            Model::ScalarType,
-            <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output,
-            Dyn,
-        >,
     {
         // see the OLeary and Rust Paper for reference
         // the names are taken from the paper
@@ -326,8 +239,7 @@ where
         let output_len = model.output_len();
         let weighted_residuals: OVector<_, _> =
             weighted_data - weights * model.eval()? * linear_coefficients;
-        let degrees_of_freedom =
-            model.parameter_count().value() + model.base_function_count().value();
+        let degrees_of_freedom = model.parameter_count() + model.base_function_count();
         if output_len <= degrees_of_freedom {
             return Err(Error::Underdetermined);
         }
@@ -397,33 +309,20 @@ where
 #[allow(clippy::type_complexity)]
 fn model_function_jacobian<Model>(
     model: &Model,
-    c: &OVector<Model::ScalarType, Model::ModelDim>,
-) -> Result<
-    OMatrix<Model::ScalarType, Dyn, <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output>,
-    Model::Error,
->
+    c: &OVector<Model::ScalarType, Dyn>,
+) -> Result<OMatrix<Model::ScalarType, Dyn, Dyn>, Model::Error>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Float + Zero + Scalar + ComplexField,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Model::ParameterDim>,
-    nalgebra::DefaultAllocator:
-        Allocator<Model::ScalarType, Dyn, <Model::ModelDim as DimAdd<Model::ParameterDim>>::Output>,
-    <Model as SeparableNonlinearModel>::ModelDim:
-        nalgebra::DimAdd<<Model as SeparableNonlinearModel>::ParameterDim>,
-    nalgebra::DefaultAllocator: Allocator<
-        <Model as SeparableNonlinearModel>::ScalarType,
-        <Model as SeparableNonlinearModel>::ModelDim,
-    >,
-    nalgebra::DefaultAllocator: Allocator<<Model as SeparableNonlinearModel>::ScalarType, Dyn>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
 {
     // the part of the jacobian that contains the derivatives
     // with respect to the nonlinear parameters
     let mut jacobian_matrix_for_nonlinear_params =
-        OMatrix::<Model::ScalarType, Dyn, Model::ParameterDim>::zeros_generic(
+        OMatrix::<Model::ScalarType, Dyn, Dyn>::zeros_generic(
             Dyn(model.output_len()),
-            model.parameter_count(),
+            Dyn(model.parameter_count()),
         );
     for (idx, mut col) in jacobian_matrix_for_nonlinear_params
         .column_iter_mut()

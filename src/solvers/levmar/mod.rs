@@ -4,8 +4,8 @@ use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::allocator::{Allocator, Reallocator};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, Const, DefaultAllocator, Dim, DimAdd, DimMaximum, DimMin, DimSub, Dyn, Matrix,
-    OVector, RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD,
+    ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix, OVector,
+    RawStorageMut, RealField, Scalar, Storage, UninitMatrix, Vector, SVD,
 };
 
 mod builder;
@@ -27,8 +27,8 @@ use std::ops::Mul;
 pub struct LevMarSolver<Model>
 where
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
 {
     solver: LevenbergMarquardt<Model::ScalarType>,
 }
@@ -40,30 +40,12 @@ pub struct FitResult<Model>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ParameterDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        Dyn,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        Dyn,
-        Dyn,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        Dyn,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
     nalgebra::DefaultAllocator:
         nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType, Dyn>,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
         <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
+        Dyn,
+        Dyn,
     >,
 {
     /// the final state of the fitting problem after the
@@ -82,30 +64,12 @@ impl<Model> FitResult<Model>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ParameterDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        Dyn,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        Dyn,
-        Dyn,
-    >,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model as model::SeparableNonlinearModel>::ScalarType,
-        Dyn,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
-    >,
     nalgebra::DefaultAllocator:
         nalgebra::allocator::Allocator<<Model as model::SeparableNonlinearModel>::ScalarType, Dyn>,
     nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<
         <Model as model::SeparableNonlinearModel>::ScalarType,
-        <Model as model::SeparableNonlinearModel>::ModelDim,
+        Dyn,
+        Dyn,
     >,
 {
     /// internal helper for constructing an instance
@@ -121,13 +85,13 @@ where
 
     /// convenience function to get the nonlinear parameters of the model after
     /// the fitting process has finished.
-    pub fn nonlinear_parameters(&self) -> OVector<Model::ScalarType, Model::ParameterDim> {
+    pub fn nonlinear_parameters(&self) -> OVector<Model::ScalarType, Dyn> {
         self.problem.model().params()
     }
 
     /// convenience function to get the linear coefficients after the fit has
     /// finished
-    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Model::ModelDim>> {
+    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Dyn>> {
         self.problem.linear_coefficients()
     }
 
@@ -142,8 +106,8 @@ where
 impl<Model> LevMarSolver<Model>
 where
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
 {
     /// create a new solver with default parameters. Uses the underlying
     /// solver of the `levenberg_marquardt` crate
@@ -170,40 +134,22 @@ where
     ) -> (LevMarProblem<Model>, MinimizationReport<Model::ScalarType>)
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Model::ParameterDim>,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>
-            + Reallocator<
-                Model::ScalarType,
-                Dyn,
-                Model::ParameterDim,
-                DimMaximum<Dyn, Model::ParameterDim>,
-                Model::ParameterDim,
-            > + Allocator<usize, Model::ParameterDim>,
+        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn>
+            + Reallocator<Model::ScalarType, Dyn, Dyn, Dyn, Dyn>
+            + Allocator<usize, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float + FromPrimitive,
         <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
             Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
         <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Dyn>>::Buffer:
             Storage<Model::ScalarType, Dyn>,
         <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Dyn>>::Buffer:
             RawStorageMut<Model::ScalarType, Dyn>,
-        Dyn: DimMin<Model::ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            Model::ScalarType,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-            Model::ModelDim,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            Model::ScalarType,
-            Dyn,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            <Model::ScalarType as ComplexField>::RealField,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-        >,
+        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
+        DefaultAllocator:
+            nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
     {
         self.solver.minimize(problem)
     }
@@ -223,40 +169,21 @@ where
     pub fn fit(&self, problem: LevMarProblem<Model>) -> Result<FitResult<Model>, FitResult<Model>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Model::ParameterDim>,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>
-            + Reallocator<
-                Model::ScalarType,
-                Dyn,
-                Model::ParameterDim,
-                DimMaximum<Dyn, Model::ParameterDim>,
-                Model::ParameterDim,
-            > + Allocator<usize, Model::ParameterDim>,
+        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn>
+            + Reallocator<Model::ScalarType, Dyn, Dyn, Dyn, Dyn>
+            + Allocator<usize, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float + FromPrimitive,
         <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
             Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
         <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Dyn>>::Buffer:
             Storage<Model::ScalarType, Dyn>,
         <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Dyn>>::Buffer:
             RawStorageMut<Model::ScalarType, Dyn>,
-        Dyn: DimMin<Model::ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            Model::ScalarType,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-            Model::ModelDim,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            Model::ScalarType,
-            Dyn,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            <Model::ScalarType as ComplexField>::RealField,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-        >,
+        DefaultAllocator:
+            nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
     {
         #[allow(deprecated)]
         let (problem, report) = self.minimize(problem);
@@ -281,65 +208,22 @@ where
     ) -> Result<(FitResult<Model>, FitStatistics<Model>), FitResult<Model>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Model::ParameterDim>,
-        DefaultAllocator: Allocator<Model::ScalarType, Model::ParameterDim>
-            + Reallocator<
-                Model::ScalarType,
-                Dyn,
-                Model::ParameterDim,
-                DimMaximum<Dyn, Model::ParameterDim>,
-                Model::ParameterDim,
-            > + Allocator<usize, Model::ParameterDim>,
+        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        DefaultAllocator: Allocator<Model::ScalarType, Dyn>
+            + Reallocator<Model::ScalarType, Dyn, Dyn, Dyn, Dyn>
+            + Allocator<usize, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
         <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
             Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
         DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
         <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Dyn>>::Buffer:
             Storage<Model::ScalarType, Dyn>,
         <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Dyn>>::Buffer:
             RawStorageMut<Model::ScalarType, Dyn>,
-        Dyn: DimMin<Model::ModelDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            Model::ScalarType,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-            Model::ModelDim,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            Model::ScalarType,
-            Dyn,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            <Model::ScalarType as ComplexField>::RealField,
-            <Dyn as DimMin<Model::ModelDim>>::Output,
-        >,
-        <Model as model::SeparableNonlinearModel>::ModelDim:
-            nalgebra::DimAdd<<Model as model::SeparableNonlinearModel>::ParameterDim>,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            <Model as model::SeparableNonlinearModel>::ScalarType,
-            <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<
-                <Model as model::SeparableNonlinearModel>::ParameterDim,
-            >>::Output,
-            <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<
-                <Model as model::SeparableNonlinearModel>::ParameterDim,
-            >>::Output,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            <Model as model::SeparableNonlinearModel>::ScalarType,
-            Dyn,
-            <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<
-                <Model as model::SeparableNonlinearModel>::ParameterDim,
-            >>::Output,
-        >,
-        DefaultAllocator: nalgebra::allocator::Allocator<
-            <Model as model::SeparableNonlinearModel>::ScalarType,
-            <<Model as model::SeparableNonlinearModel>::ModelDim as DimAdd<
-                <Model as model::SeparableNonlinearModel>::ParameterDim,
-            >>::Output,
-            Dyn,
-        >,
+        DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
+        DefaultAllocator:
+            nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
     {
         let FitResult {
             problem,
@@ -370,8 +254,8 @@ impl<Model> Default for LevMarSolver<Model>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Float,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
 {
     fn default() -> Self {
         Self::new()
@@ -428,25 +312,8 @@ pub struct LevMarProblem<Model>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
-    Dyn: DimMin<Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-        Model::ModelDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        Dyn,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
 {
     /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
@@ -464,32 +331,17 @@ where
     /// those are updated on set_params. If this is None, then it indicates some error that
     /// is propagated on to the levenberg-marquardt crate by also returning None results
     /// by residuals() and/or jacobian()
-    cached: Option<CachedCalculations<Model::ScalarType, Model::ModelDim, Dyn>>,
+    cached: Option<CachedCalculations<Model::ScalarType, Dyn, Dyn>>,
 }
 
 impl<Model> std::fmt::Debug for LevMarProblem<Model>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
-    Dyn: DimMin<Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-        Model::ModelDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        Dyn,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LevMarProblem")
@@ -506,25 +358,10 @@ impl<Model> LevMarProblem<Model>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-    Dyn: DimMin<Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-        Model::ModelDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        Dyn,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
 {
     /// Get the linear coefficients for the current problem. After a successful pass of the solver,
     /// this contains a value with the best fitting linear coefficients
@@ -532,7 +369,7 @@ where
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
     /// for the linear coefficients of the base functions.
-    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Model::ModelDim>> {
+    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Dyn>> {
         self.cached.as_ref().map(|cache| &cache.linear_coefficients)
     }
 
@@ -554,74 +391,36 @@ where
     }
 }
 
-impl<Model> LeastSquaresProblem<Model::ScalarType, Dyn, Model::ParameterDim>
-    for LevMarProblem<Model>
+impl<Model> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn> for LevMarProblem<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
     <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Dyn>>::Buffer:
         Storage<Model::ScalarType, Dyn>,
     <DefaultAllocator as nalgebra::allocator::Allocator<Model::ScalarType, Dyn>>::Buffer:
         RawStorageMut<Model::ScalarType, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Model::ParameterDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, <Dyn as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<(usize, usize), <Dyn as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-        Dyn,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <<Dyn as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <<Dyn as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<
         (<Model::ScalarType as ComplexField>::RealField, usize),
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
-    <Dyn as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>>,
-    Dyn: DimMin<Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-        Model::ModelDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
         Dyn,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
     >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <Dyn as DimMin<Model::ModelDim>>::Output,
-    >,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
 {
     type ResidualStorage = Owned<Model::ScalarType, Dyn>;
-    type JacobianStorage = Owned<Model::ScalarType, Dyn, Model::ParameterDim>;
-    type ParameterStorage = Owned<Model::ScalarType, Model::ParameterDim>;
+    type JacobianStorage = Owned<Model::ScalarType, Dyn, Dyn>;
+    type ParameterStorage = Owned<Model::ScalarType, Dyn>;
 
     #[allow(non_snake_case)]
     /// Set the (nonlinear) model parameters `$\vec{\alpha}$` and update the internal state of the
     /// problem accordingly. The parameters are expected in the same order that the parameter
     /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
     /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
-    fn set_params(
-        &mut self,
-        params: &Vector<Model::ScalarType, Model::ParameterDim, Self::ParameterStorage>,
-    ) {
+    fn set_params(&mut self, params: &Vector<Model::ScalarType, Dyn, Self::ParameterStorage>) {
         if self.model.set_params(params.clone()).is_err() {
             self.cached = None;
         }
@@ -659,7 +458,7 @@ where
     /// names given on model creation. E.g. if the parameters at model creation where given as
     /// `&["tau","beta"]`, then the returned vector is `$\vec{\alpha} = (\tau,\beta)^T$`, i.e.
     /// the value of parameter `$\tau$` is at index `0` and the value of `$\beta$` at index `1`.
-    fn params(&self) -> Vector<Model::ScalarType, Model::ParameterDim, Self::ParameterStorage> {
+    fn params(&self) -> Vector<Model::ScalarType, Dyn, Self::ParameterStorage> {
         self.model.params()
     }
 
@@ -680,9 +479,7 @@ where
     /// Calculate the Jacobian matrix of the *weighted* residuals `$\vec{r}_w(\vec{\alpha})$`.
     /// For more info on how the Jacobian is calculated in the VarPro algorithm, see
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
-    fn jacobian(
-        &self,
-    ) -> Option<Matrix<Model::ScalarType, Dyn, Model::ParameterDim, Self::JacobianStorage>> {
+    fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
         if let Some(CachedCalculations {
             current_residuals: _,
@@ -693,8 +490,11 @@ where
             // this is not a great pattern, but the trait bounds on copy_from
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
-                UninitMatrix::uninit(Dyn(self.model.output_len()), self.model.parameter_count())
-                    .assume_init()
+                UninitMatrix::uninit(
+                    Dyn(self.model.output_len()),
+                    Dyn(self.model.parameter_count()),
+                )
+                .assume_init()
             };
 
             let U = current_svd.u.as_ref()?; // will return None if this was not calculated

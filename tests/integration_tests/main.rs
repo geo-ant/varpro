@@ -129,7 +129,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let y = evaluate_complete_model_at_params(
         &mut model,
         OVector::from_column_slice_generic(Dyn(2), U1, &[tau1, tau2]),
-        &OVector::from_vec_generic(base_func_count, U1, vec![c1, c2, c3]),
+        &OVector::from_vec_generic(Dyn(base_func_count), U1, vec![c1, c2, c3]),
     );
 
     let problem = LevMarProblemBuilder::new(model)
