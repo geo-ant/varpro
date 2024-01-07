@@ -424,17 +424,29 @@ where
             //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
             //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
-            for (k, mut jacobian_col) in jacobian_matrix.column_iter_mut().enumerate() {
-                // weighted derivative matrix
-                let Dk = &self.weights * self.model.eval_partial_deriv(k).ok()?; // will return none if this could not be calculated
-                let Dk_c = Dk * linear_coefficients;
-                let minus_ak = U * (&U_t * (&Dk_c)) - Dk_c;
+            use rayon::prelude::*;
 
-                //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
-                //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
-                //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
-                jacobian_col.copy_from(&(minus_ak));
-            }
+            let results: Vec<Result<(), Model::Error>> = jacobian_matrix
+                .column_iter_mut()
+                .enumerate()
+                .map(|(k, mut jacobian_col)| {
+                    // weighted derivative matrix
+                    let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
+                    let Dk_c = Dk * linear_coefficients;
+                    let minus_ak = U * (&U_t * (&Dk_c)) - Dk_c;
+
+                    //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
+                    //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
+                    //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
+                    jacobian_col.copy_from(&(minus_ak));
+                    Ok(())
+                })
+                .collect::<Vec<_>>()
+                .into();
+
+            let result: Result<Vec<()>, Model::Error> = results.into_iter().collect();
+            result.ok()?;
+
             Some(jacobian_matrix)
         } else {
             None
