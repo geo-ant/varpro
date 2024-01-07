@@ -249,7 +249,7 @@ where
     /// If this model does not need (or for performance reasons does not want)
     /// to return an error, it is possible to specify [`std::convert::Infallible`]
     /// as the associated `Error` type.
-    type Error: std::error::Error;
+    type Error: std::error::Error + Send;
 
     /// return the number of *nonlinear* parameters that this model depends on.
     fn parameter_count(&self) -> usize;

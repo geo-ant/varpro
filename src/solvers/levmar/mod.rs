@@ -424,9 +424,12 @@ where
             //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
             //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
-            use rayon::prelude::*;
-
-            let results: Vec<Result<(), Model::Error>> = jacobian_matrix
+            // we use a functional style calculation here that is more easy to
+            // parallelize with rayon later on. The only disadvantage is that
+            // we don't short circuit anymore if there is an error in calculation,
+            // but since that is the sad path anyways, we don't care about a
+            // performance hit in the sad path.
+            let result: Result<Vec<()>, Model::Error> = jacobian_matrix
                 .column_iter_mut()
                 .enumerate()
                 .map(|(k, mut jacobian_col)| {
@@ -441,10 +444,10 @@ where
                     jacobian_col.copy_from(&(minus_ak));
                     Ok(())
                 })
-                .collect::<Vec<_>>()
-                .into();
+                .collect::<Result<_, _>>();
 
-            let result: Result<Vec<()>, Model::Error> = results.into_iter().collect();
+            // we need this check to make sure the jacobian is returned
+            // as None on error!
             result.ok()?;
 
             Some(jacobian_matrix)
