@@ -66,6 +66,7 @@ pub enum LevMarBuilderError {
 pub struct LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
     Model: SeparableNonlinearModel,
 {
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
@@ -87,6 +88,9 @@ where
 impl<Model> LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
 {
     /// Create a new builder based on the given model
