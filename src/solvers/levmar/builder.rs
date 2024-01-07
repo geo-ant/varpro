@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DefaultAllocator, Dyn, OVector, Scalar};
+use nalgebra::{ComplexField, Dyn, OVector, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -66,11 +66,7 @@ pub enum LevMarBuilderError {
 pub struct LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
-    <Model::ScalarType as ComplexField>::RealField:
-        Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
 {
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
     y: Option<OVector<Model::ScalarType, Dyn>>,
@@ -91,23 +87,7 @@ where
 impl<Model> LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
-    <Model::ScalarType as ComplexField>::RealField:
-        Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
-
-    DefaultAllocator: nalgebra::allocator::Allocator<(usize, usize), Dyn>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        (<Model::ScalarType as ComplexField>::RealField, usize),
-        Dyn,
-    >,
 {
     /// Create a new builder based on the given model
     pub fn new(model: Model) -> Self {
