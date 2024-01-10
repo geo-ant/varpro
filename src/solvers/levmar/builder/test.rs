@@ -49,7 +49,7 @@ fn builder_assigns_fields_correctly_simple_case() {
         .build()
         .expect("Valid builder should not fail build");
 
-    assert_eq!(problem.y_w, y);
+    assert_eq!(problem.Y_w, y);
     assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
     assert!(
         problem.cached.is_some(),
@@ -92,7 +92,7 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
         .expect("Valid builder should not fail");
     assert_eq!(problem.svd_epsilon, 1.337);
     assert_eq!(
-        problem.y_w,
+        problem.Y_w,
         &W * &y,
         "Data must be correctly weighted with weights"
     );

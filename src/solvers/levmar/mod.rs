@@ -246,6 +246,7 @@ where
 /// is provided in this crate documentation as well. The [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
 /// solver is reexported by this module as [LevMarSolver](self::LevMarSolver) for naming consistency.
 #[derive(Clone)]
+#[allow(non_snake_case)]
 pub struct LevMarProblem<Model>
 where
     Model: SeparableNonlinearModel,
@@ -254,7 +255,7 @@ where
     /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
     /// where provided (otherwise it is unweighted)
-    y_w: OVector<Model::ScalarType, Dyn>,
+    Y_w: OVector<Model::ScalarType, Dyn>,
     /// a reference to the separable model we are trying to fit to the data
     model: Model,
     /// truncation epsilon for SVD below which all singular values are assumed zero
@@ -277,7 +278,7 @@ where
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LevMarProblem")
-            .field("y_w", &self.y_w)
+            .field("y_w", &self.Y_w)
             .field("model", &"/* omitted */")
             .field("svd_epsilon", &self.svd_epsilon)
             .field("weights", &self.weights)
@@ -315,7 +316,7 @@ where
     /// that the weights are already applied to the data vector and this
     /// is not the original data vector
     pub fn weighted_data(&self) -> &OVector<Model::ScalarType, Dyn> {
-        &self.y_w
+        &self.Y_w
     }
 }
 
@@ -353,12 +354,12 @@ where
         let current_svd = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
         let linear_coefficients = current_svd
             .as_ref()
-            .and_then(|svd| svd.solve(&self.y_w, svd_epsilon).ok());
+            .and_then(|svd| svd.solve(&self.Y_w, svd_epsilon).ok());
 
         // calculate the residuals
         let current_residuals = Phi_w
             .zip(linear_coefficients.as_ref())
-            .map(|(Phi_w, coeff)| &self.y_w - &Phi_w * coeff);
+            .map(|(Phi_w, coeff)| &self.Y_w - &Phi_w * coeff);
 
         // if everything was successful, update the cached calculations, otherwise set the cache to none
         if let (Some(current_residuals), Some(current_svd), Some(linear_coefficients)) =
@@ -447,7 +448,7 @@ where
                 .collect::<Result<_, _>>();
 
             // we need this check to make sure the jacobian is returned
-            // as None on error!
+            // as None on error.
             result.ok()?;
 
             Some(jacobian_matrix)

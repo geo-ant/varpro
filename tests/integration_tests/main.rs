@@ -2,11 +2,9 @@ use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DMatrix;
 use nalgebra::DVector;
 
-use nalgebra::vector;
 use nalgebra::Dyn;
 use nalgebra::OVector;
 use nalgebra::U1;
-use shared_test_code::check_relative_matrix_eq;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::linspace;
@@ -338,63 +336,43 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         epsilon = 1e-5
     );
 
-    let expected_covariance_matrix = nalgebra::matrix![
+    let expected_covariance_matrix = nalgebra::dmatrix![
     4.4887e-03,  -4.4309e-03,  -2.1613e-04,  -4.6980e-04,  -1.9052e-03;
       -4.4309e-03,   4.3803e-03,   2.1087e-04,   4.7170e-04,   1.8828e-03;
       -2.1613e-04,   2.1087e-04,   2.6925e-04,  -3.6450e-05,   5.1919e-05;
       -4.6980e-04,   4.7170e-04,  -3.6450e-05,   8.5784e-05,   2.0534e-04;
       -1.9052e-03,   1.8828e-03,   5.1919e-05,   2.0534e-04,   8.2272e-04;
     ];
-    check_relative_matrix_eq(
+    assert_relative_eq!(
         statistics.covariance_matrix(),
         &expected_covariance_matrix,
-        1e-5,
+        epsilon = 1e-5,
     );
-    // assert_relative_eq!(
-    //     statistics.covariance_matrix(),
-    //     &expected_covariance_matrix,
-    //     epsilon = 1e-5,
-    // );
 
-    check_relative_matrix_eq(
-        &statistics.nonlinear_parameters_variance(),
-        &vector![2.6925e-04, 8.5784e-05, 8.2272e-04],
-        1e-5,
+    assert_relative_eq!(
+        statistics.nonlinear_parameters_variance(),
+        nalgebra::dvector![2.6925e-04, 8.5784e-05, 8.2272e-04],
+        epsilon = 1e-5,
     );
-    // assert_relative_eq!(
-    //     statistics.nonlinear_parameters_variance(),
-    //     vector![2.6925e-04, 8.5784e-05, 8.2272e-04],
-    //     epsilon = 1e-5,
-    // );
 
-    check_relative_matrix_eq(
-        &statistics.linear_coefficients_variance(),
-        &vector![4.4887e-03, 4.3803e-03],
-        1e-5,
+    assert_relative_eq!(
+        statistics.linear_coefficients_variance(),
+        nalgebra::dvector![4.4887e-03, 4.3803e-03],
+        epsilon = 1e-5,
     );
-    // assert_relative_eq!(
-    //     statistics.linear_coefficients_variance(),
-    //     vector![4.4887e-03, 4.3803e-03],
-    //     epsilon = 1e-5,
-    // );
 
-    let expected_correlation_matrix = nalgebra::matrix![
+    let expected_correlation_matrix = nalgebra::dmatrix![
      1.0000,  -0.9993,  -0.1966,  -0.7571,  -0.9914;
     -0.9993,   1.0000,   0.1942,   0.7695,   0.9918;
     -0.1966,   0.1942,   1.0000,  -0.2398,   0.1103;
     -0.7571,   0.7695,  -0.2398,   1.0000,   0.7729;
     -0.9914,   0.9918,   0.1103,   0.7729,   1.0000;
       ];
-    check_relative_matrix_eq(
+    assert_relative_eq!(
         statistics.correlation_matrix(),
         &expected_correlation_matrix,
-        1e-4,
+        epsilon = 1e-4
     );
-    // assert_relative_eq!(
-    //     statistics.correlation_matrix(),
-    //     &expected_correlation_matrix,
-    //     epsilon = 1e-4
-    // );
 }
 
 #[test]
