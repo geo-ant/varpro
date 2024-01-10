@@ -1,10 +1,7 @@
 #![warn(missing_docs)]
 //! a helper crate which carries common code used by the benchtests and the
 //! integration tests.
-use approx::{AbsDiffEq, RelativeEq};
-use nalgebra::{
-    ComplexField, DVector, DefaultAllocator, Dim, Dyn, Matrix, OVector, RawStorage, Scalar,
-};
+use nalgebra::{ComplexField, DVector, DefaultAllocator, Dyn, OVector, Scalar};
 use num_traits::Float;
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
@@ -94,45 +91,4 @@ pub fn get_double_exponential_model_with_constant_offset(
         .independent_variable(x)
         .build()
         .expect("double exponential model builder should produce a valid model")
-}
-
-/// a helper function that allows us to check if two matrix have equal
-/// elements. If the matrix do not have the same dimensions, the relative
-/// equality comparison returns false anyways.
-/// panics if the relative equality comparison fails
-#[deprecated = "use this only to get stuff to compile until all matrices are dynamic"]
-pub fn check_relative_matrix_eq<T, R1, C1, S1, R2, C2, S2>(
-    left: &Matrix<T, R1, C1, S1>,
-    right: &Matrix<T, R2, C2, S2>,
-    epsilon: <T as AbsDiffEq>::Epsilon,
-) where
-    R1: Dim,
-    R2: Dim,
-    C1: Dim,
-    C2: Dim,
-    T: RelativeEq,
-    S1: RawStorage<T, R1, C1> + std::fmt::Debug,
-    S2: RawStorage<T, R2, C2> + std::fmt::Debug,
-    <T as AbsDiffEq>::Epsilon: Copy,
-{
-    if left.nrows() != right.nrows() || left.ncols() != right.ncols() {
-        panic!(
-            "Matrices do not have the same dimensions. Left is {}x{} and right is {}x{}",
-            left.nrows(),
-            left.ncols(),
-            right.nrows(),
-            right.ncols()
-        );
-    }
-
-    let equal = left
-        .iter()
-        .zip(right.iter())
-        .all(|(l, r)| l.relative_eq(r, epsilon, T::default_max_relative()));
-    if !equal {
-        panic!(
-            "Matrices are not equal:\nLeft is: {:#?}\nRight is: {:#?}",
-            left, right
-        );
-    }
 }
