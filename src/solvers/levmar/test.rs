@@ -227,3 +227,14 @@ fn levmar_problem_set_params_sets_the_model_parameters_when_built() {
         .build()
         .expect("Building a valid solver must not return an error.");
 }
+
+#[test]
+fn matrix_to_vector_works() {
+    let mut mat = DMatrix::<f64>::zeros(2, 3);
+    mat.column_mut(0).copy_from_slice(&[1., 2.]);
+    mat.column_mut(1).copy_from_slice(&[3., 4.]);
+    mat.column_mut(2).copy_from_slice(&[5., 6.]);
+
+    let vec = to_vector(mat);
+    assert_eq!(vec, nalgebra::dvector![1., 2., 3., 4., 5., 6.]);
+}

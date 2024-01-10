@@ -3,8 +3,8 @@ use crate::statistics::FitStatistics;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector, RealField, Scalar,
-    UninitMatrix, Vector, SVD,
+    ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector, RealField,
+    Scalar, UninitMatrix, Vector, SVD, U1,
 };
 
 mod builder;
@@ -226,11 +226,11 @@ where
     >,
 {
     /// The current residual of model function values belonging to the current parameters
-    current_residuals: OVector<ScalarType, OutputDim>,
+    current_residuals: DVector<ScalarType>,
     /// Singular value decomposition of the current function value matrix
     current_svd: SVD<ScalarType, OutputDim, ModelDim>,
     /// the linear coefficients `$\vec{c}$` providing the current best fit
-    linear_coefficients: OVector<ScalarType, ModelDim>,
+    linear_coefficients: DVector<ScalarType>,
 }
 
 /// This is a the problem of fitting the separable model to data in a form that the
@@ -255,7 +255,7 @@ where
     /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
     /// where provided (otherwise it is unweighted)
-    Y_w: OVector<Model::ScalarType, Dyn>,
+    Y_w: DVector<Model::ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
     model: Model,
     /// truncation epsilon for SVD below which all singular values are assumed zero
@@ -456,4 +456,14 @@ where
             None
         }
     }
+}
+
+#[inline]
+/// helper function to turn a matrix into a vector by stacking the columns on top
+/// of each other as described here https://en.wikipedia.org/wiki/Vectorization_(mathematics)
+fn to_vector<T: Scalar + std::fmt::Debug + Clone>(mat: DMatrix<T>) -> DVector<T> {
+    //@todo this is very inefficient like this
+    let new_rows = Dyn(mat.nrows() * mat.ncols());
+    let new_cols = U1;
+    mat.reshape_generic(new_rows, new_cols)
 }
