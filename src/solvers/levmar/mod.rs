@@ -464,6 +464,5 @@ where
 fn to_vector<T: Scalar + std::fmt::Debug + Clone>(mat: DMatrix<T>) -> DVector<T> {
     //@todo this is very inefficient like this
     let new_rows = Dyn(mat.nrows() * mat.ncols());
-    let new_cols = U1;
-    mat.reshape_generic(new_rows, new_cols)
+    mat.reshape_generic(new_rows, U1)
 }
