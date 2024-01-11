@@ -249,4 +249,7 @@ fn vector_to_matrix_works() {
     assert_eq!(to_matrix(vec), expected);
 }
 
-// fn vector_matrix_copy_works
+#[test]
+fn vector_matrix_copy_works() {
+    todo!()
+}
