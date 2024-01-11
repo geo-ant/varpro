@@ -3,6 +3,7 @@ use std::convert::Infallible;
 use crate::{
     prelude::SeparableNonlinearModel,
     statistics::{extract_range, model_function_jacobian},
+    util::to_matrix,
 };
 
 use super::{calc_correlation_matrix, concat_colwise};
@@ -112,7 +113,7 @@ fn model_function_jacobian_is_calculated_correctly() {
         model.eval().unwrap(),
         DMatrix::from_column_slice(3, 2, &[12., 12., 12., 13., 13., 13.]),
     );
-    let calculated_jac = model_function_jacobian(&model, &c);
+    let calculated_jac = model_function_jacobian(&model, &to_matrix(c));
     assert_relative_eq!(expected_jac, calculated_jac.unwrap());
 }
 

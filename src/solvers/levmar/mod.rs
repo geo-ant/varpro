@@ -11,7 +11,7 @@ mod builder;
 #[cfg(any(test, doctest))]
 mod test;
 
-use crate::util::Weights;
+use crate::util::{to_vector, Weights};
 pub use builder::LevMarProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
@@ -74,8 +74,14 @@ where
 
     /// convenience function to get the linear coefficients after the fit has
     /// finished
-    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Dyn>> {
-        self.problem.linear_coefficients()
+    ///
+    /// in case of multiple datasets, the coefficients vectors for the individual
+    /// members of the datasets are written as a single vector by stacking them
+    /// on top of each other
+    pub fn linear_coefficients(&self) -> Option<DVector<Model::ScalarType>> {
+        self.problem
+            .linear_coefficients()
+            .map(|mat| to_vector(mat.clone()))
     }
 
     /// whether the fit was deemeed successful. The fit might still be not
@@ -225,12 +231,12 @@ where
         <OutputDim as DimMin<ModelDim>>::Output,
     >,
 {
-    /// The current residual of model function values belonging to the current parameters
-    current_residuals: DVector<ScalarType>,
+    /// The current residual matrix of model function values belonging to the current parameters
+    current_residuals: DMatrix<ScalarType>,
     /// Singular value decomposition of the current function value matrix
     current_svd: SVD<ScalarType, OutputDim, ModelDim>,
-    /// the linear coefficients `$\vec{c}$` providing the current best fit
-    linear_coefficients: DVector<ScalarType>,
+    /// the linear coefficients `$\boldsymbol C$` providing the current best fit
+    linear_coefficients: DMatrix<ScalarType>,
 }
 
 /// This is a the problem of fitting the separable model to data in a form that the
@@ -255,7 +261,7 @@ where
     /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
     /// **Attention** the data vector is weighted with the weights if some weights
     /// where provided (otherwise it is unweighted)
-    Y_w: DVector<Model::ScalarType>,
+    Y_w: DMatrix<Model::ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
     model: Model,
     /// truncation epsilon for SVD below which all singular values are assumed zero
@@ -298,7 +304,11 @@ where
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
     /// for the linear coefficients of the base functions.
-    pub fn linear_coefficients(&self) -> Option<&OVector<Model::ScalarType, Dyn>> {
+    ///
+    /// The linear coefficients are column vectors that are ordered
+    /// into a matrix, where the column at index $$s$$ are the best linear
+    /// coefficients for the member at index $$s$$ of the dataset.
+    pub fn linear_coefficients(&self) -> Option<&DMatrix<Model::ScalarType>> {
         self.cached.as_ref().map(|cache| &cache.linear_coefficients)
     }
 
@@ -314,8 +324,8 @@ where
 
     /// the weighted data vector `$\vec{y}_w$` to which to fit the model. Note
     /// that the weights are already applied to the data vector and this
-    /// is not the original data vector
-    pub fn weighted_data(&self) -> &OVector<Model::ScalarType, Dyn> {
+    /// is not the original data vector.
+    pub fn weighted_data(&self) -> &DMatrix<Model::ScalarType> {
         &self.Y_w
     }
 }
@@ -394,7 +404,7 @@ where
     fn residuals(&self) -> Option<Vector<Model::ScalarType, Dyn, Self::ResidualStorage>> {
         self.cached
             .as_ref()
-            .map(|cached| cached.current_residuals.clone())
+            .map(|cached| to_vector(cached.current_residuals.clone()))
     }
 
     #[allow(non_snake_case)]
@@ -414,7 +424,7 @@ where
             let mut jacobian_matrix = unsafe {
                 UninitMatrix::uninit(
                     Dyn(self.model.output_len()),
-                    Dyn(self.model.parameter_count()),
+                    Dyn(self.model.parameter_count() * self.Y_w.ncols()),
                 )
                 .assume_init()
             };
@@ -436,13 +446,16 @@ where
                 .map(|(k, mut jacobian_col)| {
                     // weighted derivative matrix
                     let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
-                    let Dk_c = Dk * linear_coefficients;
-                    let minus_ak = U * (&U_t * (&Dk_c)) - Dk_c;
+                    let Dk_C = Dk * linear_coefficients;
+                    let minus_ak = U * (&U_t * (&Dk_C)) - Dk_C;
 
                     //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
                     //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
                     //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
-                    jacobian_col.copy_from(&(minus_ak));
+
+                    //@todo CAUTION this relies on the fact that the
+                    //elements are ordered in column major order but it avoids a copy
+                    jacobian_col.copy_from(&minus_ak);
                     Ok(())
                 })
                 .collect::<Result<_, _>>();
@@ -458,11 +471,14 @@ where
     }
 }
 
-#[inline]
-/// helper function to turn a matrix into a vector by stacking the columns on top
-/// of each other as described here https://en.wikipedia.org/wiki/Vectorization_(mathematics)
-fn to_vector<T: Scalar + std::fmt::Debug + Clone>(mat: DMatrix<T>) -> DVector<T> {
-    //@todo this is very inefficient like this
-    let new_rows = Dyn(mat.nrows() * mat.ncols());
-    mat.reshape_generic(new_rows, U1)
+#[test]
+fn matrix_elements_have_column_major_layout_when_sliced() {
+    let mut mat = DMatrix::<f64>::zeros(2, 3);
+    mat.column_mut(0).copy_from_slice(&[1., 2.]);
+    mat.column_mut(1).copy_from_slice(&[3., 4.]);
+    mat.column_mut(2).copy_from_slice(&[5., 6.]);
+
+    let mut vec = DVector::<f64>::zeros(6);
+    vec.copy_from(&mat);
+    assert_eq!(vec, nalgebra::dvector![1., 2., 3., 4., 5., 6.]);
 }

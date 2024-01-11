@@ -11,7 +11,7 @@ fn new_builder_starts_with_empty_fields() {
     let model = MockSeparableNonlinearModel::default();
     let builder = LevMarProblemBuilder::new(model);
     let LevMarProblemBuilder {
-        y,
+        Y: y,
         separable_model: _model,
         epsilon,
         weights,

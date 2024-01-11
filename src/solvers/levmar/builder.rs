@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, Dyn, OVector, Scalar};
+use nalgebra::{ComplexField, DMatrix, DVector, Dyn, OVector, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -63,6 +63,7 @@ pub enum LevMarBuilderError {
 /// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
 /// it contains an error variant.
 #[derive(Clone)]
+#[allow(non_snake_case)]
 pub struct LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -70,7 +71,7 @@ where
     Model: SeparableNonlinearModel,
 {
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
-    y: Option<OVector<Model::ScalarType, Dyn>>,
+    Y: Option<DMatrix<Model::ScalarType>>,
     /// Required: the model to be fitted to the data
     separable_model: Model,
     /// Optional: set epsilon below which two singular values
@@ -96,7 +97,7 @@ where
     /// Create a new builder based on the given model
     pub fn new(model: Model) -> Self {
         Self {
-            y: None,
+            Y: None,
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
@@ -105,9 +106,9 @@ where
 
     /// **Mandatory**: Set the data which we want to fit: `$\vec{y}=\vec{y}(\vec{x})$`.
     /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn observations(self, yvec: OVector<Model::ScalarType, Dyn>) -> Self {
+    pub fn observations(self, yvec: DVector<Model::ScalarType>) -> Self {
         Self {
-            y: Some(yvec),
+            Y: Some(DMatrix::from_column_slice(yvec.nrows(), 1, yvec.as_slice())),
             ..self
         }
     }
@@ -155,7 +156,7 @@ where
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     pub fn build(self) -> Result<LevMarProblem<Model>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
-        let y = self.y.ok_or(LevMarBuilderError::YDataMissing)?;
+        let y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;
         let epsilon = self.epsilon.unwrap_or_else(Float::epsilon);
         let weights = self.weights;

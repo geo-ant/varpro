@@ -304,7 +304,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         OVector::<f64, Dyn>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
     let c_true = OVector::<f64, Dyn>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
-    assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
+    assert_relative_eq!(c_fit, c_true, epsilon = 1e-5);
 
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,
