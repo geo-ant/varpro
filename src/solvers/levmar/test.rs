@@ -2,6 +2,7 @@ use super::*;
 use crate::model::test::MockSeparableNonlinearModel;
 use crate::test_helpers::differentiation::numerical_derivative;
 use crate::test_helpers::get_double_exponential_model_with_constant_offset;
+#[cfg(test)]
 use crate::util::to_matrix;
 use approx::assert_relative_eq;
 use levenberg_marquardt::differentiate_numerically;
@@ -243,7 +244,9 @@ fn matrix_to_vector_works() {
 #[test]
 fn vector_to_matrix_works() {
     let vec = nalgebra::dvector![1., 2., 3., 4., 5., 6.];
-    let expected = nalgebra::dmatrix![1., 2., 3., 4., 5., 6.];
+    let expected = nalgebra::dmatrix![1.; 2.; 3.; 4.; 5.; 6.];
     assert_eq!(expected.ncols(), 1);
     assert_eq!(to_matrix(vec), expected);
 }
+
+// fn vector_matrix_copy_works

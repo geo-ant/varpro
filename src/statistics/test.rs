@@ -1,9 +1,10 @@
 use std::convert::Infallible;
 
+#[cfg(test)]
+use crate::util::to_matrix;
 use crate::{
     prelude::SeparableNonlinearModel,
     statistics::{extract_range, model_function_jacobian},
-    util::to_matrix,
 };
 
 use super::{calc_correlation_matrix, concat_colwise};

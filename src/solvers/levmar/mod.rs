@@ -3,8 +3,8 @@ use crate::statistics::FitStatistics;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector, RealField,
-    Scalar, UninitMatrix, Vector, SVD, U1,
+    ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector,
+    RawStorageMut, RealField, Scalar, UninitMatrix, Vector, SVD, U1,
 };
 
 mod builder;
@@ -455,7 +455,7 @@ where
 
                     //@todo CAUTION this relies on the fact that the
                     //elements are ordered in column major order but it avoids a copy
-                    jacobian_col.copy_from(&minus_ak);
+                    copy_matrix_to_column(minus_ak, &mut jacobian_col);
                     Ok(())
                 })
                 .collect::<Result<_, _>>();
@@ -471,14 +471,10 @@ where
     }
 }
 
-#[test]
-fn matrix_elements_have_column_major_layout_when_sliced() {
-    let mut mat = DMatrix::<f64>::zeros(2, 3);
-    mat.column_mut(0).copy_from_slice(&[1., 2.]);
-    mat.column_mut(1).copy_from_slice(&[3., 4.]);
-    mat.column_mut(2).copy_from_slice(&[5., 6.]);
-
-    let mut vec = DVector::<f64>::zeros(6);
-    vec.copy_from(&mat);
-    assert_eq!(vec, nalgebra::dvector![1., 2., 3., 4., 5., 6.]);
+fn copy_matrix_to_column<T: Scalar + std::fmt::Display + Clone, S: RawStorageMut<T, Dyn>>(
+    source: DMatrix<T>,
+    target: &mut Matrix<T, Dyn, U1, S>,
+) {
+    //@todo all of this copying is not as efficient...
+    target.copy_from(&to_vector(source));
 }
