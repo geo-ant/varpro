@@ -3,8 +3,8 @@ use crate::{
     util::{to_vector, Weights},
 };
 use nalgebra::{
-    allocator::Allocator, ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimAdd, DimMin,
-    DimSub, Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
+    allocator::Allocator, ComplexField, DVector, DefaultAllocator, Dim, DimAdd, DimMin, DimSub,
+    Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
 };
 use num_traits::{Float, FromPrimitive, Zero};
 use thiserror::Error as ThisError;

@@ -2,8 +2,8 @@
 mod test;
 
 use nalgebra::{
-    ClosedMul, ComplexField, DMatrix, DVector, DefaultAllocator, Dim, Dyn, Matrix, OMatrix,
-    OVector, RawStorageMut, Scalar, U1,
+    ClosedMul, ComplexField, DVector, DefaultAllocator, Dim, Dyn, Matrix, OMatrix, OVector,
+    RawStorageMut, Scalar, U1,
 };
 use std::ops::Mul;
 
@@ -109,7 +109,9 @@ pub(crate) fn to_vector<T: Scalar + std::fmt::Debug + Clone>(
 
 #[inline]
 #[cfg(test)]
-pub(crate) fn to_matrix<T: Scalar + std::fmt::Debug + Clone>(vec: DVector<T>) -> DMatrix<T> {
+pub(crate) fn to_matrix<T: Scalar + std::fmt::Debug + Clone>(
+    vec: DVector<T>,
+) -> nalgebra::DMatrix<T> {
     let nrows = Dyn(vec.nrows());
     vec.reshape_generic(nrows, Dyn(1))
 }

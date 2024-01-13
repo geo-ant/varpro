@@ -251,5 +251,14 @@ fn vector_to_matrix_works() {
 
 #[test]
 fn vector_matrix_copy_works() {
-    todo!()
+    let mut mat = DMatrix::<f64>::zeros(4, 2);
+    let mat2 = nalgebra::dmatrix!(1.,3.;
+                                                                              2.,4.);
+    copy_matrix_to_column(mat2, &mut mat.column_mut(1));
+    let expected = nalgebra::dmatrix!(0.,1.;
+    0.,2.;
+    0.,3.;
+    0.,4.;
+    );
+    assert_eq!(mat, expected);
 }
