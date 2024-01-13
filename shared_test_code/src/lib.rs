@@ -7,6 +7,8 @@ use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
 use varpro::prelude::SeparableNonlinearModel;
 
+/// multiple right hand sides for for levenberg marquardt
+pub mod levmar_mrhs;
 /// contains models both for the levmar crate as well as the
 /// varpro crate
 pub mod models;

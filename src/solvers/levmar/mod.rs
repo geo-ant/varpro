@@ -471,10 +471,11 @@ where
     }
 }
 
+/// copy the
 fn copy_matrix_to_column<T: Scalar + std::fmt::Display + Clone, S: RawStorageMut<T, Dyn>>(
     source: DMatrix<T>,
     target: &mut Matrix<T, Dyn, U1, S>,
 ) {
-    //@todo all of this copying is not as efficient...
+    //@todo make this more efficient...
     target.copy_from(&to_vector(source));
 }
