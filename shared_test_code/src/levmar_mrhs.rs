@@ -130,16 +130,16 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
         let mut dPhi_dalpha1 = OMatrix::<_, Dyn, U3>::zeros_generic(Dyn(self.Phi.nrows()), U3);
         dPhi_dalpha1.set_column(
             0,
-            &(1. / (self.alpha[0] * self.alpha[0]) * self.Phi.column(0).component_mul(&self.x)),
+            &(-1. / (self.alpha[0] * self.alpha[0]) * self.Phi.column(0).component_mul(&self.x)),
         );
         let mut dPhi_dalpha2 = OMatrix::<_, Dyn, U3>::zeros_generic(Dyn(self.Phi.nrows()), U3);
         dPhi_dalpha2.set_column(
             1,
-            &(1. / (self.alpha[1] * self.alpha[1]) * self.Phi.column(1).component_mul(&self.x)),
+            &(-1. / (self.alpha[1] * self.alpha[1]) * self.Phi.column(1).component_mul(&self.x)),
         );
-        let mut jac_block = DMatrix::from_element(self.Phi.nrows(), 3, 1.);
-        jac_block.set_column(0, &self.Phi.column(0));
-        jac_block.set_column(1, &self.Phi.column(1));
+        let mut jac_block = DMatrix::from_element(self.Phi.nrows(), 3, -1.);
+        jac_block.set_column(0, &-self.Phi.column(0));
+        jac_block.set_column(1, &-self.Phi.column(1));
 
         let x_len = self.Y.nrows();
         let total_data_len = x_len * self.Y.ncols();
