@@ -28,7 +28,7 @@ pub struct DoubleExponentialModelWithConstantOffsetLevmarMrhs {
     ///       |       |
     /// C = (c_1,...,c_s,...)
     ///       |       |
-    C: OMatrix<f64, Dyn, U3>,
+    C: OMatrix<f64, U3, Dyn>,
     /// the precalculated function matrix
     /// where the first exponential comes first (alpha1),
     /// then the second exponential and finally
@@ -39,23 +39,33 @@ pub struct DoubleExponentialModelWithConstantOffsetLevmarMrhs {
 impl DoubleExponentialModelWithConstantOffsetLevmarMrhs {
     /// create a new fitting problem with the given data and initial parameters
     /// See the internal struct documentation for the parameter layout
-    pub fn new(x: DVector<f64>, data: DMatrix<f64>, initial_params: DVector<f64>) -> Self {
+    pub fn new(initial_params: impl AsRef<[f64]>, x: DVector<f64>, data: DMatrix<f64>) -> Self {
         assert_eq!(
             x.len(),
             data.nrows(),
             "x vector must have same number of rows as data"
         );
+        assert!(
+            data.ncols() > 0,
+            "data matrix must have at least one column"
+        );
+        assert!(!x.is_empty(), "x vector must have at least one element");
+        assert_eq!(
+            data.ncols() * 3 + 2,
+            initial_params.as_ref().len(),
+            "we need  exactly 3 linear parameters per dataset"
+        );
         let mut Phi = OMatrix::zeros_generic(Dyn(x.len()), U3);
         // the third column of only ones. We never touch this one again
         Phi.column_mut(2).copy_from_slice(&vec![1f64; x.len()]);
         let mut me = Self {
-            C: OMatrix::zeros_generic(Dyn(data.len() * x.len()), U3), //<- this will be overwritten by set params
+            C: OMatrix::zeros_generic(U3, Dyn(data.ncols())),
+            alpha: [0., 0.], //<- this will be overwritten by set params
             x,
-            alpha: [initial_params[0], initial_params[1]],
             Y: data,
             Phi,
         };
-        me.set_params(&initial_params);
+        me.set_params(&DVector::from_column_slice(initial_params.as_ref()));
         me
     }
 }
@@ -133,14 +143,12 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
             "we need exactly 3 linear parameters per dataset"
         );
 
-        for (row, col) in (3..jacobian.nrows())
-            .into_iter()
+        for (col, row) in (2..jacobian.nrows())
             .step_by(3)
             .zip((0..total_data_len).step_by(x_len))
         {
-            jacobian
-                .view_mut((row, col), (x_len, 3))
-                .copy_from(&jac_block);
+            let mut view = jacobian.view_mut((row, col), (x_len, 3));
+            view.copy_from(&jac_block);
         }
         Some(jacobian)
     }

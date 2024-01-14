@@ -7,6 +7,7 @@ use nalgebra::OVector;
 use nalgebra::U1;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
+use shared_test_code::levmar_mrhs::DoubleExponentialModelWithConstantOffsetLevmarMrhs;
 use shared_test_code::linspace;
 use shared_test_code::models::o_leary_example_model;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
@@ -32,6 +33,52 @@ fn sanity_check_jacobian_of_levenberg_marquardt_problem_is_correct() {
         &[0.5 * tau1, 1.5 * tau2, 2. * c1, 3. * c2, 3. * c3],
         &x,
         &f,
+    );
+
+    // Let `problem` be an instance of `LeastSquaresProblem`
+    let jacobian_numerical = levenberg_marquardt::differentiate_numerically(&mut problem).unwrap();
+    let jacobian_trait = problem.jacobian().unwrap();
+    assert_relative_eq!(jacobian_numerical, jacobian_trait, epsilon = 1e-5);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn sanity_check_jacobian_of_levenberg_marquardt_problem_mrhs_is_correct() {
+    let x = linspace(0., 12.5, 20);
+    let tau1 = 2.;
+    let tau2 = 4.;
+    // coefficients for the first dataset
+    let a1 = 2.;
+    let a2 = 4.;
+    let a3 = 0.2;
+    // coefficients for the second dataset
+    let b1 = 2.;
+    let b2 = 4.;
+    let b3 = 0.2;
+    let mut Y = DMatrix::zeros(x.len(), 2);
+
+    Y.set_column(
+        0,
+        &x.map(|x: f64| a1 * (-x / tau1).exp() + a2 * (-x / tau2).exp() + a3),
+    );
+    Y.set_column(
+        1,
+        &x.map(|x: f64| b1 * (-x / tau1).exp() + b2 * (-x / tau2).exp() + b3),
+    );
+
+    let mut problem = DoubleExponentialModelWithConstantOffsetLevmarMrhs::new(
+        [
+            0.5 * tau1,
+            1.5 * tau2,
+            2. * a1,
+            3. * a2,
+            3. * a3,
+            1.2 * b1,
+            3. * b2,
+            5. * b3,
+        ],
+        x,
+        Y,
     );
 
     // Let `problem` be an instance of `LeastSquaresProblem`
