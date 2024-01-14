@@ -7,6 +7,7 @@ use nalgebra::Matrix;
 use nalgebra::OMatrix;
 use nalgebra::Owned;
 use nalgebra::Vector;
+use nalgebra::U1;
 use nalgebra::U3;
 
 /// double exponential model with constant offset where the nonlinear
@@ -37,6 +38,11 @@ pub struct DoubleExponentialModelWithConstantOffsetLevmarMrhs {
 
 impl DoubleExponentialModelWithConstantOffsetLevmarMrhs {
     pub fn new(x: DVector<f64>, data: DMatrix<f64>, initial_params: DVector<f64>) -> Self {
+        assert_eq!(
+            x.len(),
+            data.nrows(),
+            "x vector must have same number of rows as data"
+        );
         let mut Phi = OMatrix::zeros_generic(Dyn(x.len()), U3);
         // the third column of only ones. We never touch this one again
         Phi.column_mut(2).copy_from_slice(&vec![1f64; x.len()]);
@@ -60,6 +66,11 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
     /// parameters are organized as
     /// alpha_1,alpha_2, c_{1,1},c_{1,2},c_{1,3},...,c_{s,1},c_{s,2},c_{s,3},...
     fn set_params(&mut self, params: &Vector<f64, Dyn, Self::ParameterStorage>) {
+        debug_assert_eq!(
+            params.len(),
+            self.Y.ncols() * 3 + 2,
+            "number of parameters does not match the dataset and the decay model"
+        );
         //tau1
         self.alpha[0] = params[0];
         //tau2
@@ -78,7 +89,7 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
     }
 
     fn params(&self) -> Vector<f64, Dyn, Self::ParameterStorage> {
-        let param_count = self.C.data.len() + 2;
+        let param_count = self.C.len() + 2;
         let params = DVector::from_iterator(
             param_count,
             self.alpha
@@ -90,11 +101,46 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
     }
 
     fn residuals(&self) -> Option<DVector<f64>> {
-        todo!()
+        let R = &self.Y - &self.Phi * &self.C;
+        let new_nrows = Dyn(R.nrows() * R.ncols());
+        Some(R.reshape_generic(new_nrows, U1))
     }
 
     fn jacobian(&self) -> Option<Matrix<f64, Dyn, Dyn, Self::JacobianStorage>> {
-        todo!()
+        // let mut jacobian = DMatrix::<f64>::zeros(self.
+        let mut dPhi_dalpha1 = OMatrix::<_, Dyn, U3>::zeros_generic(Dyn(self.Phi.nrows()), U3);
+        dPhi_dalpha1.set_column(
+            0,
+            &(1. / (self.alpha[0] * self.alpha[0]) * &self.Phi.column(0).component_mul(&self.x)),
+        );
+        let mut dPhi_dalpha2 = OMatrix::<_, Dyn, U3>::zeros_generic(Dyn(self.Phi.nrows()), U3);
+        dPhi_dalpha2.set_column(
+            1,
+            &(1. / (self.alpha[1] * self.alpha[1]) * &self.Phi.column(1).component_mul(&self.x)),
+        );
+        let mut jac_block = DMatrix::from_element(self.Phi.nrows(), 3, 1.);
+        jac_block.set_column(0, &self.Phi.column(0));
+        jac_block.set_column(1, &self.Phi.column(1));
+
+        let x_len = self.Y.nrows();
+        let total_data_len = x_len * self.Y.ncols();
+        let mut jacobian = DMatrix::zeros(self.Y.nrows() * self.Y.ncols(), self.C.len() + 2);
+        debug_assert_eq!(
+            self.Y.ncols() * 3,
+            self.C.len(),
+            "we need exactly 3 linear parameters per dataset"
+        );
+
+        for (row, col) in (3..jacobian.nrows())
+            .into_iter()
+            .step_by(3)
+            .zip((0..total_data_len).step_by(x_len))
+        {
+            jacobian
+                .view_mut((row, col), (x_len, 3))
+                .copy_from(&jac_block);
+        }
+        Some(jacobian)
     }
 }
 
