@@ -1,7 +1,7 @@
+#![allow(non_snake_case)]
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::DMatrix;
 use nalgebra::DVector;
-use nalgebra::DVectorSlice;
 use nalgebra::Dyn;
 use nalgebra::Matrix;
 use nalgebra::OMatrix;
@@ -37,6 +37,8 @@ pub struct DoubleExponentialModelWithConstantOffsetLevmarMrhs {
 }
 
 impl DoubleExponentialModelWithConstantOffsetLevmarMrhs {
+    /// create a new fitting problem with the given data and initial parameters
+    /// See the internal struct documentation for the parameter layout
     pub fn new(x: DVector<f64>, data: DMatrix<f64>, initial_params: DVector<f64>) -> Self {
         assert_eq!(
             x.len(),
