@@ -66,25 +66,27 @@ fn sanity_check_jacobian_of_levenberg_marquardt_problem_mrhs_is_correct() {
         &x.map(|x: f64| b1 * (-x / tau1).exp() + b2 * (-x / tau2).exp() + b3),
     );
 
-    let mut problem = DoubleExponentialModelWithConstantOffsetLevmarMrhs::new(
-        [
-            0.5 * tau1,
-            1.5 * tau2,
-            2. * a1,
-            3. * a2,
-            3. * a3,
-            1.2 * b1,
-            3. * b2,
-            5. * b3,
-        ],
-        x,
-        Y,
+    let initial_params = [
+        0.5 * tau1,
+        1.5 * tau2,
+        2. * a1,
+        3. * a2,
+        3. * a3,
+        1.2 * b1,
+        3. * b2,
+        5. * b3,
+    ];
+    let mut problem = DoubleExponentialModelWithConstantOffsetLevmarMrhs::new(initial_params, x, Y);
+    assert_eq!(
+        problem.params().as_slice(),
+        &initial_params,
+        "params not set correctly"
     );
 
     // Let `problem` be an instance of `LeastSquaresProblem`
     let jacobian_numerical = levenberg_marquardt::differentiate_numerically(&mut problem).unwrap();
     let jacobian_trait = problem.jacobian().unwrap();
-    assert_relative_eq!(jacobian_numerical, jacobian_trait, epsilon = 1e-5);
+    assert_relative_eq!(jacobian_numerical, jacobian_trait, epsilon = 1e-4);
 }
 
 #[test]

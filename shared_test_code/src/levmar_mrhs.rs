@@ -70,6 +70,13 @@ impl DoubleExponentialModelWithConstantOffsetLevmarMrhs {
     }
 }
 
+impl DoubleExponentialModelWithConstantOffsetLevmarMrhs {
+    /// get the linear parameter matrix
+    pub fn lin_param_matrix(&self) -> &OMatrix<f64, U3, Dyn> {
+        &self.C
+    }
+}
+
 impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOffsetLevmarMrhs {
     type ParameterStorage = Owned<f64, Dyn>;
     type ResidualStorage = Owned<f64, Dyn>;
@@ -93,7 +100,7 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
             .column_mut(0)
             .copy_from(&self.x.map(|x: f64| (-x / self.alpha[0]).exp()));
         self.Phi
-            .column_mut(0)
+            .column_mut(1)
             .copy_from(&self.x.map(|x: f64| (-x / self.alpha[1]).exp()));
         // and load the matrix of linear coefficients
         // I have a test down below that shows this should actually work
@@ -107,7 +114,7 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
             self.alpha
                 .iter()
                 .cloned()
-                .chain(self.C.as_slice().into_iter().cloned()),
+                .chain(self.C.as_slice().iter().cloned()),
         );
         params
     }
@@ -123,12 +130,12 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
         let mut dPhi_dalpha1 = OMatrix::<_, Dyn, U3>::zeros_generic(Dyn(self.Phi.nrows()), U3);
         dPhi_dalpha1.set_column(
             0,
-            &(1. / (self.alpha[0] * self.alpha[0]) * &self.Phi.column(0).component_mul(&self.x)),
+            &(1. / (self.alpha[0] * self.alpha[0]) * self.Phi.column(0).component_mul(&self.x)),
         );
         let mut dPhi_dalpha2 = OMatrix::<_, Dyn, U3>::zeros_generic(Dyn(self.Phi.nrows()), U3);
         dPhi_dalpha2.set_column(
             1,
-            &(1. / (self.alpha[1] * self.alpha[1]) * &self.Phi.column(1).component_mul(&self.x)),
+            &(1. / (self.alpha[1] * self.alpha[1]) * self.Phi.column(1).component_mul(&self.x)),
         );
         let mut jac_block = DMatrix::from_element(self.Phi.nrows(), 3, 1.);
         jac_block.set_column(0, &self.Phi.column(0));
@@ -142,6 +149,13 @@ impl LeastSquaresProblem<f64, Dyn, Dyn> for DoubleExponentialModelWithConstantOf
             self.C.len(),
             "we need exactly 3 linear parameters per dataset"
         );
+
+        let to_vector = |mat: OMatrix<f64, Dyn, Dyn>| {
+            let new_nrows = Dyn(mat.nrows() * mat.ncols());
+            mat.reshape_generic(new_nrows, U1)
+        };
+        jacobian.set_column(0, &to_vector(dPhi_dalpha1 * &self.C));
+        jacobian.set_column(1, &to_vector(dPhi_dalpha2 * &self.C));
 
         for (col, row) in (2..jacobian.nrows())
             .step_by(3)
