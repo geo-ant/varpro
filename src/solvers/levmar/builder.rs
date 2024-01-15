@@ -113,6 +113,11 @@ where
         }
     }
 
+    //@todo make this better
+    pub fn multiple_observations(self, Y: DMatrix<Model::ScalarType>) -> Self {
+        Self { Y: Some(Y), ..self }
+    }
+
     /// **Optional** This value is relevant for the solver, because it uses singular value decomposition
     /// internally. This method sets a value `\epsilon` for which smaller (i.e. absolute - wise) singular
     /// values are considered zero. In essence this gives a truncation of the SVD. This might be
@@ -154,9 +159,10 @@ where
     /// # Returns
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
+    #[allow(non_snake_case)]
     pub fn build(self) -> Result<LevMarProblem<Model>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
-        let y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
+        let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;
         let epsilon = self.epsilon.unwrap_or_else(Float::epsilon);
         let weights = self.weights;
@@ -164,18 +170,18 @@ where
         // now do some sanity checks for the values and return
         // an error if they do not pass the test
         let x_len: usize = model.output_len();
-        if x_len == 0 || y.is_empty() {
+        if x_len == 0 || Y.is_empty() {
             return Err(LevMarBuilderError::ZeroLengthVector);
         }
 
-        if x_len != y.len() {
+        if x_len != Y.nrows() {
             return Err(LevMarBuilderError::InvalidLengthOfData {
                 x_length: x_len,
-                y_length: y.len(),
+                y_length: Y.nrows(),
             });
         }
 
-        if !weights.is_size_correct_for_data_length(y.len()) {
+        if !weights.is_size_correct_for_data_length(Y.nrows()) {
             //check that weights have correct length if they were given
             return Err(LevMarBuilderError::InvalidLengthOfWeights);
         }
@@ -183,7 +189,7 @@ where
         //now that we have valid inputs, construct the levmar problem
         // 1) create weighted data
         #[allow(non_snake_case)]
-        let Y_w = &weights * y;
+        let Y_w = &weights * Y;
 
         let params = model.params();
         // 2) initialize the levmar problem. Some field values are dummy initialized

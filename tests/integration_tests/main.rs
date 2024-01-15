@@ -319,6 +319,7 @@ fn double_exponential_model_with_levenberg_marquardt_mrhs_produces_accurate_resu
     let tau1 = 1.;
     let tau2 = 3.;
     // cannot guess too far away from the true params
+    // otherwise the solution will not converge
     let tau1_guess = 2.0;
     let tau2_guess = 4.0;
     // coefficients for the first dataset
@@ -380,7 +381,75 @@ fn double_exponential_model_with_levenberg_marquardt_mrhs_produces_accurate_resu
     let b2_calc = levenberg_marquardt_solution.params()[6];
     let b3_calc = levenberg_marquardt_solution.params()[7];
 
-    println!("solution:{}", levenberg_marquardt_solution.params());
+    assert_relative_eq!(a1, a1_calc, epsilon = 1e-8);
+    assert_relative_eq!(a2, a2_calc, epsilon = 1e-8);
+    assert_relative_eq!(a3, a3_calc, epsilon = 1e-8);
+    assert_relative_eq!(b1, b1_calc, epsilon = 1e-8);
+    assert_relative_eq!(b2, b2_calc, epsilon = 1e-8);
+    assert_relative_eq!(b3, b3_calc, epsilon = 1e-8);
+    assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
+    assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results() {
+    let x = linspace(0., 12.5, 20);
+    let tau1 = 1.;
+    let tau2 = 3.;
+    // cannot guess too far away from the true params
+    // otherwise the solution will not converge
+    let tau1_guess = 2.0;
+    let tau2_guess = 4.0;
+    // coefficients for the first dataset
+    let a1 = 2.;
+    let a2 = 4.;
+    let a3 = 0.2;
+    // coefficients for the second dataset
+    let b1 = 5.;
+    let b2 = 1.;
+    let b3 = 9.;
+    let mut Y = DMatrix::zeros(x.len(), 2);
+
+    Y.set_column(
+        0,
+        &x.map(|x: f64| a1 * (-x / tau1).exp() + a2 * (-x / tau2).exp() + a3),
+    );
+    Y.set_column(
+        1,
+        &x.map(|x: f64| b1 * (-x / tau1).exp() + b2 * (-x / tau2).exp() + b3),
+    );
+
+    let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
+    let problem = LevMarProblemBuilder::new(model)
+        .multiple_observations(Y)
+        .build()
+        .expect("building the lev mar problem must not fail");
+    let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new()
+        // if I don't set this, the solver will not converge
+        // .with_stepbound(1.)
+        // .with_patience(1000)
+        .minimize(problem);
+
+    assert!(
+        report.termination.was_successful(),
+        "Levenberg Marquardt did not converge"
+    );
+    // extract the calculated paramters, because tau1 and tau2 might switch places here
+    let (tau1_index, tau2_index) =
+        if levenberg_marquardt_solution.params()[0] < levenberg_marquardt_solution.params()[1] {
+            (0, 1)
+        } else {
+            (1, 0)
+        };
+    let tau1_calc = levenberg_marquardt_solution.params()[tau1_index];
+    let tau2_calc = levenberg_marquardt_solution.params()[tau2_index];
+    let a1_calc = levenberg_marquardt_solution.params()[2];
+    let a2_calc = levenberg_marquardt_solution.params()[3];
+    let a3_calc = levenberg_marquardt_solution.params()[4];
+    let b1_calc = levenberg_marquardt_solution.params()[5];
+    let b2_calc = levenberg_marquardt_solution.params()[6];
+    let b3_calc = levenberg_marquardt_solution.params()[7];
 
     assert_relative_eq!(a1, a1_calc, epsilon = 1e-8);
     assert_relative_eq!(a2, a2_calc, epsilon = 1e-8);
@@ -390,6 +459,7 @@ fn double_exponential_model_with_levenberg_marquardt_mrhs_produces_accurate_resu
     assert_relative_eq!(b3, b3_calc, epsilon = 1e-8);
     assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
+    todo!("make this work for actual mrhs model")
 }
 
 #[test]
