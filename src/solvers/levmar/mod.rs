@@ -423,8 +423,8 @@ where
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
                 UninitMatrix::uninit(
-                    Dyn(self.model.output_len()),
-                    Dyn(self.model.parameter_count() * self.Y_w.ncols()),
+                    Dyn(self.model.output_len() * self.Y_w.ncols()),
+                    Dyn(self.model.parameter_count()),
                 )
                 .assume_init()
             };
@@ -477,5 +477,6 @@ fn copy_matrix_to_column<T: Scalar + std::fmt::Display + Clone, S: RawStorageMut
     target: &mut Matrix<T, Dyn, U1, S>,
 ) {
     //@todo make this more efficient...
+    //@todo inefficient
     target.copy_from(&to_vector(source));
 }

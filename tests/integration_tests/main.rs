@@ -374,11 +374,11 @@ fn double_exponential_model_with_levenberg_marquardt_mrhs_produces_accurate_resu
         };
     let tau1_calc = levenberg_marquardt_solution.params()[tau1_index];
     let tau2_calc = levenberg_marquardt_solution.params()[tau2_index];
-    let a1_calc = levenberg_marquardt_solution.params()[2];
-    let a2_calc = levenberg_marquardt_solution.params()[3];
+    let a1_calc = levenberg_marquardt_solution.params()[2 + tau1_index];
+    let a2_calc = levenberg_marquardt_solution.params()[2 + tau2_index];
     let a3_calc = levenberg_marquardt_solution.params()[4];
-    let b1_calc = levenberg_marquardt_solution.params()[5];
-    let b2_calc = levenberg_marquardt_solution.params()[6];
+    let b1_calc = levenberg_marquardt_solution.params()[5 + tau1_index];
+    let b2_calc = levenberg_marquardt_solution.params()[5 + tau2_index];
     let b3_calc = levenberg_marquardt_solution.params()[7];
 
     assert_relative_eq!(a1, a1_calc, epsilon = 1e-8);
@@ -397,10 +397,8 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     let x = linspace(0., 12.5, 20);
     let tau1 = 1.;
     let tau2 = 3.;
-    // cannot guess too far away from the true params
-    // otherwise the solution will not converge
-    let tau1_guess = 2.0;
-    let tau2_guess = 4.0;
+    let tau1_guess = 2.5;
+    let tau2_guess = 6.5;
     // coefficients for the first dataset
     let a1 = 2.;
     let a2 = 4.;
@@ -425,11 +423,7 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
         .multiple_observations(Y)
         .build()
         .expect("building the lev mar problem must not fail");
-    let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new()
-        // if I don't set this, the solver will not converge
-        // .with_stepbound(1.)
-        // .with_patience(1000)
-        .minimize(problem);
+    let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new().minimize(problem);
 
     assert!(
         report.termination.was_successful(),
@@ -444,12 +438,15 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
         };
     let tau1_calc = levenberg_marquardt_solution.params()[tau1_index];
     let tau2_calc = levenberg_marquardt_solution.params()[tau2_index];
-    let a1_calc = levenberg_marquardt_solution.params()[2];
-    let a2_calc = levenberg_marquardt_solution.params()[3];
-    let a3_calc = levenberg_marquardt_solution.params()[4];
-    let b1_calc = levenberg_marquardt_solution.params()[5];
-    let b2_calc = levenberg_marquardt_solution.params()[6];
-    let b3_calc = levenberg_marquardt_solution.params()[7];
+    let coeff = levenberg_marquardt_solution
+        .linear_coefficients()
+        .expect("linear coefficients must exist");
+    let a1_calc = coeff[tau1_index];
+    let a2_calc = coeff[tau2_index];
+    let a3_calc = coeff[2];
+    let b1_calc = coeff[3 + tau1_index];
+    let b2_calc = coeff[3 + tau2_index];
+    let b3_calc = coeff[5];
 
     assert_relative_eq!(a1, a1_calc, epsilon = 1e-8);
     assert_relative_eq!(a2, a2_calc, epsilon = 1e-8);
@@ -459,7 +456,6 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     assert_relative_eq!(b3, b3_calc, epsilon = 1e-8);
     assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
-    todo!("make this work for actual mrhs model")
 }
 
 #[test]
