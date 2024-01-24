@@ -34,6 +34,10 @@ mockall = "0.11"
 name = "double_exponential_without_noise"
 harness = false
 
+[[bench]]
+name = "multiple_right_hand_sides"
+harness = false
+
 [package.metadata.docs.rs]
 # To build locally use
 #   RUSTDOCFLAGS="--html-in-header katex-header.html" cargo doc --no-deps --open

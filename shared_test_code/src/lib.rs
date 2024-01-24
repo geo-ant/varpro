@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 //! a helper crate which carries common code used by the benchtests and the
 //! integration tests.
-use nalgebra::{ComplexField, DVector, DefaultAllocator, Dyn, OVector, Scalar};
+use nalgebra::{ComplexField, DMatrix, DVector, DefaultAllocator, Dyn, OMatrix, OVector, Scalar};
 use num_traits::Float;
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
@@ -38,6 +38,32 @@ pub fn evaluate_complete_model_at_params<Model>(
     params: OVector<Model::ScalarType, Dyn>,
     linear_coeffs: &OVector<Model::ScalarType, Dyn>,
 ) -> OVector<Model::ScalarType, Dyn>
+where
+    Model::ScalarType: Scalar + ComplexField,
+    Model: SeparableNonlinearModel,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+{
+    let original_params = model.params();
+    model
+        .set_params(params)
+        .expect("Setting params must not fail");
+    let eval = (&model
+        .eval()
+        .expect("Evaluating model must not produce error"))
+        * linear_coeffs;
+    model
+        .set_params(original_params)
+        .expect("Setting params must not fail");
+    eval
+}
+
+/// evaluate the model for multiple right hand sides
+pub fn evaluate_complete_model_at_params_mrhs<Model>(
+    model: &'_ mut Model,
+    params: OVector<Model::ScalarType, Dyn>,
+    linear_coeffs: &OMatrix<Model::ScalarType, Dyn, Dyn>,
+) -> OMatrix<Model::ScalarType, Dyn, Dyn>
 where
     Model::ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel,

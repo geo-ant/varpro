@@ -68,10 +68,24 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization<Model>(problem: LevMarProblem<Model>) -> [f64; 5]
-where
-    Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-{
+/// solve the double exponential fitting problem using a handrolled model
+fn run_minimization_for_handrolled_separable_model(
+    problem: LevMarProblem<DoubleExpModelWithConstantOffsetSepModel>,
+) -> [f64; 5] {
+    let result = LevMarSolver::new()
+        .fit(problem)
+        .expect("fitting must exit successfully");
+    let params = result.nonlinear_parameters();
+    let coeff = result.linear_coefficients().unwrap();
+    [params[0], params[1], coeff[0], coeff[1], coeff[2]]
+}
+
+/// solve the double exponential fitting problem using a separable model from the builder
+/// I should be able to unify this with the handrolled model, but I can't figure out how to do it
+/// because I cannot find the correct generic bounds to do it
+fn run_minimization_for_builder_separable_model(
+    problem: LevMarProblem<SeparableModel<f64>>,
+) -> [f64; 5] {
     let result = LevMarSolver::new()
         .fit(problem)
         .expect("fitting must exit successfully");
@@ -97,7 +111,7 @@ fn run_minimization_for_levenberg_marquardt_crate_problem(
     [params[0], params[1], params[2], params[3], params[4]]
 }
 
-fn bench_double_exp_no_noise(c: &mut Criterion) {
+fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
     let true_parameters = DoubleExponentialParameters {
         tau1: 1.,
         tau2: 3.,
@@ -154,7 +168,7 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
                     ),
                 )
             },
-            run_minimization,
+            run_minimization_for_builder_separable_model,
             criterion::BatchSize::SmallInput,
         )
     });
@@ -167,14 +181,14 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
                     DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
                 )
             },
-            run_minimization,
+            run_minimization_for_handrolled_separable_model,
             criterion::BatchSize::SmallInput,
         )
     });
 }
 
 criterion_group!(
-    name = benches;
+    name = benches_mrhs;
     config = Criterion::default().with_profiler(PProfProfiler::new(100, Output::Flamegraph(None)));
-    targets = bench_double_exp_no_noise);
-criterion_main!(benches);
+    targets = bench_double_exp_no_noise_mrhs);
+criterion_main!(benches_mrhs);
