@@ -118,7 +118,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         .expect("Building valid problem should not panic");
     _ = format!("{:?}", problem);
 
-    let (fit_result, statistics) = LevMarSolver::new()
+    let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
         .expect("fit must complete succesfully");
     assert!(
@@ -184,7 +184,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         .build()
         .expect("Building valid problem should not panic");
 
-    let (fit_result, statistics) = LevMarSolver::new()
+    let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
         .expect("fitting must exit succesfully");
 
@@ -482,7 +482,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         .build()
         .unwrap();
 
-    let (fit_result, statistics) = LevMarSolver::new()
+    let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
         .expect("fitting must exit succesfully");
     assert!(
@@ -594,7 +594,7 @@ fn test_oleary_example_with_separable_model() {
         .build()
         .unwrap();
 
-    let (fit_result, statistics) = LevMarSolver::new()
+    let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
         .expect("fitting must exit succesfully");
     assert!(

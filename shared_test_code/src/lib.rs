@@ -3,7 +3,7 @@
 //! integration tests.
 use std::ops::Range;
 
-use nalgebra::{ComplexField, DMatrix, DVector, DefaultAllocator, Dyn, OMatrix, OVector, Scalar};
+use nalgebra::{ComplexField, DVector, DefaultAllocator, Dyn, OMatrix, OVector, Scalar};
 use num_traits::Float;
 use rand::{Rng, SeedableRng};
 use varpro::model::builder::SeparableModelBuilder;

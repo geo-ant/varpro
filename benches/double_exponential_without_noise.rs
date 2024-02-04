@@ -72,7 +72,7 @@ fn run_minimization<Model>(problem: LevMarProblem<Model>) -> [f64; 5]
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
 {
-    let result = LevMarSolver::new()
+    let result = LevMarSolver::default()
         .fit(problem)
         .expect("fitting must exit successfully");
     let params = result.nonlinear_parameters();
