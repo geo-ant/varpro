@@ -98,13 +98,15 @@ where
 {
     /// create a new solver with default parameters. Uses the underlying
     /// solver of the `levenberg_marquardt` crate
+    #[deprecated(
+        since = "0.8.0",
+        note = "use the default() method instead. If you want to specify solver parameters use the with_solver(...) constructor."
+    )]
     pub fn new() -> Self
     where
         Model::ScalarType: RealField + Float,
     {
-        Self {
-            solver: LevenbergMarquardt::new(),
-        }
+        Self::default()
     }
 
     /// creata a new solver using the given underlying solver. This allows
@@ -202,7 +204,9 @@ where
     Model::ScalarType: RealField + Float,
 {
     fn default() -> Self {
-        Self::new()
+        Self {
+            solver: LevenbergMarquardt::default(),
+        }
     }
 }
 

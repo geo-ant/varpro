@@ -2,7 +2,11 @@ use nalgebra::{DVector, Dyn, OMatrix, OVector, U1};
 use varpro::model::SeparableModel;
 use varpro::{model::errors::ModelError, prelude::*};
 
-#[derive(Clone)]
+/// contains a double exponential model with constant offset that does not
+/// perform caching, as preliminary results indicate that using caching can
+/// lead to performance penalties for large models
+pub mod uncached;
+
 /// A separable model for double exponential decay
 /// with a constant offset
 /// f_j = c1*exp(-x_j/tau1) + c2*exp(-x_j/tau2) + c3
@@ -13,7 +17,7 @@ use varpro::{model::errors::ModelError, prelude::*};
 /// using the trait directly without using the builder.
 /// This allows us to use caching of the intermediate results
 /// to calculate the derivatives more efficiently.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// the x vector associated with this model.
     /// We make this configurable to enable models to

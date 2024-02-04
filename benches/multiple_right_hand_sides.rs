@@ -1,24 +1,12 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-
-
-
 use nalgebra::DMatrix;
 use nalgebra::DVector;
-
 use nalgebra::Dyn;
 use nalgebra::OVector;
-
-
 use nalgebra::U1;
 use pprof::criterion::{Output, PProfProfiler};
-
-use rand::Rng;
-use rand::SeedableRng;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
-
 use shared_test_code::*;
-use std::ops::Range;
-
 use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
@@ -39,36 +27,27 @@ fn build_problem_mrhs<Model>(
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
 {
-    let DoubleExponentialParameters { tau1, tau2, coeffs } = true_parameters;
+    let DoubleExponentialParameters { tau1, tau2, coeffs } = true_parameters.clone();
     // save the initial guess so that we can reset the model to those
     let params = OVector::from_vec_generic(Dyn(model.parameter_count()), U1, vec![tau1, tau2]);
     let y = evaluate_complete_model_at_params_mrhs(&mut model, params, &coeffs);
-    LevMarProblemBuilder::new(model)
+    let problem = LevMarProblemBuilder::new(model)
         .multiple_observations(y)
         .build()
-        .expect("Building valid problem should not panic")
+        .expect("Building valid problem should not panic");
+    problem
 }
 
 fn run_minimization<Model>(problem: LevMarProblem<Model>) -> (DVector<f64>, DVector<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
 {
-    let result = LevMarSolver::new()
+    let result = LevMarSolver::default()
         .fit(problem)
         .expect("fitting must exit successfully");
     let params = result.nonlinear_parameters();
     let coeff = result.linear_coefficients().unwrap();
     (params, coeff)
-}
-
-/// create a random matrix with coefficients in the given range
-fn create_random_dmatrix(
-    (rows, cols): (usize, usize),
-    seed: u64,
-    range: Range<f64>,
-) -> nalgebra::DMatrix<f64> {
-    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    nalgebra::DMatrix::from_fn(rows, cols, move |_, _| rng.gen_range(range.clone()))
 }
 
 fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
@@ -81,7 +60,7 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
     let tau_guess = (2., 6.5);
 
     let dataset_size = 1000;
-    let linear_coeffs = create_random_dmatrix((3, dataset_size), 0, 0.0..100.0);
+    let linear_coeffs = create_random_dmatrix((3, dataset_size), 2314093240213841123, 0.0..100.0);
 
     let true_parameters = DoubleExponentialParameters {
         tau1: 1.,

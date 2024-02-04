@@ -1,8 +1,11 @@
 #![warn(missing_docs)]
 //! a helper crate which carries common code used by the benchtests and the
 //! integration tests.
+use std::ops::Range;
+
 use nalgebra::{ComplexField, DMatrix, DVector, DefaultAllocator, Dyn, OMatrix, OVector, Scalar};
 use num_traits::Float;
+use rand::{Rng, SeedableRng};
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
 use varpro::prelude::SeparableNonlinearModel;
@@ -28,6 +31,16 @@ pub fn linspace<ScalarType: Float + Scalar>(
         })
         .collect();
     DVector::from(lin)
+}
+
+/// create a random matrix with coefficients in the given range
+pub fn create_random_dmatrix(
+    (rows, cols): (usize, usize),
+    seed: u64,
+    range: Range<f64>,
+) -> nalgebra::DMatrix<f64> {
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    nalgebra::DMatrix::from_fn(rows, cols, move |_, _| rng.gen_range(range.clone()))
 }
 
 /// evaluete the vector valued function of a model by evaluating the model at the given location
