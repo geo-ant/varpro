@@ -67,6 +67,20 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
         tau2: 3.,
         coeffs: linear_coeffs,
     };
+
+    group.bench_function("Handcrafted Model (MRHS)", |bencher| {
+        bencher.iter_batched(
+            || {
+                build_problem_mrhs(
+                    true_parameters.clone(),
+                    DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
+                )
+            },
+            run_minimization,
+            criterion::BatchSize::SmallInput,
+        )
+    });
+
     group.bench_function("Using Model Builder (MRHS)", |bencher| {
         bencher.iter_batched(
             || {
@@ -76,19 +90,6 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
                         x.clone(),
                         vec![tau_guess.0, tau_guess.1],
                     ),
-                )
-            },
-            run_minimization,
-            criterion::BatchSize::SmallInput,
-        )
-    });
-
-    group.bench_function("Handcrafted Model (MRHS)", |bencher| {
-        bencher.iter_batched(
-            || {
-                build_problem_mrhs(
-                    true_parameters.clone(),
-                    DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
                 )
             },
             run_minimization,
