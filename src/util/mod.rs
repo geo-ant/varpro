@@ -102,7 +102,6 @@ where
 pub(crate) fn to_vector<T: Scalar + std::fmt::Debug + Clone>(
     mat: OMatrix<T, Dyn, Dyn>,
 ) -> DVector<T> {
-    //@todo this is very inefficient like this
     let new_rows = Dyn(mat.nrows() * mat.ncols());
     mat.reshape_generic(new_rows, U1)
 }

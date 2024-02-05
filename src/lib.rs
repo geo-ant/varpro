@@ -6,6 +6,12 @@
 //! for a large class of so called _separable_ nonlinear least squares problems.
 //! It's fast, flexible, and it is simple to use.
 //!
+//! ## Multiple Right Hand Sides
+//!
+//! Since version 0.8.0, support for global fitting with multiple right hand
+//! sides has been added to this library. This is a powerful technique for suitable
+//! problems and is explained at the end of this introductory chapter.
+//!
 //! ## Overview
 //!
 //! Many nonlinear models consist of a mixture of both truly nonlinear and _linear_ model
@@ -334,6 +340,27 @@
 //! // the linear coefficients
 //! let c  = fit_result.linear_coefficients().unwrap();
 //! ```
+//! # Global Fitting with Multiple Right Hand Sides
+//!
+//! This is an application that lets varpro really shine. It solves the following
+//! problem:
+//!  * We have not only one observation but a set `$\{\vec{y}_s\}$`, `$s=1,...,S$` of
+//! observations.
+//!  * We want to fit the separable nonlinear function `$\vec{f}(\vec{\alpha},\vec{c})$`
+//! to all vectors of observations, but in such a way that the linear parameters
+//! are allowed to be different for each vector, but the nonlinear parameters
+//! are the same for the whole dataset.
+//!
+//! This is called global fitting with multiple right hand sides,
+//! because the nonlinear parameters are not
+//! allowed to change and are optimized for the complete dataset, whereas the linear
+//! parameters are allowed to vary with each vector of observations. For a more
+//! in depth explanation [see my article here](https://geo-ant.github.io/blog/2024/variable-projection-part-2-multiple-right-hand-sides/).
+//!
+//! To take advantage of global fitting we don't need to change anything about the
+//! model or the building process. The only difference is that we now pass a matrix
+//! as the observations rather than a single vector. The columns in the matrix
+//! correspond to the observations.
 //!
 //! # References and Further Reading
 //! (O'Leary2013) O’Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems. *Comput Optim Appl* **54**, 579–593 (2013). DOI: [10.1007/s10589-012-9492-9](https://doi.org/10.1007/s10589-012-9492-9)

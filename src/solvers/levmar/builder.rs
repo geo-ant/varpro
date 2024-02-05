@@ -38,6 +38,31 @@ pub enum LevMarBuilderError {
     InvalidLengthOfWeights,
 }
 
+/// a type describing the observation `$\vec{y}$` or `$\boldsymbol{Y}$` that we want to fit
+/// with a model. The observation can either be create from a single column vector, corresponding
+/// to the common case of fitting a single right hand side with a model. It can
+/// also be create from a matrix, which corresponds to a global fitting problem
+/// with multiple right hand sides. The observations in this case are a matrix
+/// where each _column_ represents an observation.
+pub struct Observation<T> {
+    data: DMatrix<T>,
+}
+
+// construct the obseration from a single vector or matrix
+impl<T> From<DMatrix<T>> for Observation<T> {
+    fn from(data: DMatrix<T>) -> Self {
+        Self { data }
+    }
+}
+
+impl<T: Scalar> From<DVector<T>> for Observation<T> {
+    fn from(data: DVector<T>) -> Self {
+        Self {
+            data: DMatrix::from_column_slice(data.nrows(), 1, data.as_slice()),
+        }
+    }
+}
+
 /// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
 /// fitting a separable model to data.
 /// # Example
@@ -104,18 +129,18 @@ where
         }
     }
 
-    /// **Mandatory**: Set the data which we want to fit: `$\vec{y}=\vec{y}(\vec{x})$`.
-    /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn observations(self, yvec: DVector<Model::ScalarType>) -> Self {
+    /// **Mandatory**: Set the data which we want to fit: This is either a single vector
+    /// `$\vec{y}=\vec{y}(\vec{x})$` or a matrix `$\boldsymbol{Y}$` of multiple
+    /// vectors. In the former case this corresponds to fitting a single right hand side,
+    /// in the latter case, this corresponds to global fitting of a problem with
+    /// multiple right hand sides.
+    /// The length of `$\vec{x}$` and the number of _rows_ in the data must
+    /// be the same.
+    pub fn observations(self, observed: impl Into<Observation<Model::ScalarType>>) -> Self {
         Self {
-            Y: Some(DMatrix::from_column_slice(yvec.nrows(), 1, yvec.as_slice())),
+            Y: Some(observed.into().data),
             ..self
         }
-    }
-
-    //@todo make this better
-    pub fn multiple_observations(self, Y: DMatrix<Model::ScalarType>) -> Self {
-        Self { Y: Some(Y), ..self }
     }
 
     /// **Optional** This value is relevant for the solver, because it uses singular value decomposition

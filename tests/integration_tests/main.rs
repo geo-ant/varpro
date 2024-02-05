@@ -420,7 +420,7 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
 
     let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
     let problem = LevMarProblemBuilder::new(model)
-        .multiple_observations(Y)
+        .observations(Y)
         .build()
         .expect("building the lev mar problem must not fail");
     let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new().minimize(problem);

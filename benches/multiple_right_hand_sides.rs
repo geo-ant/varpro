@@ -32,7 +32,7 @@ where
     let params = OVector::from_vec_generic(Dyn(model.parameter_count()), U1, vec![tau1, tau2]);
     let y = evaluate_complete_model_at_params_mrhs(&mut model, params, &coeffs);
     let problem = LevMarProblemBuilder::new(model)
-        .multiple_observations(y)
+        .observations(y)
         .build()
         .expect("Building valid problem should not panic");
     problem
