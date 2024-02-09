@@ -24,10 +24,10 @@ pub(crate) enum Error<ModelError: std::error::Error> {
     Underdetermined,
     #[error("Floating point unable to capture integral value {}", .0)]
     /// the floating point type was unable to capture an integral value
-    FloatToIntError(usize),
+    FloatToIntConversion(usize),
     /// Failed to calculate the inverse of a matrix
     #[error("Matrix inversion error")]
-    MatrixInversionError,
+    MatrixInversion,
 }
 
 /// This structure contains some additional statistical information
@@ -253,12 +253,12 @@ where
         let sigma: Model::ScalarType = weighted_residuals.norm()
             / Float::sqrt(
                 Model::ScalarType::from_usize(output_len - degrees_of_freedom)
-                    .ok_or(Error::FloatToIntError(output_len - degrees_of_freedom))?,
+                    .ok_or(Error::FloatToIntConversion(output_len - degrees_of_freedom))?,
             );
 
         let HTH_inv = (H.transpose() * H)
             .try_inverse()
-            .ok_or(Error::MatrixInversionError)?;
+            .ok_or(Error::MatrixInversion)?;
         let covariance_matrix = HTH_inv * sigma * sigma;
         let correlation_matrix = calc_correlation_matrix(&covariance_matrix);
 
