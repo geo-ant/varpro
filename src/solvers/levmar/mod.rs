@@ -3,7 +3,7 @@ use crate::statistics::FitStatistics;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector,
+    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector,
     RawStorageMut, RealField, Scalar, UninitMatrix, Vector, SVD, U1,
 };
 
