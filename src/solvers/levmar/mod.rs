@@ -3,8 +3,8 @@ use crate::statistics::FitStatistics;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector,
-    RawStorageMut, RealField, Scalar, UninitMatrix, Vector, SVD, U1,
+    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector, RawStorageMut,
+    RealField, Scalar, UninitMatrix, Vector, SVD, U1,
 };
 
 mod builder;
@@ -140,6 +140,7 @@ where
     /// correspond to a failed minimization in some cases.
     /// On failure (when the minimization was not deemeed successful), returns
     /// an error with the same information as in the success case.
+    #[allow(clippy::result_large_err)]
     pub fn fit(&self, problem: LevMarProblem<Model>) -> Result<FitResult<Model>, FitResult<Model>>
     where
         Model: SeparableNonlinearModel,
@@ -163,6 +164,7 @@ where
     ///
     /// See also the [LevMarProblem::fit] function, but on success also returns statistical
     /// information about the fit.
+    #[allow(clippy::result_large_err)]
     pub fn fit_with_statistics(
         &self,
         problem: LevMarProblem<Model>,
