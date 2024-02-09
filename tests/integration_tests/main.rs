@@ -1,9 +1,10 @@
+use approx::assert_relative_eq;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DMatrix;
 use nalgebra::DVector;
-
 use nalgebra::Dyn;
 use nalgebra::OVector;
+use nalgebra::Scalar;
 use nalgebra::U1;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
@@ -16,7 +17,10 @@ use shared_test_code::models::OLearyExampleModel;
 use varpro::prelude::*;
 use varpro::solvers::levmar::*;
 
-use approx::assert_relative_eq;
+fn to_vector<T: Scalar + std::fmt::Debug + Clone>(mat: DMatrix<T>) -> DVector<T> {
+    let new_rows = Dyn(mat.nrows() * mat.ncols());
+    mat.reshape_generic(new_rows, U1)
+}
 
 #[test]
 // sanity check my calculations above
@@ -499,7 +503,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         OVector::<f64, Dyn>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
     let c_true = OVector::<f64, Dyn>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
-    assert_relative_eq!(c_fit, c_true, epsilon = 1e-5);
+    assert_relative_eq!(to_vector(c_fit), c_true, epsilon = 1e-5);
 
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,
@@ -610,7 +614,7 @@ fn test_oleary_example_with_separable_model() {
     let alpha_true = DVector::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
     let c_true = DVector::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
-    assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
+    assert_relative_eq!(to_vector(c_fit), &c_true, epsilon = 1e-5);
 
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,

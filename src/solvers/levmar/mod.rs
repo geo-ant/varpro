@@ -78,10 +78,8 @@ where
     /// in case of multiple datasets, the coefficients vectors for the individual
     /// members of the datasets are written as a single vector by stacking them
     /// on top of each other
-    pub fn linear_coefficients(&self) -> Option<DVector<Model::ScalarType>> {
-        self.problem
-            .linear_coefficients()
-            .map(|mat| to_vector(mat.clone()))
+    pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
+        self.problem.linear_coefficients().cloned()
     }
 
     /// whether the fit was deemeed successful. The fit might still be not

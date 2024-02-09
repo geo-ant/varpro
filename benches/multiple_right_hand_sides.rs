@@ -38,7 +38,7 @@ where
     problem
 }
 
-fn run_minimization<Model>(problem: LevMarProblem<Model>) -> (DVector<f64>, DVector<f64>)
+fn run_minimization<Model>(problem: LevMarProblem<Model>) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
 {
