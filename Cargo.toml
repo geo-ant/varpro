@@ -1,6 +1,6 @@
 [package]
 name = "varpro"
-version = "0.7.1"
+version = "0.8.0"
 authors = ["geo-ant"]
 edition = "2021"
 license = "MIT"
@@ -17,8 +17,9 @@ members = ["shared_test_code"]
 [dependencies]
 thiserror = "1"
 levenberg-marquardt = "0.13"
-nalgebra = "0.32"
+nalgebra = { version = "0.32" } #, features = ["rayon"]}
 num-traits = "0.2"
+# rayon = "1.6"
 
 [dev-dependencies]
 approx = "0.5"
@@ -28,9 +29,14 @@ pprof = { version = "0.13", features = ["criterion", "flamegraph"] }
 shared_test_code = { path = "./shared_test_code" }
 assert_matches = "1.5"
 mockall = "0.11"
+rand = "0.8"
 
 [[bench]]
 name = "double_exponential_without_noise"
+harness = false
+
+[[bench]]
+name = "multiple_right_hand_sides"
 harness = false
 
 [package.metadata.docs.rs]

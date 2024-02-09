@@ -1,5 +1,7 @@
 use std::convert::Infallible;
 
+#[cfg(test)]
+use crate::util::to_matrix;
 use crate::{
     prelude::SeparableNonlinearModel,
     statistics::{extract_range, model_function_jacobian},
@@ -7,7 +9,7 @@ use crate::{
 
 use super::{calc_correlation_matrix, concat_colwise};
 use approx::assert_relative_eq;
-use nalgebra::{vector, DMatrix, DVector, Dim, Dyn, OMatrix, U0, U1, U2, U3, U4, U5, U6, U7};
+use nalgebra::{vector, DMatrix, DVector, Dyn, OMatrix, U0, U1, U2, U3, U4, U5, U6, U7};
 #[test]
 fn matrix_concatenation_for_dynamic_matrices() {
     // two DMatrix instances with the same number of rows but
@@ -57,36 +59,31 @@ struct DummyModel {}
 impl SeparableNonlinearModel for DummyModel {
     type ScalarType = f64;
     type Error = Infallible;
-    type ParameterDim = Dyn;
-    type ModelDim = Dyn;
-    type OutputDim = Dyn;
 
-    fn parameter_count(&self) -> Self::ParameterDim {
-        Dyn(2)
+    fn parameter_count(&self) -> usize {
+        2
     }
 
-    fn base_function_count(&self) -> Self::ModelDim {
-        Dyn(3)
+    fn base_function_count(&self) -> usize {
+        3
     }
 
-    fn output_len(&self) -> Self::OutputDim {
-        Dyn(3)
+    fn output_len(&self) -> usize {
+        3
     }
 
     fn set_params(
         &mut self,
-        _parameters: nalgebra::OVector<Self::ScalarType, Self::ParameterDim>,
+        _parameters: nalgebra::OVector<Self::ScalarType, Dyn>,
     ) -> Result<(), Self::Error> {
         todo!()
     }
 
-    fn params(&self) -> nalgebra::OVector<Self::ScalarType, Self::ParameterDim> {
+    fn params(&self) -> nalgebra::OVector<Self::ScalarType, Dyn> {
         todo!()
     }
 
-    fn eval(
-        &self,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+    fn eval(&self) -> Result<OMatrix<Self::ScalarType, Dyn, Dyn>, Self::Error> {
         Ok(DMatrix::from_row_slice(
             3,
             3,
@@ -97,11 +94,11 @@ impl SeparableNonlinearModel for DummyModel {
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+    ) -> Result<OMatrix<Self::ScalarType, Dyn, Dyn>, Self::Error> {
         let mut jacobian = DMatrix::zeros(3, 3);
         jacobian.column_mut(derivative_index).fill(1.0);
         jacobian
-            .column_mut(self.base_function_count().value() - 1)
+            .column_mut(self.base_function_count() - 1)
             .fill(1.0);
         Ok(jacobian)
     }
@@ -117,7 +114,7 @@ fn model_function_jacobian_is_calculated_correctly() {
         model.eval().unwrap(),
         DMatrix::from_column_slice(3, 2, &[12., 12., 12., 13., 13., 13.]),
     );
-    let calculated_jac = model_function_jacobian(&model, &c);
+    let calculated_jac = model_function_jacobian(&model, &to_matrix(c));
     assert_relative_eq!(expected_jac, calculated_jac.unwrap());
 }
 

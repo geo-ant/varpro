@@ -5,7 +5,6 @@ use crate::test_helpers;
 use assert_matches::assert_matches;
 use nalgebra::DMatrix;
 use nalgebra::DVector;
-use nalgebra::Dyn;
 
 // mock the separable model for later use in tests
 // some exta manual labor because the mocker was having trouble with
@@ -14,7 +13,7 @@ mockall::mock! {
     /// MockSeparableNonlinearModel that can be used
     /// in unit and integration tests inside this crate
     pub SeparableNonlinearModel {
-       pub fn parameter_count(&self) -> Dyn;
+       pub fn parameter_count(&self) -> usize;
        pub fn base_function_count(&self) -> usize;
        pub fn output_len(&self) -> usize;
        pub fn set_params(&mut self, parameters : DVector<f64>) -> Result<(),MockModelError>;
@@ -52,21 +51,18 @@ where
 
 impl SeparableNonlinearModel for MockSeparableNonlinearModel {
     type Error = MockModelError;
-    type ParameterDim = Dyn;
-    type ModelDim = Dyn;
-    type OutputDim = Dyn;
     type ScalarType = f64;
 
-    fn parameter_count(&self) -> Dyn {
+    fn parameter_count(&self) -> usize {
         self.parameter_count()
     }
 
-    fn base_function_count(&self) -> Dyn {
-        Dyn(self.base_function_count())
+    fn base_function_count(&self) -> usize {
+        self.base_function_count()
     }
 
-    fn output_len(&self) -> Dyn {
-        Dyn(self.output_len())
+    fn output_len(&self) -> usize {
+        self.output_len()
     }
 
     fn set_params(&mut self, parameters: DVector<f64>) -> Result<(), Self::Error> {
@@ -94,7 +90,7 @@ fn model_gets_initialized_with_correct_parameter_names_and_count() {
     );
     assert_eq!(
         model.parameter_count(),
-        Dyn(2),
+        2,
         "Double exponential model has 2 parameters"
     );
     assert_eq!(
@@ -157,7 +153,7 @@ fn model_function_parameter_setting_fails_for_incorrect_number_of_parameters() {
     let mut model = test_helpers::get_double_exponential_model_with_constant_offset(tvec, params);
     assert_eq!(
         model.parameter_count(),
-        Dyn(2),
+        2,
         "double exponential model should have 2 params"
     );
     // now deliberately provide a wrong number of parameters to

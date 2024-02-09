@@ -1,16 +1,14 @@
+use approx::assert_relative_eq;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DMatrix;
 use nalgebra::DVector;
-
-use nalgebra::vector;
+use nalgebra::Dyn;
 use nalgebra::OVector;
-use nalgebra::Vector2;
-use nalgebra::Vector3;
+use nalgebra::Scalar;
 use nalgebra::U1;
-use nalgebra::U2;
-use nalgebra::U3;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
+use shared_test_code::levmar_mrhs::DoubleExponentialModelWithConstantOffsetLevmarMrhs;
 use shared_test_code::linspace;
 use shared_test_code::models::o_leary_example_model;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
@@ -19,7 +17,10 @@ use shared_test_code::models::OLearyExampleModel;
 use varpro::prelude::*;
 use varpro::solvers::levmar::*;
 
-use approx::assert_relative_eq;
+fn to_vector<T: Scalar + std::fmt::Debug + Clone>(mat: DMatrix<T>) -> DVector<T> {
+    let new_rows = Dyn(mat.nrows() * mat.ncols());
+    mat.reshape_generic(new_rows, U1)
+}
 
 #[test]
 // sanity check my calculations above
@@ -42,6 +43,54 @@ fn sanity_check_jacobian_of_levenberg_marquardt_problem_is_correct() {
     let jacobian_numerical = levenberg_marquardt::differentiate_numerically(&mut problem).unwrap();
     let jacobian_trait = problem.jacobian().unwrap();
     assert_relative_eq!(jacobian_numerical, jacobian_trait, epsilon = 1e-5);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn sanity_check_jacobian_of_levenberg_marquardt_problem_mrhs_is_correct() {
+    let x = linspace(0., 12.5, 20);
+    let tau1 = 2.;
+    let tau2 = 4.;
+    // coefficients for the first dataset
+    let a1 = 2.;
+    let a2 = 4.;
+    let a3 = 0.2;
+    // coefficients for the second dataset
+    let b1 = 5.;
+    let b2 = 1.;
+    let b3 = 9.;
+    let mut Y = DMatrix::zeros(x.len(), 2);
+
+    Y.set_column(
+        0,
+        &x.map(|x: f64| a1 * (-x / tau1).exp() + a2 * (-x / tau2).exp() + a3),
+    );
+    Y.set_column(
+        1,
+        &x.map(|x: f64| b1 * (-x / tau1).exp() + b2 * (-x / tau2).exp() + b3),
+    );
+
+    let initial_params = [
+        0.5 * tau1,
+        1.5 * tau2,
+        2. * a1,
+        3. * a2,
+        3. * a3,
+        1.2 * b1,
+        3. * b2,
+        5. * b3,
+    ];
+    let mut problem = DoubleExponentialModelWithConstantOffsetLevmarMrhs::new(initial_params, x, Y);
+    assert_eq!(
+        problem.params().as_slice(),
+        &initial_params,
+        "params not set correctly"
+    );
+
+    // Let `problem` be an instance of `LeastSquaresProblem`
+    let jacobian_numerical = levenberg_marquardt::differentiate_numerically(&mut problem).unwrap();
+    let jacobian_trait = problem.jacobian().unwrap();
+    assert_relative_eq!(jacobian_numerical, jacobian_trait, epsilon = 1e-4);
 }
 
 #[test]
@@ -73,7 +122,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         .expect("Building valid problem should not panic");
     _ = format!("{:?}", problem);
 
-    let (fit_result, statistics) = LevMarSolver::new()
+    let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
         .expect("fit must complete succesfully");
     assert!(
@@ -130,8 +179,8 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     // generate some data without noise
     let y = evaluate_complete_model_at_params(
         &mut model,
-        Vector2::new(tau1, tau2),
-        &OVector::from_vec_generic(base_func_count, U1, vec![c1, c2, c3]),
+        OVector::from_column_slice_generic(Dyn(2), U1, &[tau1, tau2]),
+        &OVector::from_vec_generic(Dyn(base_func_count), U1, vec![c1, c2, c3]),
     );
 
     let problem = LevMarProblemBuilder::new(model)
@@ -139,7 +188,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         .build()
         .expect("Building valid problem should not panic");
 
-    let (fit_result, statistics) = LevMarSolver::new()
+    let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
         .expect("fitting must exit succesfully");
 
@@ -179,7 +228,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
 }
 
 #[test]
-fn double_check_to_make_sure_we_can_rely_on_the_model_to_generat_ground_truth() {
+fn double_check_to_make_sure_we_can_rely_on_the_model_to_generate_ground_truth() {
     let x = linspace(0., 12.5, 1024);
     let tau1_guess = 2.;
     let tau2_guess = 6.5;
@@ -268,10 +317,156 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_leven
 }
 
 #[test]
+#[allow(non_snake_case)]
+fn double_exponential_model_with_levenberg_marquardt_mrhs_produces_accurate_results() {
+    let x = linspace(0., 12.5, 20);
+    let tau1 = 1.;
+    let tau2 = 3.;
+    // cannot guess too far away from the true params
+    // otherwise the solution will not converge
+    let tau1_guess = 2.0;
+    let tau2_guess = 4.0;
+    // coefficients for the first dataset
+    let a1 = 2.;
+    let a2 = 4.;
+    let a3 = 0.2;
+    // coefficients for the second dataset
+    let b1 = 5.;
+    let b2 = 1.;
+    let b3 = 9.;
+    let mut Y = DMatrix::zeros(x.len(), 2);
+
+    Y.set_column(
+        0,
+        &x.map(|x: f64| a1 * (-x / tau1).exp() + a2 * (-x / tau2).exp() + a3),
+    );
+    Y.set_column(
+        1,
+        &x.map(|x: f64| b1 * (-x / tau1).exp() + b2 * (-x / tau2).exp() + b3),
+    );
+
+    let initial_params = [
+        tau1_guess,
+        tau2_guess,
+        // introduce small variations around the true parameters
+        // to make sure this works, but they cannot be too big because
+        // otherwise the levmar minimizer will get upset and its hair will fall out
+        0.9 * a1,
+        1.1 * a2,
+        1.1 * a3,
+        1.1 * b1,
+        1.1 * b2,
+        0.9 * b3,
+    ];
+    let problem = DoubleExponentialModelWithConstantOffsetLevmarMrhs::new(initial_params, x, Y);
+    let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new()
+        // if I don't set this, the solver will not converge
+        .with_stepbound(1.)
+        .with_patience(1000)
+        .minimize(problem);
+
+    assert!(
+        report.termination.was_successful(),
+        "Levenberg Marquardt did not converge"
+    );
+    // extract the calculated paramters, because tau1 and tau2 might switch places here
+    let (tau1_index, tau2_index) =
+        if levenberg_marquardt_solution.params()[0] < levenberg_marquardt_solution.params()[1] {
+            (0, 1)
+        } else {
+            (1, 0)
+        };
+    let tau1_calc = levenberg_marquardt_solution.params()[tau1_index];
+    let tau2_calc = levenberg_marquardt_solution.params()[tau2_index];
+    let a1_calc = levenberg_marquardt_solution.params()[2 + tau1_index];
+    let a2_calc = levenberg_marquardt_solution.params()[2 + tau2_index];
+    let a3_calc = levenberg_marquardt_solution.params()[4];
+    let b1_calc = levenberg_marquardt_solution.params()[5 + tau1_index];
+    let b2_calc = levenberg_marquardt_solution.params()[5 + tau2_index];
+    let b3_calc = levenberg_marquardt_solution.params()[7];
+
+    assert_relative_eq!(a1, a1_calc, epsilon = 1e-8);
+    assert_relative_eq!(a2, a2_calc, epsilon = 1e-8);
+    assert_relative_eq!(a3, a3_calc, epsilon = 1e-8);
+    assert_relative_eq!(b1, b1_calc, epsilon = 1e-8);
+    assert_relative_eq!(b2, b2_calc, epsilon = 1e-8);
+    assert_relative_eq!(b3, b3_calc, epsilon = 1e-8);
+    assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
+    assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
+}
+
+#[test]
+#[allow(non_snake_case)]
+fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results() {
+    let x = linspace(0., 12.5, 20);
+    let tau1 = 1.;
+    let tau2 = 3.;
+    let tau1_guess = 2.5;
+    let tau2_guess = 6.5;
+    // coefficients for the first dataset
+    let a1 = 2.;
+    let a2 = 4.;
+    let a3 = 0.2;
+    // coefficients for the second dataset
+    let b1 = 5.;
+    let b2 = 1.;
+    let b3 = 9.;
+    let mut Y = DMatrix::zeros(x.len(), 2);
+
+    Y.set_column(
+        0,
+        &x.map(|x: f64| a1 * (-x / tau1).exp() + a2 * (-x / tau2).exp() + a3),
+    );
+    Y.set_column(
+        1,
+        &x.map(|x: f64| b1 * (-x / tau1).exp() + b2 * (-x / tau2).exp() + b3),
+    );
+
+    let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
+    let problem = LevMarProblemBuilder::new(model)
+        .observations(Y)
+        .build()
+        .expect("building the lev mar problem must not fail");
+    let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new().minimize(problem);
+
+    assert!(
+        report.termination.was_successful(),
+        "Levenberg Marquardt did not converge"
+    );
+    // extract the calculated paramters, because tau1 and tau2 might switch places here
+    let (tau1_index, tau2_index) =
+        if levenberg_marquardt_solution.params()[0] < levenberg_marquardt_solution.params()[1] {
+            (0, 1)
+        } else {
+            (1, 0)
+        };
+    let tau1_calc = levenberg_marquardt_solution.params()[tau1_index];
+    let tau2_calc = levenberg_marquardt_solution.params()[tau2_index];
+    let coeff = levenberg_marquardt_solution
+        .linear_coefficients()
+        .expect("linear coefficients must exist");
+    let a1_calc = coeff[tau1_index];
+    let a2_calc = coeff[tau2_index];
+    let a3_calc = coeff[2];
+    let b1_calc = coeff[3 + tau1_index];
+    let b2_calc = coeff[3 + tau2_index];
+    let b3_calc = coeff[5];
+
+    assert_relative_eq!(a1, a1_calc, epsilon = 1e-8);
+    assert_relative_eq!(a2, a2_calc, epsilon = 1e-8);
+    assert_relative_eq!(a3, a3_calc, epsilon = 1e-8);
+    assert_relative_eq!(b1, b1_calc, epsilon = 1e-8);
+    assert_relative_eq!(b2, b2_calc, epsilon = 1e-8);
+    assert_relative_eq!(b3, b3_calc, epsilon = 1e-8);
+    assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
+    assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
+}
+
+#[test]
 // this also tests the correct application of weights
 fn oleary_example_with_handrolled_model_produces_correct_results() {
     // those are the initial guesses from the example in the oleary matlab code
-    let initial_guess = Vector3::new(0.5, 2., 3.);
+    let initial_guess = OVector::from_column_slice_generic(Dyn(3), U1, &[0.5, 2., 3.]);
     // these are the original timepoints from the matlab code
     let t = DVector::from_vec(vec![
         0., 0.1, 0.22, 0.31, 0.46, 0.50, 0.63, 0.78, 0.85, 0.97,
@@ -291,7 +486,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         .build()
         .unwrap();
 
-    let (fit_result, statistics) = LevMarSolver::new()
+    let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
         .expect("fitting must exit succesfully");
     assert!(
@@ -305,10 +500,10 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     // solved parameters from the matlab code
     // they note that many parameters fit the observations well
     let alpha_true =
-        OVector::<f64, U3>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
-    let c_true = OVector::<f64, U2>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
+        OVector::<f64, Dyn>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
+    let c_true = OVector::<f64, Dyn>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
-    assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
+    assert_relative_eq!(to_vector(c_fit), c_true, epsilon = 1e-5);
 
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,
@@ -340,7 +535,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         epsilon = 1e-5
     );
 
-    let expected_covariance_matrix = nalgebra::matrix![
+    let expected_covariance_matrix = nalgebra::dmatrix![
     4.4887e-03,  -4.4309e-03,  -2.1613e-04,  -4.6980e-04,  -1.9052e-03;
       -4.4309e-03,   4.3803e-03,   2.1087e-04,   4.7170e-04,   1.8828e-03;
       -2.1613e-04,   2.1087e-04,   2.6925e-04,  -3.6450e-05,   5.1919e-05;
@@ -355,16 +550,17 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
 
     assert_relative_eq!(
         statistics.nonlinear_parameters_variance(),
-        vector![2.6925e-04, 8.5784e-05, 8.2272e-04],
-        epsilon = 1e-5,
-    );
-    assert_relative_eq!(
-        statistics.linear_coefficients_variance(),
-        vector![4.4887e-03, 4.3803e-03],
+        nalgebra::dvector![2.6925e-04, 8.5784e-05, 8.2272e-04],
         epsilon = 1e-5,
     );
 
-    let expected_correlation_matrix = nalgebra::matrix![
+    assert_relative_eq!(
+        statistics.linear_coefficients_variance(),
+        nalgebra::dvector![4.4887e-03, 4.3803e-03],
+        epsilon = 1e-5,
+    );
+
+    let expected_correlation_matrix = nalgebra::dmatrix![
      1.0000,  -0.9993,  -0.1966,  -0.7571,  -0.9914;
     -0.9993,   1.0000,   0.1942,   0.7695,   0.9918;
     -0.1966,   0.1942,   1.0000,  -0.2398,   0.1103;
@@ -402,7 +598,7 @@ fn test_oleary_example_with_separable_model() {
         .build()
         .unwrap();
 
-    let (fit_result, statistics) = LevMarSolver::new()
+    let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
         .expect("fitting must exit succesfully");
     assert!(
@@ -418,7 +614,7 @@ fn test_oleary_example_with_separable_model() {
     let alpha_true = DVector::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
     let c_true = DVector::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
-    assert_relative_eq!(c_fit, &c_true, epsilon = 1e-5);
+    assert_relative_eq!(to_vector(c_fit), &c_true, epsilon = 1e-5);
 
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,

@@ -2,7 +2,8 @@
 mod test;
 
 use nalgebra::{
-    ClosedMul, ComplexField, DefaultAllocator, Dim, Matrix, OVector, RawStorageMut, Scalar,
+    ClosedMul, ComplexField, DVector, DefaultAllocator, Dim, Dyn, Matrix, OMatrix, OVector,
+    RawStorageMut, Scalar, U1,
 };
 use std::ops::Mul;
 
@@ -93,4 +94,23 @@ where
             .for_each(|mut col| col.component_mul_assign(&self.diagonal));
         rhs
     }
+}
+
+#[inline]
+/// helper function to turn a matrix into a vector by stacking the columns on top
+/// of each other as described here https://en.wikipedia.org/wiki/Vectorization_(mathematics)
+pub(crate) fn to_vector<T: Scalar + std::fmt::Debug + Clone>(
+    mat: OMatrix<T, Dyn, Dyn>,
+) -> DVector<T> {
+    let new_rows = Dyn(mat.nrows() * mat.ncols());
+    mat.reshape_generic(new_rows, U1)
+}
+
+#[inline]
+#[cfg(test)]
+pub(crate) fn to_matrix<T: Scalar + std::fmt::Debug + Clone>(
+    vec: DVector<T>,
+) -> nalgebra::DMatrix<T> {
+    let nrows = Dyn(vec.nrows());
+    vec.reshape_generic(nrows, Dyn(1))
 }

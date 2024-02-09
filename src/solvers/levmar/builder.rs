@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, Const, DefaultAllocator, Dim, DimMin, DimSub, OVector, Scalar};
+use nalgebra::{ComplexField, DMatrix, DVector, Dyn, OVector, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -38,6 +38,31 @@ pub enum LevMarBuilderError {
     InvalidLengthOfWeights,
 }
 
+/// a type describing the observation `$\vec{y}$` or `$\boldsymbol{Y}$` that we want to fit
+/// with a model. The observation can either be create from a single column vector, corresponding
+/// to the common case of fitting a single right hand side with a model. It can
+/// also be create from a matrix, which corresponds to a global fitting problem
+/// with multiple right hand sides. The observations in this case are a matrix
+/// where each _column_ represents an observation.
+pub struct Observation<T> {
+    data: DMatrix<T>,
+}
+
+// construct the obseration from a single vector or matrix
+impl<T> From<DMatrix<T>> for Observation<T> {
+    fn from(data: DMatrix<T>) -> Self {
+        Self { data }
+    }
+}
+
+impl<T: Scalar> From<DVector<T>> for Observation<T> {
+    fn from(data: DVector<T>) -> Self {
+        Self {
+            data: DMatrix::from_column_slice(data.nrows(), 1, data.as_slice()),
+        }
+    }
+}
+
 /// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
 /// fitting a separable model to data.
 /// # Example
@@ -63,19 +88,15 @@ pub enum LevMarBuilderError {
 /// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
 /// it contains an error variant.
 #[derive(Clone)]
+#[allow(non_snake_case)]
 pub struct LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
-    <Model::ScalarType as ComplexField>::RealField:
-        Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
+    <Model::ScalarType as ComplexField>::RealField: Float,
     Model: SeparableNonlinearModel,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
 {
     /// Required: the data `$\vec{y}(\vec{x})$` that we want to fit
-    y: Option<OVector<Model::ScalarType, Model::OutputDim>>,
+    Y: Option<DMatrix<Model::ScalarType>>,
     /// Required: the model to be fitted to the data
     separable_model: Model,
     /// Optional: set epsilon below which two singular values
@@ -87,82 +108,37 @@ where
     /// if no weights are given, the problem is unweighted, i.e. the same as if
     /// all weights were 1.
     /// Must have the same length as x and y.
-    weights: Weights<Model::ScalarType, Model::OutputDim>,
+    weights: Weights<Model::ScalarType, Dyn>,
 }
 
 impl<Model> LevMarProblemBuilder<Model>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
-    <Model::ScalarType as ComplexField>::RealField:
-        Float + Mul<Model::ScalarType, Output = Model::ScalarType>,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim, Model::OutputDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-    Model::OutputDim: DimMin<Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-        Model::ModelDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        Model::OutputDim,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        (usize, usize),
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-        Model::OutputDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <Model::ScalarType as ComplexField>::RealField,
-        <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        Model::ScalarType,
-        <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        (<Model::ScalarType as ComplexField>::RealField, usize),
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-    <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>>,
 {
     /// Create a new builder based on the given model
     pub fn new(model: Model) -> Self {
         Self {
-            y: None,
+            Y: None,
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
         }
     }
 
-    /// **Mandatory**: Set the data which we want to fit: `$\vec{y}=\vec{y}(\vec{x})$`.
-    /// The length of `$\vec{x}$` and the data `$\vec{y}$` must be the same.
-    pub fn observations(self, yvec: OVector<Model::ScalarType, Model::OutputDim>) -> Self {
+    /// **Mandatory**: Set the data which we want to fit: This is either a single vector
+    /// `$\vec{y}=\vec{y}(\vec{x})$` or a matrix `$\boldsymbol{Y}$` of multiple
+    /// vectors. In the former case this corresponds to fitting a single right hand side,
+    /// in the latter case, this corresponds to global fitting of a problem with
+    /// multiple right hand sides.
+    /// The length of `$\vec{x}$` and the number of _rows_ in the data must
+    /// be the same.
+    pub fn observations(self, observed: impl Into<Observation<Model::ScalarType>>) -> Self {
         Self {
-            y: Some(yvec),
+            Y: Some(observed.into().data),
             ..self
         }
     }
@@ -192,7 +168,7 @@ where
     /// to make weights that have a statistical meaning, the diagonal elements of the weight matrix should be
     /// set to `w_{jj} = 1/\sigma_j` where `$\sigma_j$` is the (estimated) standard deviation associated with
     /// data point `$y_j$`.
-    pub fn weights(self, weights: OVector<Model::ScalarType, Model::OutputDim>) -> Self {
+    pub fn weights(self, weights: OVector<Model::ScalarType, Dyn>) -> Self {
         Self {
             weights: Weights::diagonal(weights),
             ..self
@@ -208,42 +184,44 @@ where
     /// # Returns
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
+    #[allow(non_snake_case)]
     pub fn build(self) -> Result<LevMarProblem<Model>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
-        let y = self.y.ok_or(LevMarBuilderError::YDataMissing)?;
+        let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;
         let epsilon = self.epsilon.unwrap_or_else(Float::epsilon);
         let weights = self.weights;
 
         // now do some sanity checks for the values and return
         // an error if they do not pass the test
-        let x_len: usize = model.output_len().value();
-        if x_len == 0 || y.is_empty() {
+        let x_len: usize = model.output_len();
+        if x_len == 0 || Y.is_empty() {
             return Err(LevMarBuilderError::ZeroLengthVector);
         }
 
-        if x_len != y.len() {
+        if x_len != Y.nrows() {
             return Err(LevMarBuilderError::InvalidLengthOfData {
                 x_length: x_len,
-                y_length: y.len(),
+                y_length: Y.nrows(),
             });
         }
 
-        if !weights.is_size_correct_for_data_length(y.len()) {
+        if !weights.is_size_correct_for_data_length(Y.nrows()) {
             //check that weights have correct length if they were given
             return Err(LevMarBuilderError::InvalidLengthOfWeights);
         }
 
         //now that we have valid inputs, construct the levmar problem
         // 1) create weighted data
-        let y_w = &weights * y;
+        #[allow(non_snake_case)]
+        let Y_w = &weights * Y;
 
         let params = model.params();
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
         let mut problem = LevMarProblem {
             // these parameters all come from the builder
-            y_w,
+            Y_w,
             model,
             svd_epsilon: epsilon,
             cached: None,

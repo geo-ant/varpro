@@ -1,8 +1,12 @@
-use nalgebra::{DVector, Dyn, OMatrix, OVector, Vector2, Vector3, U2, U3};
+use nalgebra::{DVector, Dyn, OMatrix, OVector, U1};
 use varpro::model::SeparableModel;
 use varpro::{model::errors::ModelError, prelude::*};
 
-#[derive(Clone)]
+/// contains a double exponential model with constant offset that does not
+/// perform caching, as preliminary results indicate that using caching can
+/// lead to performance penalties for large models
+pub mod uncached;
+
 /// A separable model for double exponential decay
 /// with a constant offset
 /// f_j = c1*exp(-x_j/tau1) + c2*exp(-x_j/tau2) + c3
@@ -13,7 +17,7 @@ use varpro::{model::errors::ModelError, prelude::*};
 /// using the trait directly without using the builder.
 /// This allows us to use caching of the intermediate results
 /// to calculate the derivatives more efficiently.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DoubleExpModelWithConstantOffsetSepModel {
     /// the x vector associated with this model.
     /// We make this configurable to enable models to
@@ -25,7 +29,7 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
     x_vector: DVector<f64>,
     /// current parameters [tau1,tau2] of the exponential
     /// functions
-    params: Vector2<f64>,
+    params: OVector<f64, Dyn>,
     /// cached evaluation of the model
     /// the matrix columns contain the complete evaluation
     /// of the model. That is the first column contains the
@@ -36,7 +40,7 @@ pub struct DoubleExpModelWithConstantOffsetSepModel {
     ///
     /// This value is calculated in the set_params method, which is
     /// the only method with mutable access to the model state.
-    eval: OMatrix<f64, Dyn, U3>,
+    eval: OMatrix<f64, Dyn, Dyn>,
 }
 
 impl DoubleExpModelWithConstantOffsetSepModel {
@@ -46,11 +50,15 @@ impl DoubleExpModelWithConstantOffsetSepModel {
         let x_len = x_vector.len();
         let mut ret = Self {
             x_vector,
-            params: Vector2::zeros(), //<-- will be overwritten by set_params
-            eval: OMatrix::<f64, Dyn, U3>::zeros_generic(Dyn(x_len), U3),
+            params: OVector::zeros_generic(Dyn(2), U1), //<-- will be overwritten by set_params
+            eval: OMatrix::<f64, Dyn, Dyn>::zeros_generic(Dyn(x_len), Dyn(3)),
         };
-        ret.set_params(Vector2::new(tau1_guess, tau2_guess))
-            .unwrap();
+        ret.set_params(OVector::from_column_slice_generic(
+            Dyn(2),
+            U1,
+            &[tau1_guess, tau2_guess],
+        ))
+        .unwrap();
         ret
     }
 }
@@ -60,40 +68,28 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     /// could also have indicated that our calculations cannot
     /// fail by using [`std::convert::Infallible`].
     type Error = ModelError;
-    /// We use a compile time constant (2) to indicate the
-    /// number of parameters at compile time
-    type ParameterDim = U2;
-    /// the model dimension is the number of base functions.
-    /// We also use a type to indicate its size at compile time
-    type ModelDim = U3;
-    /// the ouput dim is the number of elements that each base function
-    /// produces. We have made this dynamic here since it has
-    /// the same length as the x vector given to the model. We made it
-    /// so that the length of the x vector is only runtime known.
-    /// We could just as well have made it compile time known.
-    type OutputDim = Dyn;
     /// the actual scalar type that our model uses for calculations
     type ScalarType = f64;
 
     #[inline]
-    fn parameter_count(&self) -> U2 {
+    fn parameter_count(&self) -> usize {
         // regardless of the fact that we know at compile time
         // that the length is 2, we still have to return an instance
         // of that type
-        U2 {}
+        2
     }
 
     #[inline]
-    fn base_function_count(&self) -> U3 {
+    fn base_function_count(&self) -> usize {
         // same as above
-        U3 {}
+        3
     }
 
     // we use this method not only to set the parameters inside the
     // model but we also cache some calculations. The advantage is that
     // we don't have to recalculate the exponential terms for either
     // the evaluations or the derivatives for the same parameters.
-    fn set_params(&mut self, parameters: Vector2<f64>) -> Result<(), Self::Error> {
+    fn set_params(&mut self, parameters: OVector<f64, Dyn>) -> Result<(), Self::Error> {
         // even if it is not the only thing we do, we still
         // have to update the internal parameters of the model
         self.params = parameters;
@@ -115,13 +111,13 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
         Ok(())
     }
 
-    fn params(&self) -> OVector<f64, Self::ParameterDim> {
-        self.params
+    fn params(&self) -> OVector<f64, Dyn> {
+        self.params.clone()
     }
 
     // since we cached the model evaluation, we can just return
     // it here
-    fn eval(&self) -> Result<OMatrix<f64, Dyn, Self::ModelDim>, Self::Error> {
+    fn eval(&self) -> Result<OMatrix<f64, Dyn, Dyn>, Self::Error> {
         Ok(self.eval.clone())
     }
 
@@ -131,7 +127,7 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<nalgebra::OMatrix<f64, Dyn, Self::ModelDim>, Self::Error> {
+    ) -> Result<nalgebra::OMatrix<f64, Dyn, Dyn>, Self::Error> {
         let location = &self.x_vector;
         let parameters = &self.params;
         // derivative index can be either 0,1 (corresponding to the linear parameters
@@ -151,16 +147,16 @@ impl SeparableNonlinearModel for DoubleExpModelWithConstantOffsetSepModel {
         // with respect to tau_1 or tau_2. Remember the constant term
         // also occupies one column and will always be zero when differentiated
         // with respect to the nonlinear params of the model
-        let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), U3);
+        let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), Dyn(3));
 
         derivatives.set_column(derivative_index, &df);
         Ok(derivatives)
     }
 
-    fn output_len(&self) -> Self::OutputDim {
+    fn output_len(&self) -> usize {
         // this is how we give a length that is only known at runtime.
         // We wrap it in a `Dyn` instance.
-        Dyn(self.x_vector.len())
+        self.x_vector.len()
     }
 }
 
@@ -283,19 +279,19 @@ pub struct OLearyExampleModel {
     /// the t vector
     t: DVector<f64>,
     /// the current parameters (alpha1,alpha2,alpha3,alpha4)
-    alpha: Vector3<f64>,
+    alpha: OVector<f64, Dyn>,
     /// the current evaluation of the model
-    phi: OMatrix<f64, Dyn, U2>,
+    phi: OMatrix<f64, Dyn, Dyn>,
 }
 
 impl OLearyExampleModel {
     /// create a new model with the given t vector and initial guesses
-    pub fn new(t: DVector<f64>, initial_guesses: Vector3<f64>) -> Self {
+    pub fn new(t: DVector<f64>, initial_guesses: OVector<f64, Dyn>) -> Self {
         let t_len = t.len();
         let mut ret = Self {
             t,
-            alpha: initial_guesses,
-            phi: OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(t_len), U2),
+            alpha: initial_guesses.clone(),
+            phi: OMatrix::<f64, Dyn, Dyn>::zeros_generic(Dyn(t_len), Dyn(2)),
         };
         ret.set_params(initial_guesses).unwrap();
         ret
@@ -305,25 +301,22 @@ impl OLearyExampleModel {
 impl SeparableNonlinearModel for OLearyExampleModel {
     type ScalarType = f64;
     type Error = ModelError;
-    type ParameterDim = U3;
-    type ModelDim = U2;
-    type OutputDim = Dyn;
 
-    fn parameter_count(&self) -> Self::ParameterDim {
-        U3 {}
+    fn parameter_count(&self) -> usize {
+        3
     }
 
-    fn base_function_count(&self) -> Self::ModelDim {
-        U2 {}
+    fn base_function_count(&self) -> usize {
+        2
     }
 
-    fn output_len(&self) -> Self::OutputDim {
-        Dyn(self.t.len())
+    fn output_len(&self) -> usize {
+        self.t.len()
     }
 
     fn set_params(
         &mut self,
-        parameters: OVector<Self::ScalarType, Self::ParameterDim>,
+        parameters: OVector<Self::ScalarType, Dyn>,
     ) -> Result<(), Self::Error> {
         self.alpha = parameters;
         let alpha1 = self.alpha[0];
@@ -333,25 +326,23 @@ impl SeparableNonlinearModel for OLearyExampleModel {
         let f1 = self.t.map(|t| f64::exp(-alpha2 * t) * f64::cos(alpha3 * t));
         let f2 = self.t.map(|t| f64::exp(-alpha1 * t) * f64::cos(alpha2 * t));
 
-        self.phi = OMatrix::<f64, Dyn, U2>::from_columns(&[f1, f2]);
+        self.phi = OMatrix::<f64, Dyn, Dyn>::from_columns(&[f1, f2]);
         Ok(())
     }
 
-    fn params(&self) -> OVector<Self::ScalarType, Self::ParameterDim> {
-        self.alpha
+    fn params(&self) -> OVector<Self::ScalarType, Dyn> {
+        self.alpha.clone()
     }
 
-    fn eval(
-        &self,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
+    fn eval(&self) -> Result<OMatrix<Self::ScalarType, Dyn, Dyn>, Self::Error> {
         Ok(self.phi.clone())
     }
 
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error> {
-        let mut derivs = OMatrix::<f64, Dyn, U2>::zeros_generic(Dyn(self.t.len()), U2);
+    ) -> Result<OMatrix<Self::ScalarType, Dyn, Dyn>, Self::Error> {
+        let mut derivs = OMatrix::<f64, Dyn, Dyn>::zeros_generic(Dyn(self.t.len()), Dyn(2));
         let alpha1 = self.alpha[0];
         let alpha2 = self.alpha[1];
         let alpha3 = self.alpha[2];

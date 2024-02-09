@@ -3,6 +3,7 @@
 ![build](https://github.com/geo-ant/varpro/workflows/build/badge.svg?branch=main)
 ![tests](https://github.com/geo-ant/varpro/workflows/tests/badge.svg?branch=main)
 ![lints](https://github.com/geo-ant/varpro/workflows/lints/badge.svg?branch=main)
+[![crates](https://img.shields.io/crates/v/varpro)](https://crates.io/crates/varpro)
 [![Coverage Status](https://coveralls.io/repos/github/geo-ant/varpro/badge.svg?branch=main)](https://coveralls.io/github/geo-ant/varpro?branch=main)
 ![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 
@@ -105,6 +106,19 @@ For more examples please refer to the crate documentation.
 Additionally to the `fit` member function, the `LevMarSolver` also provides a 
 `fit_with_statistics` function that calculates some additional statistical
 information after the fit has finished.
+
+### Global Fitting of Multiple Right Hand Sides
+
+Before, we have passed a single column vector as the observations. It is also
+possible to pass a matrix, whose columns represent individual observations. We
+are now fitting a problem with multiple right hand sides. `vapro` will performa a _global fit_
+in which the nonlinear parameters are optimized across all right hand sides, but
+linear parameters of the fit are optimized for each right hand side individually.
+
+This is an application where varpro really shines because it can take advantage
+of the separable nature of the problem. It allows us to perform a global fit over thousands
+or even tens of thousands of right hand sides in reasonable time (fractions of seconds to minutes),
+where conventional purely nonlinear solvers must perform much more work.
 
 ### Maximum Performance
 

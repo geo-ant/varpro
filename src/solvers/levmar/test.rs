@@ -2,6 +2,8 @@ use super::*;
 use crate::model::test::MockSeparableNonlinearModel;
 use crate::test_helpers::differentiation::numerical_derivative;
 use crate::test_helpers::get_double_exponential_model_with_constant_offset;
+#[cfg(test)]
+use crate::util::to_matrix;
 use approx::assert_relative_eq;
 use levenberg_marquardt::differentiate_numerically;
 use nalgebra::DVector;
@@ -226,4 +228,37 @@ fn levmar_problem_set_params_sets_the_model_parameters_when_built() {
         .observations(y)
         .build()
         .expect("Building a valid solver must not return an error.");
+}
+
+#[test]
+fn matrix_to_vector_works() {
+    let mut mat = DMatrix::<f64>::zeros(2, 3);
+    mat.column_mut(0).copy_from_slice(&[1., 2.]);
+    mat.column_mut(1).copy_from_slice(&[3., 4.]);
+    mat.column_mut(2).copy_from_slice(&[5., 6.]);
+
+    let vec = to_vector(mat);
+    assert_eq!(vec, nalgebra::dvector![1., 2., 3., 4., 5., 6.]);
+}
+
+#[test]
+fn vector_to_matrix_works() {
+    let vec = nalgebra::dvector![1., 2., 3., 4., 5., 6.];
+    let expected = nalgebra::dmatrix![1.; 2.; 3.; 4.; 5.; 6.];
+    assert_eq!(expected.ncols(), 1);
+    assert_eq!(to_matrix(vec), expected);
+}
+
+#[test]
+fn vector_matrix_copy_works() {
+    let mut mat = DMatrix::<f64>::zeros(4, 2);
+    let mat2 = nalgebra::dmatrix!(1.,3.;
+                                                                              2.,4.);
+    copy_matrix_to_column(mat2, &mut mat.column_mut(1));
+    let expected = nalgebra::dmatrix!(0.,1.;
+    0.,2.;
+    0.,3.;
+    0.,4.;
+    );
+    assert_eq!(mat, expected);
 }

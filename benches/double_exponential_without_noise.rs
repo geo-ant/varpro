@@ -3,12 +3,9 @@ use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::ComplexField;
 
-use nalgebra::Const;
 use nalgebra::DefaultAllocator;
 
-use nalgebra::DimMin;
-use nalgebra::DimSub;
-
+use nalgebra::Dyn;
 use nalgebra::OVector;
 use nalgebra::RawStorageMut;
 
@@ -19,7 +16,7 @@ use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::*;
-use varpro::model::SeparableModel;
+
 use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
@@ -41,55 +38,12 @@ fn build_problem<Model>(
 ) -> LevMarProblem<Model>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ParameterDim, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim>,
-    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer:
-        Storage<f64, Model::OutputDim>,
-    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Model::OutputDim>>::Buffer:
-        RawStorageMut<f64, Model::OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Model::OutputDim, Model::ParameterDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn, Dyn>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Dyn>>::Buffer: Storage<f64, Dyn>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Dyn>>::Buffer: RawStorageMut<f64, Dyn>,
     DefaultAllocator:
-        nalgebra::allocator::Allocator<f64, <Model::OutputDim as DimMin<Model::ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        (usize, usize),
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        f64,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-        Model::OutputDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <f64 as ComplexField>::RealField,
-        <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        f64,
-        <<Model::OutputDim as DimMin<Model::ModelDim>>::Output as DimSub<Const<1>>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        (<f64 as ComplexField>::RealField, usize),
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-    <Model::OutputDim as DimMin<Model::ModelDim>>::Output: DimSub<nalgebra::dimension::Const<1>>,
-    Model::OutputDim: DimMin<Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        f64,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-        Model::ModelDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        f64,
-        Model::OutputDim,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <f64 as ComplexField>::RealField,
-        <Model::OutputDim as DimMin<Model::ModelDim>>::Output,
-    >,
+        nalgebra::allocator::Allocator<(<f64 as ComplexField>::RealField, usize), Dyn>,
 {
     let DoubleExponentialParameters {
         tau1,
@@ -100,13 +54,13 @@ where
     } = true_parameters;
 
     // save the initial guess so that we can reset the model to those
-    let params = OVector::from_vec_generic(model.parameter_count(), U1, vec![tau1, tau2]);
+    let params = OVector::from_vec_generic(Dyn(model.parameter_count()), U1, vec![tau1, tau2]);
 
     let base_function_count = model.base_function_count();
     let y = evaluate_complete_model_at_params(
         &mut model,
         params,
-        &OVector::from_vec_generic(base_function_count, U1, vec![c1, c2, c3]),
+        &OVector::from_vec_generic(Dyn(base_function_count), U1, vec![c1, c2, c3]),
     );
     LevMarProblemBuilder::new(model)
         .observations(y)
@@ -114,25 +68,11 @@ where
         .expect("Building valid problem should not panic")
 }
 
-/// solve the double exponential fitting problem using a handrolled model
-fn run_minimization_for_handrolled_separable_model(
-    problem: LevMarProblem<DoubleExpModelWithConstantOffsetSepModel>,
-) -> [f64; 5] {
-    let result = LevMarSolver::new()
-        .fit(problem)
-        .expect("fitting must exit successfully");
-    let params = result.nonlinear_parameters();
-    let coeff = result.linear_coefficients().unwrap();
-    [params[0], params[1], coeff[0], coeff[1], coeff[2]]
-}
-
-/// solve the double exponential fitting problem using a separable model from the builder
-/// I should be able to unify this with the handrolled model, but I can't figure out how to do it
-/// because I cannot find the correct generic bounds to do it
-fn run_minimization_for_builder_separable_model(
-    problem: LevMarProblem<SeparableModel<f64>>,
-) -> [f64; 5] {
-    let result = LevMarSolver::new()
+fn run_minimization<Model>(problem: LevMarProblem<Model>) -> [f64; 5]
+where
+    Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
+{
+    let result = LevMarSolver::default()
         .fit(problem)
         .expect("fitting must exit successfully");
     let params = result.nonlinear_parameters();
@@ -214,7 +154,7 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
                     ),
                 )
             },
-            run_minimization_for_builder_separable_model,
+            run_minimization,
             criterion::BatchSize::SmallInput,
         )
     });
@@ -227,7 +167,7 @@ fn bench_double_exp_no_noise(c: &mut Criterion) {
                     DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
                 )
             },
-            run_minimization_for_handrolled_separable_model,
+            run_minimization,
             criterion::BatchSize::SmallInput,
         )
     });

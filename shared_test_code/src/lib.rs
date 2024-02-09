@@ -1,12 +1,17 @@
 #![warn(missing_docs)]
 //! a helper crate which carries common code used by the benchtests and the
 //! integration tests.
-use nalgebra::{ComplexField, DVector, DefaultAllocator, OVector, Scalar};
+use std::ops::Range;
+
+use nalgebra::{ComplexField, DVector, DefaultAllocator, Dyn, OMatrix, OVector, Scalar};
 use num_traits::Float;
+use rand::{Rng, SeedableRng};
 use varpro::model::builder::SeparableModelBuilder;
 use varpro::model::SeparableModel;
 use varpro::prelude::SeparableNonlinearModel;
 
+/// multiple right hand sides for for levenberg marquardt
+pub mod levmar_mrhs;
 /// contains models both for the levmar crate as well as the
 /// varpro crate
 pub mod models;
@@ -28,22 +33,55 @@ pub fn linspace<ScalarType: Float + Scalar>(
     DVector::from(lin)
 }
 
+/// create a random matrix with coefficients in the given range
+pub fn create_random_dmatrix(
+    (rows, cols): (usize, usize),
+    seed: u64,
+    range: Range<f64>,
+) -> nalgebra::DMatrix<f64> {
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    nalgebra::DMatrix::from_fn(rows, cols, move |_, _| rng.gen_range(range.clone()))
+}
+
 /// evaluete the vector valued function of a model by evaluating the model at the given location
 /// `x` with (nonlinear) parameters `params` and by calculating the linear superposition of the basisfunctions
 /// with the given linear coefficients `linear_coeffs`.
 pub fn evaluate_complete_model_at_params<Model>(
     model: &'_ mut Model,
-    params: OVector<Model::ScalarType, Model::ParameterDim>,
-    linear_coeffs: &OVector<Model::ScalarType, Model::ModelDim>,
-) -> OVector<Model::ScalarType, Model::OutputDim>
+    params: OVector<Model::ScalarType, Dyn>,
+    linear_coeffs: &OVector<Model::ScalarType, Dyn>,
+) -> OVector<Model::ScalarType, Dyn>
 where
     Model::ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ParameterDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::ModelDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim, Model::ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Model::OutputDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+{
+    let original_params = model.params();
+    model
+        .set_params(params)
+        .expect("Setting params must not fail");
+    let eval = (&model
+        .eval()
+        .expect("Evaluating model must not produce error"))
+        * linear_coeffs;
+    model
+        .set_params(original_params)
+        .expect("Setting params must not fail");
+    eval
+}
+
+/// evaluate the model for multiple right hand sides
+pub fn evaluate_complete_model_at_params_mrhs<Model>(
+    model: &'_ mut Model,
+    params: OVector<Model::ScalarType, Dyn>,
+    linear_coeffs: &OMatrix<Model::ScalarType, Dyn, Dyn>,
+) -> OMatrix<Model::ScalarType, Dyn, Dyn>
+where
+    Model::ScalarType: Scalar + ComplexField,
+    Model: SeparableNonlinearModel,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
 {
     let original_params = model.params();
     model

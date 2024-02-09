@@ -1,7 +1,7 @@
 use crate::model::errors::ModelError;
 use crate::model::model_basis_function::ModelBasisFunction;
 use nalgebra::base::Scalar;
-use nalgebra::{DMatrix, DVector, DefaultAllocator, Dim, Dyn, OMatrix, OVector};
+use nalgebra::{DMatrix, DVector, DefaultAllocator, Dyn, OMatrix, OVector};
 use num_traits::Zero;
 
 mod detail;
@@ -110,7 +110,7 @@ pub mod test;
 ///     x_vector : DVector<f64>,
 ///     /// current parameters [tau1,tau2] of the exponential
 ///     /// functions
-///     params : Vector2<f64>,
+///     params : OVector<f64,Dyn>,
 ///     /// cached evaluation of the model
 ///     /// the matrix columns contain the complete evaluation
 ///     /// of the model. That is the first column contains the
@@ -121,7 +121,7 @@ pub mod test;
 ///     ///
 ///     /// This value is calculated in the set_params method, which is
 ///     /// the only method with mutable access to the model state.
-///     eval : OMatrix<f64,Dyn,U3>,
+///     eval : OMatrix<f64,Dyn,Dyn>,
 /// }
 ///
 /// impl DoubleExpModelWithConstantOffsetSepModel {
@@ -131,10 +131,10 @@ pub mod test;
 ///         let x_len = x_vector.len();
 ///         let mut ret = Self {
 ///             x_vector,
-///             params : Vector2::zeros(),//<-- will be overwritten by set_params
-///             eval : OMatrix::<f64,Dyn,U3>::zeros_generic(Dyn(x_len), U3)
+///             params : OVector::<f64,Dyn>::from_column_slice(&[tau1_guess,tau2_guess]),//<-- will be overwritten by set_params
+///             eval : OMatrix::zeros_generic(Dyn(x_len), Dyn(3))
 ///         };
-///         ret.set_params(Vector2::new(tau1_guess, tau2_guess)).unwrap();
+///         ret.set_params(OVector::<f64,Dyn>::from_column_slice(&[tau1_guess,tau2_guess])).unwrap();
 ///         ret
 ///     }
 /// }
@@ -144,40 +144,27 @@ pub mod test;
 ///     /// could also have indicated that our calculations cannot
 ///     /// fail by using [`std::convert::Infallible`].
 ///     type Error = varpro::model::errors::ModelError;
-///     /// We use a compile time constant (2) to indicate the
-///     /// number of parameters at compile time
-///     type ParameterDim = U2;
-///     /// the model dimension is the number of base functions.
-///     /// We also use a type to indicate its size at compile time
-///     type ModelDim = U3;
-///     /// the ouput dim is the number of elements that each base function
-///     /// produces. We have made this dynamic here since it has
-///     /// the same length as the x vector given to the model. We made it
-///     /// so that the length of the x vector is only runtime known.
-///     /// We could just as well have made it compile time known.
-///     type OutputDim = Dyn;
 ///     /// the actual scalar type that our model uses for calculations
 ///     type ScalarType = f64;
 ///
 ///     #[inline]
-///     fn parameter_count(&self) -> U2 {
+///     fn parameter_count(&self) -> usize {
 ///         // regardless of the fact that we know at compile time
-///         // that the length is 2, we still have to return an instance
-///         // of that type
-///         U2{}
+///         // that the length is 2, we still have to return it
+///         2
 ///     }
 ///
 ///     #[inline]
-///     fn base_function_count(&self) -> U3 {
+///     fn base_function_count(&self) -> usize {
 ///         // same as above
-///         U3{}
+///         3
 ///     }
 ///     
 ///     // we use this method not only to set the parameters inside the
 ///     // model but we also cache some calculations. The advantage is that
 ///     // we don't have to recalculate the exponential terms for either
 ///     // the evaluations or the derivatives for the same parameters.
-///     fn set_params(&mut self, parameters : Vector2<f64>) -> Result<(),Self::Error> {
+///     fn set_params(&mut self, parameters : OVector<f64,Dyn>) -> Result<(),Self::Error> {
 ///         // even if it is not the only thing we do, we still
 ///         // have to update the internal parameters of the model
 ///         self.params = parameters;
@@ -198,7 +185,7 @@ pub mod test;
 ///         Ok(())
 ///     }
 ///
-///     fn params(&self) -> OVector<f64, Self::ParameterDim> {
+///     fn params(&self) -> OVector<f64, Dyn> {
 ///         self.params.clone()
 ///     }
 ///     
@@ -206,7 +193,7 @@ pub mod test;
 ///     // it here
 ///     fn eval(
 ///         &self,
-///     ) -> Result<OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
+///     ) -> Result<OMatrix<f64,Dyn,Dyn>, Self::Error> {
 ///         Ok(self.eval.clone())
 ///     }
 ///     
@@ -216,7 +203,7 @@ pub mod test;
 ///     fn eval_partial_deriv(
 ///         &self,
 ///         derivative_index: usize,
-///     ) -> Result<nalgebra::OMatrix<f64,Dyn,Self::ModelDim>, Self::Error> {
+///     ) -> Result<nalgebra::OMatrix<f64,Dyn,Dyn>, Self::Error> {
 ///         let location = &self.x_vector;
 ///         let parameters = &self.params;
 ///         // derivative index can be either 0,1 (corresponding to the linear parameters
@@ -234,25 +221,24 @@ pub mod test;
 ///         // with respect to tau_1 or tau_2. Remember the constant term
 ///         // also occupies one column and will always be zero when differentiated
 ///         // with respect to the nonlinear params of the model
-///         let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), U3);
+///         let mut derivatives = OMatrix::zeros_generic(Dyn(location.len()), Dyn(3));
 ///
 ///         derivatives.set_column(derivative_index, &df);
 ///         Ok(derivatives)
 ///     }
 ///
-///     fn output_len(&self) -> Self::OutputDim {
+///     fn output_len(&self) -> usize {
 ///         // this is how we give a length that is only known at runtime.
 ///         // We wrap it in a `Dyn` instance.
-///         Dyn(self.x_vector.len())
+///         self.x_vector.len()
 ///     }
 /// }
 /// ```
 #[allow(clippy::type_complexity)]
 pub trait SeparableNonlinearModel
 where
-    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Self::ParameterDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<Self::ScalarType, Self::OutputDim, Self::ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Dyn, Dyn>,
 {
     /// the scalar number type for this model, which should be
     /// a real or complex number type, commonly either `f64` or `f32`.
@@ -263,45 +249,25 @@ where
     /// If this model does not need (or for performance reasons does not want)
     /// to return an error, it is possible to specify [`std::convert::Infallible`]
     /// as the associated `Error` type.
-    type Error: std::error::Error;
-
-    /// the number of *nonlinear* parameters that this model depends on,
-    /// expressed as a dimension type of the nalgebra crate. If the number of
-    /// nonlinear parameters is not known at compile time, then use the [nalgebra::Dyn](nalgebra::Dyn)
-    /// type.
-    type ParameterDim: Dim;
-
-    /// the number of base functions that this model depends on,
-    /// expressed as a dimension type of the nalgebra crate. If the number of
-    /// model base functions is not known at compile time, then use the [nalgebra::Dyn](nalgebra::Dyn)
-    /// type.
-    type ModelDim: Dim;
-
-    /// The dimension `$n$` of the output of the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c}) \in \mathbb{R}^n$`.
-    /// If the output dimension is not known at compile time, then use the [nalgebra::Dyn](nalgebra::Dyn),
-    /// which is likely the right choice for this dimension as a default
-    /// unless you have a good reason to do otherwise.
-    type OutputDim: Dim;
+    type Error: std::error::Error + Send;
 
     /// return the number of *nonlinear* parameters that this model depends on.
-    fn parameter_count(&self) -> Self::ParameterDim;
+    fn parameter_count(&self) -> usize;
 
     /// return the number of base functions that this model depends on.
-    fn base_function_count(&self) -> Self::ModelDim;
+    fn base_function_count(&self) -> usize;
 
     /// return the dimension `$n$` of the output of the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c}) \in \mathbb{R}^n$`.
     /// This is also the dimension of every single base function.
-    fn output_len(&self) -> Self::OutputDim;
+    fn output_len(&self) -> usize;
 
     /// Set the nonlinear parameters `$\vec{\alpha}$` of the model to the given vector .
-    fn set_params(
-        &mut self,
-        parameters: OVector<Self::ScalarType, Self::ParameterDim>,
-    ) -> Result<(), Self::Error>;
+    fn set_params(&mut self, parameters: OVector<Self::ScalarType, Dyn>)
+        -> Result<(), Self::Error>;
 
     /// Get the currently set nonlinear parameters of the model, i.e.
     /// the vector `$\vec{\alpha}$`.
-    fn params(&self) -> OVector<Self::ScalarType, Self::ParameterDim>;
+    fn params(&self) -> OVector<Self::ScalarType, Dyn>;
 
     /// Evaluate the base functions of the model at the currently
     /// set parameters `$\vec{\alpha}$` and return them in matrix form.
@@ -338,9 +304,7 @@ where
     /// ## Errors
     /// An error can be returned if the evaluation fails for  some reason.
     ///
-    fn eval(
-        &self,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error>;
+    fn eval(&self) -> Result<OMatrix<Self::ScalarType, Dyn, Dyn>, Self::Error>;
 
     /// Evaluate the partial derivatives for the base function at for the
     /// currently set parameters and return them in matrix form.
@@ -395,7 +359,7 @@ where
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,
-    ) -> Result<OMatrix<Self::ScalarType, Self::OutputDim, Self::ModelDim>, Self::Error>;
+    ) -> Result<OMatrix<Self::ScalarType, Dyn, Dyn>, Self::Error>;
 }
 
 /// The type returned from building a model using the
@@ -450,22 +414,19 @@ where
 {
     type ScalarType = ScalarType;
     type Error = ModelError;
-    type ParameterDim = Dyn;
-    type ModelDim = Dyn;
-    type OutputDim = Dyn;
 
-    fn parameter_count(&self) -> Dyn {
-        Dyn(self.parameter_names.len())
+    fn parameter_count(&self) -> usize {
+        self.parameter_names.len()
     }
 
-    fn base_function_count(&self) -> Self::ModelDim {
-        Dyn(self.basefunctions.len())
+    fn base_function_count(&self) -> usize {
+        self.basefunctions.len()
     }
 
     fn set_params(&mut self, parameters: DVector<ScalarType>) -> Result<(), Self::Error> {
-        if parameters.len() != self.parameter_count().value() {
+        if parameters.len() != self.parameter_count() {
             return Err(ModelError::IncorrectParameterCount {
-                expected: self.parameter_count().value(),
+                expected: self.parameter_count(),
                 actual: parameters.len(),
             });
         }
@@ -480,9 +441,9 @@ where
     fn eval(&self) -> Result<DMatrix<ScalarType>, ModelError> {
         let location = &self.x_vector;
         let parameters = &self.current_parameters;
-        if parameters.len() != self.parameter_count().value() {
+        if parameters.len() != self.parameter_count() {
             return Err(ModelError::IncorrectParameterCount {
-                expected: self.parameter_count().value(),
+                expected: self.parameter_count(),
                 actual: parameters.len(),
             });
         }
@@ -491,7 +452,8 @@ where
         let ncols = self.base_function_count();
         // this pattern is not great, but the trait bounds in copy_from still
         // prevent us from doing something better
-        let mut function_value_matrix = unsafe { DMatrix::uninit(Dyn(nrows), ncols).assume_init() };
+        let mut function_value_matrix =
+            unsafe { DMatrix::uninit(Dyn(nrows), Dyn(ncols)).assume_init() };
 
         for (basefunc, mut column) in self
             .basefunctions
@@ -549,7 +511,7 @@ where
         Ok(derivative_function_value_matrix)
     }
 
-    fn output_len(&self) -> Self::OutputDim {
-        Self::OutputDim::from_usize(self.x_vector.len())
+    fn output_len(&self) -> usize {
+        self.x_vector.len()
     }
 }
