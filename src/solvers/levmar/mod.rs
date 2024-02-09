@@ -76,8 +76,9 @@ where
     /// finished
     ///
     /// in case of multiple datasets, the coefficients vectors for the individual
-    /// members of the datasets are written as a single vector by stacking them
-    /// on top of each other
+    /// members of the datasets are the colums of the matrix. If the problem
+    /// only has a single right hand side, then the matrix will have one column
+    /// only.
     pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
         self.problem.linear_coefficients().cloned()
     }

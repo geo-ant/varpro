@@ -221,6 +221,7 @@ where
     /// The given parameters must be the ones after the the fit has completed.
     ///
     /// # Errors
+    ///
     /// This gives an error if the fit is underdetermined or if
     /// the model returns an error when it is evaluated. Both of those
     /// are practically impossible after a successful fit, but better safe than sorry.
