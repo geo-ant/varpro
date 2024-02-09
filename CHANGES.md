@@ -3,6 +3,17 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.8.0 Multiple Right Hand Sides
+
+- Observations can now be a matrix, in this case a global fit with multiple right
+hand sides is performed.
+- Linear coefficients are now in matrix form. For a single right hand side, this
+is still a matrix with one column, for multiple right hand sides these are now
+the coefficient vectors (columns) corresponding to the respective right hand
+side column of the observation matrix.
+- Removed lots of generics internally.
+- Deprecated the new function of the levmar solver.
+
 ## 0.7.0 Fit Statistics
 
 - Deprecate the `minimize` function of the LevMarSolver and
