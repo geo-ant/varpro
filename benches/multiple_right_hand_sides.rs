@@ -31,11 +31,10 @@ where
     // save the initial guess so that we can reset the model to those
     let params = OVector::from_vec_generic(Dyn(model.parameter_count()), U1, vec![tau1, tau2]);
     let y = evaluate_complete_model_at_params_mrhs(&mut model, params, &coeffs);
-    let problem = LevMarProblemBuilder::new(model)
+    LevMarProblemBuilder::new(model)
         .observations(y)
         .build()
-        .expect("Building valid problem should not panic");
-    problem
+        .expect("Building valid problem should not panic")
 }
 
 fn run_minimization<Model>(problem: LevMarProblem<Model>) -> (DVector<f64>, DMatrix<f64>)
