@@ -249,11 +249,19 @@ pub mod error;
 /// method. This method returns a valid model or an error variant doing a pretty good job of
 /// explaning why the model is invalid.
 #[must_use = "The builder should be transformed into a model using the build() method"]
-pub struct SeparableModelBuilder<ScalarType>
+pub enum SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
-    model_result: Result<UnfinishedModel<ScalarType>, ModelBuildError>,
+    /// builder is in an error state
+    Error(ModelBuildError),
+    /// builder is in normal state (i.e. NOT in the process of building a function)
+    Normal(UnfinishedModel<ScalarType>),
+    /// builder is in the state of building a function
+    FunctionBuilding {
+        model: UnfinishedModel<ScalarType>,
+        function_builder: ModelBasisFunctionBuilder<ScalarType>,
+    },
 }
 
 /// a helper structure that represents an unfinished separable model
@@ -275,9 +283,16 @@ where
     ScalarType: Scalar,
 {
     fn from(err: ModelBuildError) -> Self {
-        Self {
-            model_result: Err(err),
-        }
+        Self::Error(err)
+    }
+}
+
+impl<ScalarType> From<UnfinishedModel<ScalarType>> for SeparableModelBuilder<ScalarType>
+where
+    ScalarType: Scalar,
+{
+    fn from(model: UnfinishedModel<ScalarType>) -> Self {
+        Self::Normal(model)
     }
 }
 
@@ -288,7 +303,10 @@ where
     ScalarType: Scalar,
 {
     fn from(model_result: Result<UnfinishedModel<ScalarType>, ModelBuildError>) -> Self {
-        Self { model_result }
+        match model_result {
+            Ok(model) => Self::Normal(model),
+            Err(err) => Self::Error(err),
+        }
     }
 }
 
@@ -318,17 +336,15 @@ where
             .collect();
 
         if let Err(parameter_error) = check_parameter_names(&parameter_names) {
-            Self {
-                model_result: Err(parameter_error),
-            }
+            Self::Error(parameter_error)
         } else {
-            let model_result = Ok(UnfinishedModel {
+            let model_result = UnfinishedModel {
                 parameter_names,
                 basefunctions: Vec::new(),
                 x_vector: None,
                 initial_parameters: None,
-            });
-            Self { model_result }
+            };
+            Self::from(model_result)
         }
     }
 
@@ -341,12 +357,27 @@ where
     where
         F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
-        if let Ok(model) = self.model_result.as_mut() {
-            model
-                .basefunctions
-                .push(ModelBasisFunction::parameter_independent(function));
+        match self {
+            SeparableModelBuilder::Error(err) => Self::from(err),
+            SeparableModelBuilder::Normal(mut model) => {
+                model
+                    .basefunctions
+                    .push(ModelBasisFunction::parameter_independent(function));
+                Self::from(model)
+            }
+            SeparableModelBuilder::FunctionBuilding {
+                model,
+                function_builder,
+            } => match extend_model(model, function_builder) {
+                Ok(mut model) => {
+                    model
+                        .basefunctions
+                        .push(ModelBasisFunction::parameter_independent(function));
+                    Self::from(model)
+                }
+                Err(err) => Self::from(err),
+            },
         }
-        self
     }
 
     /// Add a function `$\vec{f}(\vec{x},\alpha_1,...,\alpha_n)$` to the model that depends on the
