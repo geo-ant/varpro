@@ -291,6 +291,7 @@ impl<ScalarType> From<UnfinishedModel<ScalarType>> for SeparableModelBuilder<Sca
 where
     ScalarType: Scalar,
 {
+    #[inline]
     fn from(model: UnfinishedModel<ScalarType>) -> Self {
         Self::Normal(model)
     }
@@ -302,6 +303,7 @@ impl<ScalarType> From<Result<UnfinishedModel<ScalarType>, ModelBuildError>>
 where
     ScalarType: Scalar,
 {
+    #[inline]
     fn from(model_result: Result<UnfinishedModel<ScalarType>, ModelBuildError>) -> Self {
         match model_result {
             Ok(model) => Self::Normal(model),
@@ -368,15 +370,14 @@ where
             SeparableModelBuilder::FunctionBuilding {
                 model,
                 function_builder,
-            } => match extend_model(model, function_builder) {
-                Ok(mut model) => {
-                    model
-                        .basefunctions
-                        .push(ModelBasisFunction::parameter_independent(function));
-                    Self::from(model)
-                }
-                Err(err) => Self::from(err),
-            },
+            } =>
+            // this will not be an infinite recursion because it goes to either the normal
+            // or error state. This template can be used pretty much everywhere, because
+            // we just extend the model (finalize the function builder) and then invoke the
+            // called function again
+            {
+                Self::from(extend_model(model, function_builder)).invariant_function(function)
+            }
         }
     }
 
@@ -389,7 +390,7 @@ where
         self,
         function_params: StrCollection,
         function: F,
-    ) -> SeparableModelBuilderProxyWithDerivatives<ScalarType>
+    ) -> Self
     where
         F: BasisFunction<ScalarType, ArgList> + 'static,
         StrCollection: IntoIterator,
@@ -402,28 +403,43 @@ where
     /// Also see the struct documentation of [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
     /// for information on how to use this method.
     pub fn independent_variable(mut self, x: DVector<ScalarType>) -> Self {
-        if let Ok(model) = self.model_result.as_mut() {
-            model.x_vector = Some(x);
+        match self {
+            SeparableModelBuilder::Error(err) => Self::from(err),
+            SeparableModelBuilder::Normal(mut model) => {
+                model.x_vector = Some(x);
+                Self::from(model)
+            }
+            SeparableModelBuilder::FunctionBuilding {
+                model,
+                function_builder,
+            } => Self::from(extend_model(model, function_builder)).independent_variable(x),
         }
-        self
     }
 
     /// Set the initial values for the model parameters `$\vec{\alpha}$`.
     /// Also see the struct documentation of [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
     /// for information on how to use this method.
     pub fn initial_parameters(mut self, initial_parameters: Vec<ScalarType>) -> Self {
-        if let Ok(model) = self.model_result.as_mut() {
-            let expected = model.parameter_names.len();
-            if expected != initial_parameters.len() {
-                self.model_result = Err(ModelBuildError::IncorrectParameterCount {
-                    expected,
-                    actual: initial_parameters.len(),
-                });
-            } else {
-                model.initial_parameters = Some(initial_parameters);
+        match self {
+            SeparableModelBuilder::Error(err) => Self::from(err),
+            SeparableModelBuilder::Normal(mut model) => {
+                let expected = model.parameter_names.len();
+                if expected != initial_parameters.len() {
+                    Self::from(Err(ModelBuildError::IncorrectParameterCount {
+                        expected,
+                        actual: initial_parameters.len(),
+                    }))
+                } else {
+                    model.initial_parameters = Some(initial_parameters);
+                    Self::from(model)
+                }
             }
+            SeparableModelBuilder::FunctionBuilding {
+                model,
+                function_builder,
+            } => Self::from(extend_model(model, function_builder))
+                .initial_parameters(initial_parameters),
         }
-        self
     }
 
     /// Build a separable model from the contents of this builder.
@@ -442,7 +458,14 @@ where
     /// where provided during the builder stage. That means the first basis functions gets index `0` in
     /// the model, the second gets index `1` and so on.
     pub fn build(self) -> Result<SeparableModel<ScalarType>, ModelBuildError> {
-        self.model_result.and_then(TryInto::try_into)
+        match self {
+            SeparableModelBuilder::Error(err) => Err(err),
+            SeparableModelBuilder::Normal(model) => model.try_into(),
+            SeparableModelBuilder::FunctionBuilding {
+                model,
+                function_builder,
+            } => extend_model(model, function_builder).and_then(TryInto::try_into),
+        }
     }
 }
 
@@ -692,9 +715,9 @@ where
 /// otherwise the extended model is returned
 fn extend_model<ScalarType: Scalar>(
     mut model: UnfinishedModel<ScalarType>,
-    builder: ModelBasisFunctionBuilder<ScalarType>,
+    function_builder: ModelBasisFunctionBuilder<ScalarType>,
 ) -> Result<UnfinishedModel<ScalarType>, ModelBuildError> {
-    let function = builder.build()?;
+    let function = function_builder.build()?;
     model.basefunctions.push(function);
     Ok(model)
 }
