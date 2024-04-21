@@ -108,4 +108,8 @@ pub enum ModelBuildError {
     #[error("Missing initial guesses for model parameters")]
     /// missing initial guesses for parameters
     MissingInitialParameters,
+
+    #[error("Illegal call to 'partial_deriv': a call to this function can only follow a call to 'function' or another call to 'partial_deriv'")]
+    /// an illegal call to the partial_deriv function
+    IllegalCallToPartialDeriv,
 }
