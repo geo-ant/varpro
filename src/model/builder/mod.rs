@@ -253,20 +253,28 @@ pub enum SeparableModelBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {
+    #[doc(hidden)]
     /// builder is in an error state
     Error(ModelBuildError),
     /// builder is in normal state (i.e. NOT in the process of building a function)
+    #[doc(hidden)]
     Normal(UnfinishedModel<ScalarType>),
     /// builder is in the state of building a function
+    #[doc(hidden)]
     FunctionBuilding {
+        /// the currently held model
         model: UnfinishedModel<ScalarType>,
+        /// the function we are currently building. It is added
+        /// to the model once a builder function is called that
+        /// indicates that building this function is over
         function_builder: ModelBasisFunctionBuilder<ScalarType>,
     },
 }
 
 /// a helper structure that represents an unfinished separable model
 #[derive(Default)]
-struct UnfinishedModel<ScalarType: Scalar> {
+#[doc(hidden)]
+pub struct UnfinishedModel<ScalarType: Scalar> {
     /// the parameter names
     parameter_names: Vec<String>,
     /// the base functions
@@ -355,7 +363,7 @@ where
     /// # Usage
     /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
     /// struct documentation.
-    pub fn invariant_function<F>(mut self, function: F) -> Self
+    pub fn invariant_function<F>(self, function: F) -> Self
     where
         F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
     {
