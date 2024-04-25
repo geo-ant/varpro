@@ -6,11 +6,17 @@ use nalgebra::{
     allocator::Allocator, ComplexField, DVector, DefaultAllocator, Dim, DimAdd, DimMin, DimSub,
     Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
 };
-use num_traits::{Float, FromPrimitive, Zero};
+use num_traits::{Float, FromPrimitive, One, Zero};
 use thiserror::Error as ThisError;
+
+use self::numeric_traits::CastF64;
 
 #[cfg(any(test, doctest))]
 mod test;
+
+/// contains some helper traits for numeric conversions that
+/// are too specialized for the num_traits crate
+pub mod numeric_traits;
 
 /// Information about an error that can occur during calculation of the
 /// of the fit statistics.
@@ -24,7 +30,7 @@ pub(crate) enum Error<ModelError: std::error::Error> {
     Underdetermined,
     #[error("Floating point unable to capture integral value {}", .0)]
     /// the floating point type was unable to capture an integral value
-    FloatToIntConversion(usize),
+    IntegerToFloatConversion(usize),
     /// Failed to calculate the inverse of a matrix
     #[error("Matrix inversion error")]
     MatrixInversion,
@@ -70,11 +76,9 @@ where
     /// # References
     /// See [O'Leary and Rust 2012](https://www.nist.gov/publications/variable-projection-nonlinear-least-squares-problems)
     /// for reference.
-    #[allow(clippy::type_complexity)]
     covariance_matrix: OMatrix<Model::ScalarType, Dyn, Dyn>,
 
     /// the correlation matrix, ordered the same way as the covariance matrix.
-    #[allow(clippy::type_complexity)]
     correlation_matrix: OMatrix<Model::ScalarType, Dyn, Dyn>,
 
     /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
@@ -87,6 +91,9 @@ where
 
     /// the number of linear coefficients
     linear_coefficient_count: usize,
+
+    /// the number of degrees of freedom
+    degrees_of_freedom: usize,
 
     /// the number of nonlinear parameters
     nonlinear_parameter_count: usize,
@@ -179,6 +186,30 @@ where
         let diagonal = self.covariance_matrix.diagonal();
         extract_range(&diagonal, U0, Dyn(self.linear_coefficient_count))
     }
+
+    //@todo comment:
+    // panics: if probability is not in [0,1]
+    pub fn confidence_radius(
+        &self,
+        probability: Model::ScalarType,
+    ) -> OMatrix<Model::ScalarType, Dyn, Dyn>
+    where
+        Model::ScalarType: num_traits::Float + One + Zero + CastF64,
+    {
+        assert!(
+            probability.is_finite()
+                && probability > Model::ScalarType::ZERO
+                && probability < Model::ScalarType::ONE,
+            "probability must be in interval (0.,1.)"
+        );
+
+        let t_scale = distrs::StudentsT::ppf(
+            probability.into_f64(),
+            f64::from_usize(self.degrees_of_freedom).expect("failed int to float conversion"),
+        );
+
+        todo!("I still need to implement this")
+    }
 }
 
 /// extrant the half  open range `[Start,End)` from the given vector.
@@ -252,8 +283,9 @@ where
 
         let sigma: Model::ScalarType = weighted_residuals.norm()
             / Float::sqrt(
-                Model::ScalarType::from_usize(output_len - degrees_of_freedom)
-                    .ok_or(Error::FloatToIntConversion(output_len - degrees_of_freedom))?,
+                Model::ScalarType::from_usize(output_len - degrees_of_freedom).ok_or(
+                    Error::IntegerToFloatConversion(output_len - degrees_of_freedom),
+                )?,
             );
 
         let HTH_inv = (H.transpose() * H)
@@ -271,6 +303,7 @@ where
             weighted_residuals,
             sigma,
             linear_coefficient_count: model.base_function_count(),
+            degrees_of_freedom,
             nonlinear_parameter_count: model.parameter_count(),
         })
     }
