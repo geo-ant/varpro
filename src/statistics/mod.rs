@@ -188,7 +188,7 @@ where
     }
 
     //@todo comment:
-    // panics: if probability is not in [0,1]
+    // panics: if probability is not in the open interval $$(0,1)$$
     pub fn confidence_radius(
         &self,
         probability: Model::ScalarType,
