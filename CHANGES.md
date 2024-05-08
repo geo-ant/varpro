@@ -3,6 +3,12 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.9.0
+
+- We can now calculate confidence bands using the fit statistics
+- The API for calculating the correlation matrix changed to on-the-fly
+  calculations, deprecated (a drop-in replacement) for the old API.
+
 ## 0.8.0 Multiple Right Hand Sides
 
 - Observations can now be a matrix, in this case a global fit with multiple right

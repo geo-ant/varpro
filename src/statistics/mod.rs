@@ -78,9 +78,6 @@ where
     /// for reference.
     covariance_matrix: OMatrix<Model::ScalarType, Dyn, Dyn>,
 
-    /// the correlation matrix, ordered the same way as the covariance matrix.
-    correlation_matrix: OMatrix<Model::ScalarType, Dyn, Dyn>,
-
     /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
     /// where `$\vec{y}$` is the data, `$\vec{f}$` is the model function and `$W$` is the
     /// weights
@@ -124,15 +121,30 @@ where
     /// * `$C_{12}$` is the covariance between `$c_1$`and `$c_2$`,
     /// * `$C_{13}$` is the covariance between `$c_1$` and `$\alpha_1$`,
     /// * and so on.
-    #[allow(clippy::type_complexity)]
     pub fn covariance_matrix(&self) -> &OMatrix<Model::ScalarType, Dyn, Dyn> {
         &self.covariance_matrix
     }
 
-    /// the correlation matrix, ordered the same way as the covariance matrix.
-    #[allow(clippy::type_complexity)]
-    pub fn correlation_matrix(&self) -> &OMatrix<Model::ScalarType, Dyn, Dyn> {
-        &self.correlation_matrix
+    #[deprecated(note = "Use the method calc_correlation_matrix.", since = "0.9.0")]
+    /// calculate the correlation matrix. **Deprecated**, use the `calc_correlation_matrix``
+    /// function instead.
+    pub fn correlation_matrix(&self) -> OMatrix<Model::ScalarType, Dyn, Dyn>
+    where
+        Model::ScalarType: Float,
+    {
+        self.calc_correlation_matrix().clone()
+    }
+
+    /// The correlation matrix, ordered the same way as the covariance matrix.
+    ///
+    /// **Note** The correlation matrix is calculated on the fly from the
+    /// covariance matrix when this function is called. It is suggested to
+    /// store this matrix somewhere to avoid having to recalculate it.
+    pub fn calc_correlation_matrix(&self) -> OMatrix<Model::ScalarType, Dyn, Dyn>
+    where
+        Model::ScalarType: Float,
+    {
+        calc_correlation_matrix(&self.covariance_matrix)
     }
 
     /// the weighted residuals
@@ -270,10 +282,11 @@ where
         DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
     {
+        let J = model_function_jacobian(model, linear_coefficients)?;
+
         // see the OLeary and Rust Paper for reference
         // the names are taken from the paper
-
-        let H = weights * model_function_jacobian(model, linear_coefficients)?;
+        let H = weights * J.clone();
         let output_len = model.output_len();
         let weighted_residuals = weighted_data - weights * model.eval()? * linear_coefficients;
         let degrees_of_freedom = model.parameter_count() + model.base_function_count();
@@ -292,14 +305,19 @@ where
             .try_inverse()
             .ok_or(Error::MatrixInversion)?;
         let covariance_matrix = HTH_inv * sigma * sigma;
-        let correlation_matrix = calc_correlation_matrix(&covariance_matrix);
 
         // we don't calculate R^2, see the notes on the documentation
         // of this struct
 
+        // what follows is the calculation for the confidence bands.
+        // this is the correspoding github issue #29: https://github.com/geo-ant/varpro/issues/29
+        // also see documentation for the python lmfit library here
+        // https://lmfit.github.io/lmfit-py/model.html#lmfit.model.ModelResult.eval_uncertainty
+        // which references the formula here:
+        // https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals
+
         Ok(Self {
             covariance_matrix,
-            correlation_matrix,
             weighted_residuals,
             sigma,
             linear_coefficient_count: model.base_function_count(),
