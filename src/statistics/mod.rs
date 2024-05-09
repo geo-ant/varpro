@@ -3,8 +3,8 @@ use crate::{
     util::{to_vector, Weights},
 };
 use nalgebra::{
-    allocator::Allocator, ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimAdd, DimMin,
-    DimSub, Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
+    allocator::Allocator, ComplexField, DVector, DefaultAllocator, Dim, DimAdd, DimMin, DimSub,
+    Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
 };
 use num_traits::{Float, FromPrimitive, One, Zero};
 use thiserror::Error as ThisError;
@@ -290,8 +290,13 @@ where
         debug_assert_eq!(
             weighted_data.ncols(),
             linear_coefficients.ncols(),
-            "data dims and linear coefficient dims don't match. Indicates logic error in library!"
+            "Data dims and linear coefficient dims don't match. Indicates logic error in library!"
         );
+        debug_assert_eq!(weighted_data.nrows(),
+            model.output_len(),
+            "model output dimensions and data dimensions do not match. Indicates a programming error in this library!"
+        );
+        let output_len = model.output_len();
         //@todo(georgios) lift this restriction. As of now, all calculations assume
         // the problem has only a single RHS
         if linear_coefficients.ncols() > 1 {
@@ -303,7 +308,6 @@ where
         // see the OLeary and Rust Paper for reference
         // the names are taken from the paper
         let H = weights * J.clone();
-        let output_len = model.output_len();
         let weighted_residuals = weighted_data - weights * model.eval()? * linear_coefficients;
         let degrees_of_freedom = model.parameter_count() + model.base_function_count();
         if output_len <= degrees_of_freedom {
@@ -331,6 +335,26 @@ where
         // https://lmfit.github.io/lmfit-py/model.html#lmfit.model.ModelResult.eval_uncertainty
         // which references the formula here:
         // https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals
+
+        let mut unscaled_sigma =
+            OMatrix::<Model::ScalarType, Dyn, Dyn>::zeros_generic(Dyn(output_len), Dyn(1));
+
+        //@todo(georgios) this logic assumes that unscaled_sigma
+        // is a column vector. That means iter_mut will just iterate
+        // over the elements.
+        unscaled_sigma
+            .iter_mut()
+            // we have to iterate over the columns of J^T (transpose)
+            // so we iterate over the rows of J.
+            // @todo this could be made much more maybe by calculating
+            // J in a suitable format from the beginning (or maybe we
+            // can use a better dot product down below that does not
+            // require us to transpose the vector like this
+            .zip(J.row_iter())
+            .for_each(|(sig, j)| {
+                let j = j.transpose();
+                *sig = j.dot(&(&covariance_matrix * &j));
+            });
 
         Ok(Self {
             covariance_matrix,
@@ -410,20 +434,6 @@ where
         model.eval()?,
         jacobian_matrix_for_nonlinear_params,
     ))
-}
-
-/// this is a more general (but less flexible) version of the `concat_colwise`
-/// function. It's used in the context of generating covariance matrices for individual
-/// right hand sides for a problem with multiple right hand sides
-fn extract_subproblem_covariance<T>(
-    covariance_matrix: OMatrix<T, Dyn, Dyn>,
-    (left_col_first, left_col_last): (usize, usize),
-    right: OMatrix<T, Dyn, Dyn>,
-) -> OMatrix<T, Dyn, Dyn>
-where
-    T: Scalar + Zero,
-{
-    todo!()
 }
 
 /// helper function to concatenate two matrices by pasting the
