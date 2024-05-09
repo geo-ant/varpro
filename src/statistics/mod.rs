@@ -3,8 +3,8 @@ use crate::{
     util::{to_vector, Weights},
 };
 use nalgebra::{
-    allocator::Allocator, ComplexField, DVector, DefaultAllocator, Dim, DimAdd, DimMin, DimSub,
-    Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
+    allocator::Allocator, ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimAdd, DimMin,
+    DimSub, Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
 };
 use num_traits::{Float, FromPrimitive, One, Zero};
 use thiserror::Error as ThisError;
@@ -34,6 +34,8 @@ pub(crate) enum Error<ModelError: std::error::Error> {
     /// Failed to calculate the inverse of a matrix
     #[error("Matrix inversion error")]
     MatrixInversion,
+    #[error("Fit statistics for multiple right hand sides are currently not supported")]
+    MrhsUnsupported,
 }
 
 /// This structure contains some additional statistical information
@@ -282,6 +284,20 @@ where
         DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
     {
+        // this is a sanity check and should never actually fail
+        // it just makes sure I have been using this correctly inside of this crate
+        // if this fails, this indicates a programming error
+        debug_assert_eq!(
+            weighted_data.ncols(),
+            linear_coefficients.ncols(),
+            "data dims and linear coefficient dims don't match. Indicates logic error in library!"
+        );
+        //@todo(georgios) lift this restriction. As of now, all calculations assume
+        // the problem has only a single RHS
+        if linear_coefficients.ncols() > 1 {
+            return Err(Error::MrhsUnsupported);
+        }
+
         let J = model_function_jacobian(model, linear_coefficients)?;
 
         // see the OLeary and Rust Paper for reference
@@ -394,6 +410,20 @@ where
         model.eval()?,
         jacobian_matrix_for_nonlinear_params,
     ))
+}
+
+/// this is a more general (but less flexible) version of the `concat_colwise`
+/// function. It's used in the context of generating covariance matrices for individual
+/// right hand sides for a problem with multiple right hand sides
+fn extract_subproblem_covariance<T>(
+    covariance_matrix: OMatrix<T, Dyn, Dyn>,
+    (left_col_first, left_col_last): (usize, usize),
+    right: OMatrix<T, Dyn, Dyn>,
+) -> OMatrix<T, Dyn, Dyn>
+where
+    T: Scalar + Zero,
+{
+    todo!()
 }
 
 /// helper function to concatenate two matrices by pasting the

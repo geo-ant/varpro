@@ -427,22 +427,21 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
         .observations(Y)
         .build()
         .expect("building the lev mar problem must not fail");
-    let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new().minimize(problem);
 
-    assert!(
-        report.termination.was_successful(),
-        "Levenberg Marquardt did not converge"
-    );
+    let fit_result = LevMarSolver::default()
+        .fit(problem)
+        .expect("fitting must not fail");
+
     // extract the calculated paramters, because tau1 and tau2 might switch places here
     let (tau1_index, tau2_index) =
-        if levenberg_marquardt_solution.params()[0] < levenberg_marquardt_solution.params()[1] {
+        if fit_result.nonlinear_parameters()[0] < fit_result.nonlinear_parameters()[1] {
             (0, 1)
         } else {
             (1, 0)
         };
-    let tau1_calc = levenberg_marquardt_solution.params()[tau1_index];
-    let tau2_calc = levenberg_marquardt_solution.params()[tau2_index];
-    let coeff = levenberg_marquardt_solution
+    let tau1_calc = fit_result.nonlinear_parameters()[tau1_index];
+    let tau2_calc = fit_result.nonlinear_parameters()[tau2_index];
+    let coeff = fit_result
         .linear_coefficients()
         .expect("linear coefficients must exist");
     let a1_calc = coeff[tau1_index];
