@@ -164,6 +164,12 @@ where
     ///
     /// See also the [LevMarProblem::fit] function, but on success also returns statistical
     /// information about the fit.
+    ///
+    /// ## Problems with Multiple Right Hand Sides
+    ///
+    /// **Note** For now, fitting with statistics is only supported for problems
+    /// with a single right hand side. If this function is invoked on a problem
+    /// with multiple right hand sides, an error is returned.
     #[allow(clippy::result_large_err)]
     pub fn fit_with_statistics(
         &self,

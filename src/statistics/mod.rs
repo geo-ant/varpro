@@ -96,6 +96,10 @@ where
 
     /// the number of nonlinear parameters
     nonlinear_parameter_count: usize,
+
+    /// a helper variable that stores the calculated unscaled
+    /// standard deviation that we can use
+    unscaled_sigma,
 }
 
 impl<Model> FitStatistics<Model>
@@ -336,12 +340,11 @@ where
         // which references the formula here:
         // https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals
 
-        let mut unscaled_sigma =
-            OMatrix::<Model::ScalarType, Dyn, Dyn>::zeros_generic(Dyn(output_len), Dyn(1));
-
         //@todo(georgios) this logic assumes that unscaled_sigma
         // is a column vector. That means iter_mut will just iterate
         // over the elements.
+        let mut unscaled_sigma = OVector::<Model::ScalarType, Dyn>::zeros(output_len);
+
         unscaled_sigma
             .iter_mut()
             // we have to iterate over the columns of J^T (transpose)
