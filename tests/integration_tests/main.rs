@@ -423,7 +423,7 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     );
 
     let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = LevMarProblemBuilder::mrhs(model)
         .observations(Y)
         .build()
         .expect("building the lev mar problem must not fail");

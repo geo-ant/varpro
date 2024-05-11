@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DMatrix, DVector, Dyn, OVector, Scalar};
+use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -36,31 +36,6 @@ pub enum LevMarBuilderError {
     /// y vector and weights have different lengths
     #[error("The weights must have the same length as the data y.")]
     InvalidLengthOfWeights,
-}
-
-/// a type describing the observation `$\vec{y}$` or `$\boldsymbol{Y}$` that we want to fit
-/// with a model. The observation can either be create from a single column vector, corresponding
-/// to the common case of fitting a single right hand side with a model. It can
-/// also be create from a matrix, which corresponds to a global fitting problem
-/// with multiple right hand sides. The observations in this case are a matrix
-/// where each _column_ represents an observation.
-pub struct Observation<T> {
-    data: DMatrix<T>,
-}
-
-// construct the obseration from a single vector or matrix
-impl<T> From<DMatrix<T>> for Observation<T> {
-    fn from(data: DMatrix<T>) -> Self {
-        Self { data }
-    }
-}
-
-impl<T: Scalar> From<DVector<T>> for Observation<T> {
-    fn from(data: DVector<T>) -> Self {
-        Self {
-            data: DMatrix::from_column_slice(data.nrows(), 1, data.as_slice()),
-        }
-    }
 }
 
 /// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
@@ -129,6 +104,20 @@ where
             weights: Weights::default(),
         }
     }
+    /// **Mandatory**: Set the data which we want to fit: since this
+    /// is called on a model builder for problems with **single right hand sides**,
+    /// this is a column vector `$\vec{y}=\vec{y}(\vec{x})$` containing the
+    /// values we want to fit with the model.
+    ///
+    /// The length of `$\vec{y}` and the output dimension of the model must be
+    /// the same.
+    pub fn observations(self, observed: OVector<Model::ScalarType, Dyn>) -> Self {
+        let nrows = observed.nrows();
+        Self {
+            Y: Some(observed.reshape_generic(Dyn(nrows), Dyn(1))),
+            ..self
+        }
+    }
 }
 
 impl<Model> LevMarProblemBuilder<Model, true>
@@ -149,6 +138,19 @@ where
             weights: Weights::default(),
         }
     }
+    /// **Mandatory**: Set the data which we want to fit: This is either a single vector
+    /// `$\vec{y}=\vec{y}(\vec{x})$` or a matrix `$\boldsymbol{Y}$` of multiple
+    /// vectors. In the former case this corresponds to fitting a single right hand side,
+    /// in the latter case, this corresponds to global fitting of a problem with
+    /// multiple right hand sides.
+    /// The length of `$\vec{x}$` and the number of _rows_ in the data must
+    /// be the same.
+    pub fn observations(self, observed: OMatrix<Model::ScalarType, Dyn, Dyn>) -> Self {
+        Self {
+            Y: Some(observed),
+            ..self
+        }
+    }
 }
 
 impl<Model, const MRHS: bool> LevMarProblemBuilder<Model, MRHS>
@@ -159,20 +161,6 @@ where
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
 {
-    /// **Mandatory**: Set the data which we want to fit: This is either a single vector
-    /// `$\vec{y}=\vec{y}(\vec{x})$` or a matrix `$\boldsymbol{Y}$` of multiple
-    /// vectors. In the former case this corresponds to fitting a single right hand side,
-    /// in the latter case, this corresponds to global fitting of a problem with
-    /// multiple right hand sides.
-    /// The length of `$\vec{x}$` and the number of _rows_ in the data must
-    /// be the same.
-    pub fn observations(self, observed: impl Into<Observation<Model::ScalarType>>) -> Self {
-        Self {
-            Y: Some(observed.into().data),
-            ..self
-        }
-    }
-
     /// **Optional** This value is relevant for the solver, because it uses singular value decomposition
     /// internally. This method sets a value `\epsilon` for which smaller (i.e. absolute - wise) singular
     /// values are considered zero. In essence this gives a truncation of the SVD. This might be
