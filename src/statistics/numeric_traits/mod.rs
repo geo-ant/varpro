@@ -23,6 +23,7 @@ impl CastF64 for f64 {
         value
     }
 
+    #[inline]
     fn into_f64(self) -> Self {
         self
     }
@@ -37,6 +38,7 @@ impl CastF64 for f32 {
         value as _
     }
 
+    #[inline]
     fn into_f64(self) -> f64 {
         self as _
     }

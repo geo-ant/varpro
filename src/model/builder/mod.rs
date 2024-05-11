@@ -256,7 +256,7 @@ where
     #[doc(hidden)]
     /// builder is in an error state
     Error(ModelBuildError),
-    /// builder is in normal state (i.e. NOT in the process of building a function)
+    /// builder is in normal state (i.e. NOT in the process of building a function and not in an error state)
     #[doc(hidden)]
     Normal(UnfinishedModel<ScalarType>),
     /// builder is in the state of building a function

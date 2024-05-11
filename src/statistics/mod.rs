@@ -98,8 +98,13 @@ where
     nonlinear_parameter_count: usize,
 
     /// a helper variable that stores the calculated unscaled
-    /// standard deviation that we can use
-    unscaled_sigma,
+    /// standard deviation that we can use in calculation for the
+    /// confidence band.
+    /// calculated according to eq (97) in
+    /// https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals
+    /// with the difference that the square root has already been
+    /// applied
+    unscaled_confidence_sigma: OVector<Model::ScalarType, Dyn>,
 }
 
 impl<Model> FitStatistics<Model>
@@ -210,7 +215,7 @@ where
     pub fn confidence_radius(
         &self,
         probability: Model::ScalarType,
-    ) -> OMatrix<Model::ScalarType, Dyn, Dyn>
+    ) -> OVector<Model::ScalarType, Dyn>
     where
         Model::ScalarType: num_traits::Float + One + Zero + CastF64,
     {
@@ -218,7 +223,7 @@ where
             probability.is_finite()
                 && probability > Model::ScalarType::ZERO
                 && probability < Model::ScalarType::ONE,
-            "probability must be in interval (0.,1.)"
+            "probability must be in open interval (0.,1.)"
         );
 
         let t_scale = distrs::StudentsT::ppf(
@@ -226,7 +231,20 @@ where
             f64::from_usize(self.degrees_of_freedom).expect("failed int to float conversion"),
         );
 
-        todo!("I still need to implement this")
+        // this is a bit cumbersome due to the method being generic
+        // and t_scale only being available as f64. We are just
+        // multiplying t_scale to the unscaled confidence sigma element wise
+        let mut confidence_radius =
+            OVector::<Model::ScalarType, Dyn>::zeros(self.unscaled_confidence_sigma.nrows());
+
+        confidence_radius
+            .iter_mut()
+            .zip(self.unscaled_confidence_sigma.iter())
+            .for_each(|(cb, sigma)| {
+                *cb = CastF64::from_f64(t_scale * sigma.into_f64());
+            });
+
+        confidence_radius
     }
 }
 
@@ -343,9 +361,9 @@ where
         //@todo(georgios) this logic assumes that unscaled_sigma
         // is a column vector. That means iter_mut will just iterate
         // over the elements.
-        let mut unscaled_sigma = OVector::<Model::ScalarType, Dyn>::zeros(output_len);
+        let mut unscaled_confidence_sigma = OVector::<Model::ScalarType, Dyn>::zeros(output_len);
 
-        unscaled_sigma
+        unscaled_confidence_sigma
             .iter_mut()
             // we have to iterate over the columns of J^T (transpose)
             // so we iterate over the rows of J.
@@ -357,6 +375,7 @@ where
             .for_each(|(sig, j)| {
                 let j = j.transpose();
                 *sig = j.dot(&(&covariance_matrix * &j));
+                *sig = Float::sqrt(*sig);
             });
 
         Ok(Self {
@@ -366,6 +385,7 @@ where
             linear_coefficient_count: model.base_function_count(),
             degrees_of_freedom,
             nonlinear_parameter_count: model.parameter_count(),
+            unscaled_confidence_sigma,
         })
     }
 }
