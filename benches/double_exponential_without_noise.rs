@@ -35,7 +35,7 @@ struct DoubleExponentialParameters {
 fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model>
+) -> LevMarProblem<Model, false>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn>,
@@ -68,7 +68,7 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization<Model>(problem: LevMarProblem<Model>) -> [f64; 5]
+fn run_minimization<Model, const MRHS: bool>(problem: LevMarProblem<Model, MRHS>) -> [f64; 5]
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
 {

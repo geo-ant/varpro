@@ -11,7 +11,7 @@ use thiserror::Error as ThisError;
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 pub enum LevMarBuilderError {
     /// the data for y variable was not given to the builder
-    #[error("Data for vector y not provided.")]
+    #[error("Right hand side(s) not provided")]
     YDataMissing,
 
     /// x and y vector have different lengths
@@ -89,7 +89,7 @@ impl<T: Scalar> From<DVector<T>> for Observation<T> {
 /// it contains an error variant.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemBuilder<Model>
+pub struct LevMarProblemBuilder<Model, const MRHS: bool>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -111,7 +111,7 @@ where
     weights: Weights<Model::ScalarType, Dyn>,
 }
 
-impl<Model> LevMarProblemBuilder<Model>
+impl<Model> LevMarProblemBuilder<Model, false>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -119,7 +119,8 @@ where
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
 {
-    /// Create a new builder based on the given model
+    /// Create a new builder based on the given model for a problem
+    /// with a **single right hand side**.
     pub fn new(model: Model) -> Self {
         Self {
             Y: None,
@@ -128,7 +129,36 @@ where
             weights: Weights::default(),
         }
     }
+}
 
+impl<Model> LevMarProblemBuilder<Model, true>
+where
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
+    Model: SeparableNonlinearModel,
+{
+    /// Create a new builder based on the given model
+    /// for a problem with **multiple right hand sides**
+    pub fn mrhs(model: Model) -> Self {
+        Self {
+            Y: None,
+            separable_model: model,
+            epsilon: None,
+            weights: Weights::default(),
+        }
+    }
+}
+
+impl<Model, const MRHS: bool> LevMarProblemBuilder<Model, MRHS>
+where
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
+    Model: SeparableNonlinearModel,
+{
     /// **Mandatory**: Set the data which we want to fit: This is either a single vector
     /// `$\vec{y}=\vec{y}(\vec{x})$` or a matrix `$\boldsymbol{Y}$` of multiple
     /// vectors. In the former case this corresponds to fitting a single right hand side,
@@ -185,7 +215,7 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblem<Model>, LevMarBuilderError> {
+    pub fn build(self) -> Result<LevMarProblem<Model, MRHS>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
         let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;

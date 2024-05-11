@@ -23,7 +23,7 @@ use std::ops::Mul;
 /// [`LevenbergMarquardt`](https://docs.rs/levenberg-marquardt/latest/levenberg_marquardt/struct.LevenbergMarquardt.html)
 /// solver from the `levenberg_marquardt` crate. The core benefit of this
 /// wrapper is that we can also use it to calculate statistics.
-pub struct LevMarSolver<Model>
+pub struct LevMarSolver<Model, const MRHS: bool>
 where
     Model: SeparableNonlinearModel,
 {
@@ -33,14 +33,14 @@ where
 /// A helper type that contains the fitting problem after the
 /// minimization, as well as a report and some convenience functions
 #[derive(Debug)]
-pub struct FitResult<Model>
+pub struct FitResult<Model, const MRHS: bool>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
 {
     /// the final state of the fitting problem after the
     /// minimization finished (regardless of whether fitting was successful or not)
-    pub problem: LevMarProblem<Model>,
+    pub problem: LevMarProblem<Model, MRHS>,
 
     /// the minimization report of the underlying solver.
     /// It contains information about the minimization process
@@ -49,7 +49,7 @@ where
     pub minimization_report: MinimizationReport<Model::ScalarType>,
 }
 
-impl<Model> FitResult<Model>
+impl<Model, const MRHS: bool> FitResult<Model, MRHS>
 // take trait bounds from above:
 where
     Model: SeparableNonlinearModel,
@@ -57,7 +57,7 @@ where
 {
     /// internal helper for constructing an instance
     fn new(
-        problem: LevMarProblem<Model>,
+        problem: LevMarProblem<Model, MRHS>,
         minimization_report: MinimizationReport<Model::ScalarType>,
     ) -> Self {
         Self {
@@ -91,7 +91,7 @@ where
     }
 }
 
-impl<Model> LevMarSolver<Model>
+impl<Model, const MRHS: bool> LevMarSolver<Model, MRHS>
 where
     Model: SeparableNonlinearModel,
 {
@@ -118,11 +118,14 @@ where
     #[deprecated(since = "0.7.0", note = "use the fit(...) method instead")]
     pub fn minimize(
         &self,
-        problem: LevMarProblem<Model>,
-    ) -> (LevMarProblem<Model>, MinimizationReport<Model::ScalarType>)
+        problem: LevMarProblem<Model, MRHS>,
+    ) -> (
+        LevMarProblem<Model, MRHS>,
+        MinimizationReport<Model::ScalarType>,
+    )
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, MRHS>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float + FromPrimitive,
     {
         self.solver.minimize(problem)
@@ -141,10 +144,13 @@ where
     /// On failure (when the minimization was not deemeed successful), returns
     /// an error with the same information as in the success case.
     #[allow(clippy::result_large_err)]
-    pub fn fit(&self, problem: LevMarProblem<Model>) -> Result<FitResult<Model>, FitResult<Model>>
+    pub fn fit(
+        &self,
+        problem: LevMarProblem<Model, MRHS>,
+    ) -> Result<FitResult<Model, MRHS>, FitResult<Model, MRHS>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, MRHS>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
     {
         #[allow(deprecated)]
@@ -173,11 +179,11 @@ where
     #[allow(clippy::result_large_err)]
     pub fn fit_with_statistics(
         &self,
-        problem: LevMarProblem<Model>,
-    ) -> Result<(FitResult<Model>, FitStatistics<Model>), FitResult<Model>>
+        problem: LevMarProblem<Model, MRHS>,
+    ) -> Result<(FitResult<Model, MRHS>, FitStatistics<Model>), FitResult<Model, MRHS>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, MRHS>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float,
     {
         let FitResult {
@@ -205,7 +211,7 @@ where
     }
 }
 
-impl<Model> Default for LevMarSolver<Model>
+impl<Model, const MRHS: bool> Default for LevMarSolver<Model, MRHS>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Float,
@@ -264,7 +270,7 @@ where
 /// solver is reexported by this module as [LevMarSolver](self::LevMarSolver) for naming consistency.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblem<Model>
+pub struct LevMarProblem<Model, const MRHS: bool>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -288,7 +294,7 @@ where
     cached: Option<CachedCalculations<Model::ScalarType, Dyn, Dyn>>,
 }
 
-impl<Model> std::fmt::Debug for LevMarProblem<Model>
+impl<Model, const MRHS: bool> std::fmt::Debug for LevMarProblem<Model, MRHS>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -304,7 +310,7 @@ where
     }
 }
 
-impl<Model> LevMarProblem<Model>
+impl<Model, const MRHS: bool> LevMarProblem<Model, MRHS>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -341,7 +347,8 @@ where
     }
 }
 
-impl<Model> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn> for LevMarProblem<Model>
+impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
+    for LevMarProblem<Model, MRHS>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
