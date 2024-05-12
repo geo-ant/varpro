@@ -421,13 +421,15 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
 
     let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
     let problem = LevMarProblemBuilder::mrhs(model)
-        .observations(Y)
+        .observations(Y.clone())
         .build()
         .expect("building the lev mar problem must not fail");
 
     let fit_result = LevMarSolver::default()
         .fit(problem)
         .expect("fitting must not fail");
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), Y, epsilon = 1e-5);
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
     let (tau1_index, tau2_index) =
