@@ -34,8 +34,6 @@ pub(crate) enum Error<ModelError: std::error::Error> {
     /// Failed to calculate the inverse of a matrix
     #[error("Matrix inversion error")]
     MatrixInversion,
-    #[error("Fit statistics for multiple right hand sides are currently not supported")]
-    MrhsUnsupported,
 }
 
 /// This structure contains some additional statistical information
@@ -166,8 +164,8 @@ where
     ///
     /// In case of a dataset with multiple members, the residuals are
     /// written one after the other into the vector
-    pub fn weighted_residuals(&self) -> VectorView<Model::ScalarType, Dyn> {
-        self.weighted_residuals.as_view()
+    pub fn weighted_residuals(&self) -> OVector<Model::ScalarType, Dyn> {
+        self.weighted_residuals.clone()
     }
 
     /// the _regression standard error_ (also called _weighted residual mean square_, or _sigma_).
@@ -319,12 +317,6 @@ where
             "model output dimensions and data dimensions do not match. Indicates a programming error in this library!"
         );
         let output_len = model.output_len();
-        //@todo(georgios) lift this restriction. As of now, all calculations assume
-        // the problem has only a single RHS
-        if linear_coefficients.ncols() > 1 {
-            return Err(Error::MrhsUnsupported);
-        }
-
         let J = model_function_jacobian(model, linear_coefficients)?;
 
         // see the OLeary and Rust Paper for reference

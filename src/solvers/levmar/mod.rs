@@ -63,7 +63,7 @@ where
     /// members of the datasets are the colums of the returned matrix. That means
     /// one coefficient vector for each right hand side.
     pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
-        self.problem.linear_coefficients().map(|m| m.as_view())
+        Some(self.problem.cached.as_ref()?.linear_coefficients.as_view())
     }
 }
 
@@ -79,10 +79,10 @@ where
     /// This implementation is for fitting problems with a single right hand side.
     /// Thus, the coefficients are given as a single vector.
     pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
-        self.problem.linear_coefficients().map(|m| {
-            debug_assert_eq!(m.ncols(),1,"Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!");
-             m.column(0)
-        })
+        let coeff = &self.problem.cached.as_ref()?.linear_coefficients;
+        debug_assert_eq!(coeff.ncols(),1,
+            "Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!");
+        Some(self.problem.cached.as_ref()?.linear_coefficients.column(0))
     }
 
     pub fn best_fit(&self) -> Option<OVector<Model::ScalarType, Dyn>> {
