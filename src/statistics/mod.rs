@@ -4,7 +4,7 @@ use crate::{
 };
 use nalgebra::{
     allocator::Allocator, ComplexField, DVector, DefaultAllocator, Dim, DimAdd, DimMin, DimSub,
-    Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
+    Dyn, Matrix, OMatrix, OVector, RealField, Scalar, VectorView, U0, U1,
 };
 use num_traits::{Float, FromPrimitive, One, Zero};
 use thiserror::Error as ThisError;
@@ -83,7 +83,7 @@ where
     /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
     /// where `$\vec{y}$` is the data, `$\vec{f}$` is the model function and `$W$` is the
     /// weights
-    weighted_residuals: OMatrix<Model::ScalarType, Dyn, Dyn>,
+    weighted_residuals: OVector<Model::ScalarType, Dyn>,
 
     /// the _weighted residual mean square_ or _regression standard error_.
     sigma: Model::ScalarType,
@@ -166,8 +166,8 @@ where
     ///
     /// In case of a dataset with multiple members, the residuals are
     /// written one after the other into the vector
-    pub fn weighted_residuals(&self) -> DVector<Model::ScalarType> {
-        to_vector(self.weighted_residuals.clone())
+    pub fn weighted_residuals(&self) -> VectorView<Model::ScalarType, Dyn> {
+        self.weighted_residuals.as_view()
     }
 
     /// the _regression standard error_ (also called _weighted residual mean square_, or _sigma_).
@@ -295,9 +295,9 @@ where
     #[allow(non_snake_case)]
     pub(crate) fn try_calculate(
         model: &Model,
-        weighted_data: &OMatrix<Model::ScalarType, Dyn, Dyn>,
+        weighted_data: VectorView<Model::ScalarType, Dyn>,
         weights: &Weights<Model::ScalarType, Dyn>,
-        linear_coefficients: &OMatrix<Model::ScalarType, Dyn, Dyn>,
+        linear_coefficients: VectorView<Model::ScalarType, Dyn>,
     ) -> Result<Self, Error<Model::Error>>
     where
         Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,
@@ -429,7 +429,7 @@ where
 #[allow(non_snake_case)]
 fn model_function_jacobian<Model>(
     model: &Model,
-    C: &OMatrix<Model::ScalarType, Dyn, Dyn>,
+    c: VectorView<Model::ScalarType, Dyn>,
 ) -> Result<OMatrix<Model::ScalarType, Dyn, Dyn>, Model::Error>
 where
     Model: SeparableNonlinearModel,
@@ -450,7 +450,7 @@ where
     {
         //@todo this is not very efficient, make this better
         //but this does not happen repeatedly, so it might not be as bad
-        col.copy_from(&(to_vector(model.eval_partial_deriv(idx)? * C)));
+        col.copy_from(&(model.eval_partial_deriv(idx)? * c));
     }
 
     Ok(concat_colwise(

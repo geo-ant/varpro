@@ -56,7 +56,7 @@ where
     Model::ScalarType: RealField + Scalar + Float,
 {
     /// convenience function to get the linear coefficients after the fit has
-    /// finished
+    /// finished. Will return None if there was an error during fitting.
     ///
     /// This implementation is for fitting problems with multiple right hand sides.
     /// Thus, the coefficients vectors for the individual
@@ -74,17 +74,21 @@ where
     Model::ScalarType: RealField + Scalar + Float,
 {
     /// convenience function to get the linear coefficients after the fit has
-    /// finished
+    /// finished. Will return None if there was an error during fitting.
     ///
-    /// This implementation is for fitting problems with multiple right hand sides.
-    /// Thus, the coefficients vectors for the individual
-    /// members of the datasets are the colums of the returned matrix. That means
-    /// one coefficient vector for each right hand side.
+    /// This implementation is for fitting problems with a single right hand side.
+    /// Thus, the coefficients are given as a single vector.
     pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
         self.problem.linear_coefficients().map(|m| {
             debug_assert_eq!(m.ncols(),1,"Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!");
              m.column(0)
         })
+    }
+
+    pub fn best_fit(&self) -> Option<OVector<Model::ScalarType, Dyn>> {
+        let coeff = self.linear_coefficients()?;
+        let eval = self.problem.model().eval().ok()?;
+        Some(eval * coeff)
     }
 }
 
@@ -191,6 +195,12 @@ where
         }
     }
 
+}
+
+impl<Model> LevMarSolver<Model, false>
+where
+    Model: SeparableNonlinearModel,
+{
     /// Same as the [LevMarProblem::fit] function but also calculates some additional
     /// statistical information about the fit, if the fit was successful.
     ///
@@ -207,11 +217,11 @@ where
     #[allow(clippy::result_large_err)]
     pub fn fit_with_statistics(
         &self,
-        problem: LevMarProblem<Model, MRHS>,
-    ) -> Result<(FitResult<Model, MRHS>, FitStatistics<Model>), FitResult<Model, MRHS>>
+        problem: LevMarProblem<Model, false>,
+    ) -> Result<(FitResult<Model, false>, FitStatistics<Model>), FitResult<Model, false>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model, MRHS>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, false>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float,
     {
         let FitResult {
@@ -238,7 +248,6 @@ where
         }
     }
 }
-
 impl<Model, const MRHS: bool> Default for LevMarSolver<Model, MRHS>
 where
     Model: SeparableNonlinearModel,
@@ -355,7 +364,40 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> LevMarProblem<Model, MRHS>
+impl<Model> LevMarProblem<Model, true>
+where
+    Model: SeparableNonlinearModel,
+    Model::ScalarType: Scalar + ComplexField + Copy,
+{
+    /// Get the linear coefficients for the current problem. After a successful pass of the solver,
+    /// this contains a value with the best fitting linear coefficients
+    ///
+    /// # Returns
+    ///
+    /// Either the current best estimate coefficients or None, if none were calculated or the solver
+    /// encountered an error. After the solver finished, this is the least squares best estimate
+    /// for the linear coefficients of the base functions.
+    ///
+    /// Since this method is for fitting a single right hand side, the coefficients
+    /// are a single column vector.
+    pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
+        self.cached
+            .as_ref()
+            .map(|cache| cache.linear_coefficients.as_view())
+    }
+
+    /// the weighted data matrix`$\boldsymbol{Y}_w$` to which to fit the model. Note
+    /// that the weights are already applied to the data matrix and this
+    /// is not the original data vector.
+    ///
+    /// This method is for fitting a multiple right hand sides, hence the data
+    /// matrix is a matrix that contains the right hand sides as columns.
+    pub fn weighted_data(&self) -> MatrixView<Model::ScalarType,Dyn,Dyn> {
+        self.Y_w.as_view()
+    }
+}
+
+impl<Model> LevMarProblem<Model, false>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -370,10 +412,33 @@ where
     /// The linear coefficients are column vectors that are ordered
     /// into a matrix, where the column at index $$s$$ are the best linear
     /// coefficients for the member at index $$s$$ of the dataset.
-    pub fn linear_coefficients(&self) -> Option<&DMatrix<Model::ScalarType>> {
-        self.cached.as_ref().map(|cache| &cache.linear_coefficients)
+    pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
+        self.cached
+            .as_ref()
+            .map(|cache|{ 
+                debug_assert_eq!(cache.linear_coefficients.ncols(),1,
+                    "coefficient matrix must have exactly one column for single right hand side. This indicates a programming error in the library.");
+                cache.linear_coefficients.as_view()
+            })
     }
 
+    /// the weighted data vector `$\vec{y}_w$` to which to fit the model. Note
+    /// that the weights are already applied to the data vector and this
+    /// is not the original data vector.
+    ///
+    /// This method is for fitting a single right hand side, hence the data
+    /// is a single column vector.
+    pub fn weighted_data(&self) -> VectorView<Model::ScalarType,Dyn> {
+                debug_assert_eq!(self.Y_w.ncols(),1,
+                    "data matrix must have exactly one column for single right hand side. This indicates a programming error in the library.");
+        self.Y_w.as_view()
+    }
+}
+impl<Model, const MRHS: bool> LevMarProblem<Model, MRHS>
+where
+    Model: SeparableNonlinearModel,
+    Model::ScalarType: Scalar + ComplexField + Copy,
+{
     /// access the contained model immutably
     pub fn model(&self) -> &Model {
         &self.model
@@ -384,12 +449,6 @@ where
         &self.weights
     }
 
-    /// the weighted data vector `$\vec{y}_w$` to which to fit the model. Note
-    /// that the weights are already applied to the data vector and this
-    /// is not the original data vector.
-    pub fn weighted_data(&self) -> &DMatrix<Model::ScalarType> {
-        &self.Y_w
-    }
 }
 
 impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
