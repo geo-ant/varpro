@@ -140,7 +140,7 @@
 //! # use varpro::model::*;
 //! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
 //! use varpro::solvers::levmar::LevMarSolver;
-//! let fit_result = LevMarSolver::new().fit(problem).unwrap();
+//! let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! ```
 //! Finally, check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
 //! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear

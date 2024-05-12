@@ -66,8 +66,12 @@ where
         Some(self.problem.cached.as_ref()?.linear_coefficients.as_view())
     }
 
-    // **Note** This implementation is for fitting problems with a single right hand side.
-    // 
+    /// **Note** This implementation is for fitting problems with a single right hand side.
+    ///
+    /// Calculate the values of the model at the best fit parameters.
+    /// Returns None if there was an error during fitting.
+    /// Since this is for single right hand sides, the output is
+    /// a column vector.
     pub fn best_fit(&self) -> Option<OMatrix<Model::ScalarType, Dyn,Dyn>> {
         let coeff = self.linear_coefficients()?;
         let eval = self.problem.model().eval().ok()?;
@@ -92,9 +96,12 @@ where
             "Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!");
         Some(self.problem.cached.as_ref()?.linear_coefficients.column(0))
     }
-
-    // **Note** This implementation is for fitting problems with a single right hand side.
-    // 
+    /// **Note** This implementation is for fitting problems with multiple right hand sides
+    ///
+    /// Calculate the values of the model at the best fit parameters.
+    /// Returns None if there was an error during fitting.
+    /// Since this is for single right hand sides, the output is
+    /// a matrix containing composed of column vectors for the right hand sides.
     pub fn best_fit(&self) -> Option<OVector<Model::ScalarType, Dyn>> {
         let coeff = self.linear_coefficients()?;
         let eval = self.problem.model().eval().ok()?;

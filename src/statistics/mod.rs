@@ -205,9 +205,57 @@ where
         extract_range(&diagonal, U0, Dyn(self.linear_coefficient_count))
     }
 
-    //@todo comment:
-    // panics: if probability is not in the open interval $$(0,1)$$
-    pub fn confidence_radius(
+    /// Calculate the radius (i.e. half of the width) of the confidence band
+    /// of the fitted model function at the best fit parameters evaluated at
+    /// the support points.
+    ///
+    /// # Arguments
+    ///
+    /// * `probability` the confidence level of the confidence interval, expressed
+    /// as a probability value between 0 and 1. Note that it can't be 0 or 1, but
+    /// anything in between. Since least squares fitting assumes Gaussian error
+    /// distributions, we can use the quantiles of the normal distribution to
+    /// relate this to often used "number of sigmas". For example the probability
+    /// `$68.3 \%$` corresponds to `$1\sigma$`.
+    ///
+    /// # Returns
+    ///
+    /// The half-width of the confidence band with the given probability. To
+    /// calculate the confidence band, we first need to calculate the fit result at
+    /// the best fit parameters. Then the upper bound of the confidence interval
+    /// is given by adding this radius and the lower bound is given by subtracting
+    /// this radius.
+    ///
+    /// # Example
+    /// Fit model `model` to observations `y` and calculate the best fit and the
+    /// 1-sigma confidence band upper and lower bounds.
+    ///
+    /// ```no_run
+    /// # let model : varpro::model::SeparableModel<f64> = unimplemented!();
+    /// # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
+    /// use varpro::solvers::levmar::LevMarProblemBuilder;
+    /// use varpro::solvers::levmar::LevMarSolver;
+    /// let problem = LevMarProblemBuilder::new(model)
+    ///               .observations(y)
+    ///               .build()
+    ///               .unwrap();
+    ///
+    /// let (fit_result,fit_statistics) = LevMarSolver::default()
+    ///               .fit_with_statistics(problem)
+    ///               .unwrap();
+    ///
+    /// let best_fit = fit_result.best_fit().unwrap();
+    /// let cb_radius = fit_statistics.confidence_band_radius(0.683);
+    /// // upper and lower bounds of the confidence band
+    /// let cb_upper = best_fit + cb_radius;
+    /// let cb_lower = best_fit - cb_radius;
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if `probability` is not within the half-open interval
+    /// `$(0,1)$`.
+    pub fn confidence_band_radius(
         &self,
         probability: Model::ScalarType,
     ) -> OVector<Model::ScalarType, Dyn>
