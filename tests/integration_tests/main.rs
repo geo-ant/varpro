@@ -111,7 +111,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     );
 
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
     _ = format!("{:?}", problem);
@@ -123,6 +123,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         fit_result.minimization_report.termination.was_successful(),
         "Levenberg Marquardt did not converge"
     );
+    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-5);
     assert_relative_eq!(
         fit_result.problem.residuals().unwrap(),
         statistics.weighted_residuals(),

@@ -3,8 +3,7 @@ use crate::statistics::FitStatistics;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OVector,
-    RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
+    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OMatrix, OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1
 };
 
 mod builder;
@@ -55,15 +54,24 @@ where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
 {
-    /// convenience function to get the linear coefficients after the fit has
+    /// **Note** This implementation is for fitting problems with multiple right hand sides.
+    ///
+    /// Convenience function to get the linear coefficients after the fit has
     /// finished. Will return None if there was an error during fitting.
     ///
-    /// This implementation is for fitting problems with multiple right hand sides.
-    /// Thus, the coefficients vectors for the individual
+    /// The coefficients vectors for the individual
     /// members of the datasets are the colums of the returned matrix. That means
     /// one coefficient vector for each right hand side.
     pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
         Some(self.problem.cached.as_ref()?.linear_coefficients.as_view())
+    }
+
+    // **Note** This implementation is for fitting problems with a single right hand side.
+    // 
+    pub fn best_fit(&self) -> Option<OMatrix<Model::ScalarType, Dyn,Dyn>> {
+        let coeff = self.linear_coefficients()?;
+        let eval = self.problem.model().eval().ok()?;
+        Some(eval * coeff)
     }
 }
 
@@ -73,11 +81,11 @@ where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
 {
-    /// convenience function to get the linear coefficients after the fit has
-    /// finished. Will return None if there was an error during fitting.
+    /// **Note** This implementation is for fitting problems with a single right hand side.
     ///
-    /// This implementation is for fitting problems with a single right hand side.
-    /// Thus, the coefficients are given as a single vector.
+    /// Convenience function to get the linear coefficients after the fit has
+    /// finished. Will return None if there was an error during fitting.
+    /// The coefficients are given as a single vector.
     pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
         let coeff = &self.problem.cached.as_ref()?.linear_coefficients;
         debug_assert_eq!(coeff.ncols(),1,
@@ -85,6 +93,8 @@ where
         Some(self.problem.cached.as_ref()?.linear_coefficients.column(0))
     }
 
+    // **Note** This implementation is for fitting problems with a single right hand side.
+    // 
     pub fn best_fit(&self) -> Option<OVector<Model::ScalarType, Dyn>> {
         let coeff = self.linear_coefficients()?;
         let eval = self.problem.model().eval().ok()?;
