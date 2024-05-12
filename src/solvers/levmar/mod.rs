@@ -3,8 +3,8 @@ use crate::statistics::FitStatistics;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, OVector, RawStorageMut,
-    RealField, Scalar, UninitMatrix, Vector, SVD, U1,
+    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OVector,
+    RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
 };
 
 mod builder;
@@ -49,6 +49,45 @@ where
     pub minimization_report: MinimizationReport<Model::ScalarType>,
 }
 
+impl<Model> FitResult<Model, true>
+// take trait bounds from above:
+where
+    Model: SeparableNonlinearModel,
+    Model::ScalarType: RealField + Scalar + Float,
+{
+    /// convenience function to get the linear coefficients after the fit has
+    /// finished
+    ///
+    /// This implementation is for fitting problems with multiple right hand sides.
+    /// Thus, the coefficients vectors for the individual
+    /// members of the datasets are the colums of the returned matrix. That means
+    /// one coefficient vector for each right hand side.
+    pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
+        self.problem.linear_coefficients().map(|m| m.as_view())
+    }
+}
+
+impl<Model> FitResult<Model, false>
+// take trait bounds from above:
+where
+    Model: SeparableNonlinearModel,
+    Model::ScalarType: RealField + Scalar + Float,
+{
+    /// convenience function to get the linear coefficients after the fit has
+    /// finished
+    ///
+    /// This implementation is for fitting problems with multiple right hand sides.
+    /// Thus, the coefficients vectors for the individual
+    /// members of the datasets are the colums of the returned matrix. That means
+    /// one coefficient vector for each right hand side.
+    pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
+        self.problem.linear_coefficients().map(|m| {
+            debug_assert_eq!(m.ncols(),1,"Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!");
+             m.column(0)
+        })
+    }
+}
+
 impl<Model, const MRHS: bool> FitResult<Model, MRHS>
 // take trait bounds from above:
 where
@@ -70,17 +109,6 @@ where
     /// the fitting process has finished.
     pub fn nonlinear_parameters(&self) -> OVector<Model::ScalarType, Dyn> {
         self.problem.model().params()
-    }
-
-    /// convenience function to get the linear coefficients after the fit has
-    /// finished
-    ///
-    /// in case of multiple datasets, the coefficients vectors for the individual
-    /// members of the datasets are the colums of the matrix. If the problem
-    /// only has a single right hand side, then the matrix will have one column
-    /// only.
-    pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
-        self.problem.linear_coefficients().cloned()
     }
 
     /// whether the fit was deemeed successful. The fit might still be not
@@ -259,15 +287,29 @@ where
 /// This is a the problem of fitting the separable model to data in a form that the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate can use it to
 /// perform the least squares fit.
+///
 /// # Construction
+///
 /// Use the [LevMarProblemBuilder](self::builder::LevMarProblemBuilder) to create an instance of a
 /// levmar problem.
+///
 /// # Usage
+///
 /// After obtaining an instance of `LevMarProblem` we can pass it to the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
 /// structure of the levenberg_marquardt crate for minimization. Refer to the documentation of the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) for an overview. A usage example
 /// is provided in this crate documentation as well. The [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
 /// solver is reexported by this module as [LevMarSolver](self::LevMarSolver) for naming consistency.
+///
+/// # MRHS: Multiple Right Hand Sides
+///
+/// The problem generic on the boolean `MRHS` which indicates whether the
+/// problem fits a single (`MRHS == false`) or multiple (`MRHS == true`) right
+/// hand sides. This is decided during the building process. The underlying
+/// math does not change, but the interface changes to use vectors for coefficients
+/// and data in case of a single right hand side. For multiple right hand sides,
+/// the coefficients and the data are matrices corresponding to columns of
+/// coefficient vectors and data vectors respectively.
 #[derive(Clone)]
 #[allow(non_snake_case)]
 pub struct LevMarProblem<Model, const MRHS: bool>
@@ -275,8 +317,11 @@ where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
 {
-    /// the *weighted* data vector to which to fit the model `$\vec{y}_w$`
-    /// **Attention** the data vector is weighted with the weights if some weights
+    /// the *weighted* data matrix to which to fit the model `$\boldsymbol{Y}_w$`.
+    /// It is a matrix so it can accomodate multiple right hand sides. If
+    /// the problem has only a single right hand side (MRHS = false), this is just
+    /// a matrix with one column. The underlying math does not change in either case.
+    /// **Attention** the data matrix is weighted with the weights if some weights
     /// where provided (otherwise it is unweighted)
     Y_w: DMatrix<Model::ScalarType>,
     /// a reference to the separable model we are trying to fit to the data

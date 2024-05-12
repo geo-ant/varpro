@@ -37,9 +37,7 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization<Model, const MRHS: bool>(
-    problem: LevMarProblem<Model, MRHS>,
-) -> (DVector<f64>, DMatrix<f64>)
+fn run_minimization_mrhs<Model>(problem: LevMarProblem<Model, true>) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
 {
@@ -48,7 +46,7 @@ where
         .expect("fitting must exit successfully");
     let params = result.nonlinear_parameters();
     let coeff = result.linear_coefficients().unwrap();
-    (params, coeff)
+    (params, coeff.into_owned())
 }
 
 fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
@@ -77,7 +75,7 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
                     DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
                 )
             },
-            run_minimization,
+            run_minimization_mrhs,
             criterion::BatchSize::SmallInput,
         )
     });
@@ -93,7 +91,7 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
                     ),
                 )
             },
-            run_minimization,
+            run_minimization_mrhs,
             criterion::BatchSize::SmallInput,
         )
     });
