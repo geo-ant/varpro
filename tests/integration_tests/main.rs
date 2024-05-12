@@ -179,7 +179,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     );
 
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
 
@@ -192,6 +192,8 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         statistics.weighted_residuals(),
         epsilon = 1e-5
     );
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-5);
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
     let (tau1_index, tau2_index) =
@@ -475,7 +477,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
 
     let model = OLearyExampleModel::new(t, initial_guess);
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .observations(y.clone())
         .weights(w)
         .build()
         .unwrap();
@@ -487,6 +489,9 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         fit_result.minimization_report.termination.was_successful(),
         "fitting did not terminate successfully"
     );
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-2);
+
     let alpha_fit = fit_result.nonlinear_parameters();
     let c_fit = fit_result
         .linear_coefficients()
@@ -587,7 +592,7 @@ fn test_oleary_example_with_separable_model() {
 
     let model = o_leary_example_model(t, initial_guess);
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .observations(y.clone())
         .weights(w)
         .build()
         .unwrap();
@@ -599,6 +604,9 @@ fn test_oleary_example_with_separable_model() {
         fit_result.minimization_report.termination.was_successful(),
         "fitting did not terminate successfully"
     );
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-2);
+
     let alpha_fit = fit_result.nonlinear_parameters();
     let c_fit = fit_result
         .linear_coefficients()
