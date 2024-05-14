@@ -138,7 +138,7 @@
 //!
 //! ```no_run
 //! # use varpro::model::*;
-//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
 //! use varpro::solvers::levmar::LevMarSolver;
 //! let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! ```
@@ -153,7 +153,7 @@
 //! ```no_run
 //! # use varpro::model::SeparableModel;
 //! # use varpro::prelude::*;
-//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>> = unimplemented!();
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
 //! # use varpro::solvers::levmar::LevMarSolver;
 //! # let fit_result = LevMarSolver::new().fit(problem).unwrap();
 //! let alpha = fit_result.nonlinear_parameters();
@@ -227,7 +227,7 @@
 //! # let x = DVector::from_vec(vec![0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.]);
 //! # let y = DVector::from_vec(vec![1.0,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1,0.01]);
 //!
-//! //1. create the model by giving only the nonlinear parameter names it depends on
+//! // 1. create the model by giving only the nonlinear parameter names it depends on
 //! let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
 //!     // add the first exponential decay and its partial derivative to the model
 //!     // give all parameter names that the function depends on
