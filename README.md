@@ -109,9 +109,10 @@ information after the fit has finished.
 
 ### Global Fitting of Multiple Right Hand Sides
 
-Before, we have passed a single column vector as the observations. It is also
-possible to pass a matrix, whose columns represent individual observations. We
-are now fitting a problem with multiple right hand sides. `vapro` will performa a _global fit_
+In the example above, we have passed a single column vector as the observations.
+The library also allows fitting multiple right hand sides. Those are described
+as a matrix, whose columns represent individual observations. When fitting multiple 
+right hand sides, `vapro` will performa a _global fit_
 in which the nonlinear parameters are optimized across all right hand sides, but
 linear parameters of the fit are optimized for each right hand side individually.
 

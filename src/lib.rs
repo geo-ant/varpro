@@ -155,7 +155,7 @@
 //! # use varpro::prelude::*;
 //! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
 //! # use varpro::solvers::levmar::LevMarSolver;
-//! # let fit_result = LevMarSolver::new().fit(problem).unwrap();
+//! # let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! let alpha = fit_result.nonlinear_parameters();
 //! let coeff = fit_result.linear_coefficients().unwrap();
 //! ```
@@ -252,7 +252,7 @@
 //!     .build()
 //!     .unwrap();
 //! // 4. Solve using the fitting problem
-//! let fit_result = LevMarSolver::new()
+//! let fit_result = LevMarSolver::default()
 //!     .fit(problem)
 //!     .expect("fit must succeed");
 //! // the nonlinear parameters after fitting
@@ -332,7 +332,7 @@
 //!     .unwrap();
 //!
 //! // fit the data
-//! let fit_result = LevMarSolver::new()
+//! let fit_result = LevMarSolver::default()
 //!                 .fit(problem)
 //!                 .expect("fit must succeed");
 //! // the nonlinear parameters
@@ -342,25 +342,71 @@
 //! ```
 //! # Global Fitting with Multiple Right Hand Sides
 //!
-//! This is an application that lets varpro really shine. It solves the following
-//! problem:
+//! Instead of fitting a single data vector (i.e. a single _right hand side_),
+//! this library can also solve a related, but slightly different problem. This
+//! is the problem of global fitting for _multiple right hand sides_. The problem
+//! statement is the following:
+//!
 //!  * We have not only one observation but a set `$\{\vec{y}_s\}$`, `$s=1,...,S$` of
 //! observations.
 //!  * We want to fit the separable nonlinear function `$\vec{f}(\vec{\alpha},\vec{c})$`
 //! to all vectors of observations, but in such a way that the linear parameters
-//! are allowed to be different for each vector, but the nonlinear parameters
+//! are allowed to vary with `$s$`, but the nonlinear parameters
 //! are the same for the whole dataset.
 //!
 //! This is called global fitting with multiple right hand sides,
 //! because the nonlinear parameters are not
 //! allowed to change and are optimized for the complete dataset, whereas the linear
-//! parameters are allowed to vary with each vector of observations. For a more
-//! in depth explanation [see my article here](https://geo-ant.github.io/blog/2024/variable-projection-part-2-multiple-right-hand-sides/).
+//! parameters are allowed to vary with each vector of observations. This is an application
+//! where varpro really shines. Note that it is not the same as fitting the data
+//! vectors independently. For a more in depth explanation
+//! [see my article here](https://geo-ant.github.io/blog/2024/variable-projection-part-2-multiple-right-hand-sides/).
 //!
 //! To take advantage of global fitting we don't need to change anything about the
-//! model or the building process. The only difference is that we now pass a matrix
-//! as the observations rather than a single vector. The columns in the matrix
-//! correspond to the observations.
+//! model, we just have to make a slight modification to the way we build a problem.
+//!
+//! ## Example
+//! ```no_run
+//! # use varpro::prelude::*;
+//! # use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+//! # let model : varpro::model::SeparableModel::<f64> = unimplemented!();
+//! # let Y : nalgebra::DMatrix::<f64> = unimplemented!();
+//! # let w : nalgebra::DVector::<f64> = unimplemented!();
+//!
+//! // use the model as before but now invoke the `mrhs`
+//! // constructor for the fitting problem
+//! let problem = LevMarProblemBuilder::mrhs(model)
+//! // the observations is a matrix where each column vector represents
+//! // a single observation
+//!     .observations(Y)
+//!     .weights(w)
+//!     .build()
+//!     .unwrap();
+//!
+//! // fit the data
+//! let fit_result = LevMarSolver::default()
+//!                 .fit(problem)
+//!                 .expect("fit must succeed");
+//!
+//! // the nonlinear parameters
+//! // these parameters are fitted globally, meaning they
+//! // are the same for each observation. Hence alpha is a single
+//! // vector of parameters.
+//! let alpha = fit_result.nonlinear_parameters();
+//!
+//! // the linear coefficients
+//! // those are a matrix for global fitting with multiple right hand sides.
+//! // Each colum corresponds to the linear coefficients for the same column
+//! // in the matrix of observations Y.
+//! # #[allow(non_snake_case)]
+//! let C  = fit_result.linear_coefficients().unwrap();
+//! ```
+//!
+//! The main difference to fitting problems with a single right hand side is that
+//! the observations now become a matrix. Each column of this matrix is an
+//! observation. Since the linear coefficients are allowed to vary, they now
+//! also become a matrix instead of a single vector. Each column corresponds to
+//! the best fit linear coefficients of the observations in the same matrix column.
 //!
 //! # References and Further Reading
 //! (O'Leary2013) O’Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems. *Comput Optim Appl* **54**, 579–593 (2013). DOI: [10.1007/s10589-012-9492-9](https://doi.org/10.1007/s10589-012-9492-9)
