@@ -13,10 +13,11 @@ c2 = 6.8
 c3 = 1.6
 tau1 = 2.4
 tau2 = 6.0
+ndata = 1000
 
 np.random.seed(0xdeadbeef)
-tdata = np.linspace(0,20,1000)
-ydata = multiexp_decay(tdata,c1,c2,c3,tau1,tau2)+np.random.normal(size=1000,scale=0.01);
+tdata = np.linspace(0,20,ndata)
+ydata = multiexp_decay(tdata,c1,c2,c3,tau1,tau2)+np.random.normal(size=ndata,scale=0.01);
 
 model = lm.Model(multiexp_decay)
 
