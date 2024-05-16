@@ -15,7 +15,9 @@ tau1 = 2.4
 tau2 = 6.0
 ndata = 1000
 
+# to have reproducible results
 np.random.seed(0xdeadbeef)
+
 tdata = np.linspace(0,20,ndata)
 ydata = multiexp_decay(tdata,c1,c2,c3,tau1,tau2)+np.random.normal(size=ndata,scale=0.01);
 
@@ -26,7 +28,13 @@ params = model.make_params(c1 = 1.0,c2 = 5, c3 = 0.3,tau1 = 1.,tau2 = 7.)
 result = model.fit(ydata,params,t=tdata)
 
 print(result.fit_report())
-cb = result.eval_uncertainty(sigma=0.88,dscale = 0.0001);
+confidence_radius = result.eval_uncertainty(sigma=0.88,dscale = 0.0001);
 
 # print(cb)
-print(result.ci_report())
+# print(result.ci_report())
+
+# now write the data and the results to disk
+# as raw float 64 values
+ydata.astype(np.float64).tofile(f"ydata_{ndata}_64bit.raw");
+confidence_radius.astype(np.float64).tofile(f"conf_{ndata}_64bit.raw");
+print(result.params)
