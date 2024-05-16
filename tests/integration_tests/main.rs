@@ -461,6 +461,11 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
 }
 
 #[test]
+fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit() {
+    todo!()
+}
+
+#[test]
 // this also tests the correct application of weights
 fn oleary_example_with_handrolled_model_produces_correct_results() {
     // those are the initial guesses from the example in the oleary matlab code
