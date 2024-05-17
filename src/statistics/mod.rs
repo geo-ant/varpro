@@ -270,7 +270,7 @@ where
         );
 
         let t_scale = distrs::StudentsT::ppf(
-            probability.into_f64(),
+            (probability.into_f64() + 1.) / 2.,
             f64::from_usize(self.degrees_of_freedom).expect("failed int to float conversion"),
         );
 
@@ -368,15 +368,15 @@ where
         // the names are taken from the paper
         let H = weights * J.clone();
         let weighted_residuals = weighted_data - weights * model.eval()? * linear_coefficients;
-        let degrees_of_freedom = model.parameter_count() + model.base_function_count();
-        if output_len <= degrees_of_freedom {
+        let total_parameter_count = model.parameter_count() + model.base_function_count();
+        if output_len <= total_parameter_count {
             return Err(Error::Underdetermined);
         }
 
         let sigma: Model::ScalarType = weighted_residuals.norm()
             / Float::sqrt(
-                Model::ScalarType::from_usize(output_len - degrees_of_freedom).ok_or(
-                    Error::IntegerToFloatConversion(output_len - degrees_of_freedom),
+                Model::ScalarType::from_usize(output_len - total_parameter_count).ok_or(
+                    Error::IntegerToFloatConversion(output_len - total_parameter_count),
                 )?,
             );
 
@@ -420,7 +420,7 @@ where
             weighted_residuals,
             sigma,
             linear_coefficient_count: model.base_function_count(),
-            degrees_of_freedom,
+            degrees_of_freedom: model.output_len() - total_parameter_count,
             nonlinear_parameter_count: model.parameter_count(),
             unscaled_confidence_sigma,
         })

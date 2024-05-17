@@ -499,23 +499,17 @@ fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit()
     assert_relative_eq!(2.40392137, tau1_calc, epsilon = 1e-5);
     assert_relative_eq!(5.99571068, tau2_calc, epsilon = 1e-5);
 
+    // covariance matrix is correct
     let expected_covmat = DMatrix::from_row_slice(5, 5, &covmat);
     let calculated_covmat = fit_stat.covariance_matrix();
     assert_relative_eq!(expected_covmat, calculated_covmat, epsilon = 1e-6);
 
-    // panic!(
-    //     "{:#?}",
-    //     DVector::from_vec(conf_radius) - fit_stat.confidence_band_radius(0.88)
-    // );
-
     // now for the confidence intervals
-    // assert_relative_eq!(
-    //     DVector::from_vec(conf_radius),
-    //     fit_stat.confidence_band_radius(0.88),
-    //     epsilon = 1e-4,
-    // );
-
-    todo!()
+    assert_relative_eq!(
+        DVector::from_vec(conf_radius),
+        fit_stat.confidence_band_radius(0.88),
+        epsilon = 1e-6,
+    );
 }
 
 // helper function to read a vector of f64 from a file
