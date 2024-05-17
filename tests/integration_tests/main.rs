@@ -462,13 +462,21 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
 
 #[test]
 fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit() {
+    // I have python scripts using the lmfit package that allow me to test
+    // my results.
     // this tests against the file python/multiexp_decay.py
     // see there for more details. The parameters are taken from there.
 
-    let x = read_vec_f64("test_assets/xdata_1000_64bit.raw", Some(1000));
-    let y = read_vec_f64("test_assets/ydata_1000_64bit.raw", Some(1000));
-    let conf_radius = read_vec_f64("test_assets/conf_1000_64bit.raw", Some(1000));
-    let covmat = read_vec_f64("test_assets/covmat_5x5_64bit.raw", Some(25));
+    let x = read_vec_f64(
+        "test_assets/multiexp_decay/xdata_1000_64bit.raw",
+        Some(1000),
+    );
+    let y = read_vec_f64(
+        "test_assets/multiexp_decay/ydata_1000_64bit.raw",
+        Some(1000),
+    );
+    let conf_radius = read_vec_f64("test_assets/multiexp_decay/conf_1000_64bit.raw", Some(1000));
+    let covmat = read_vec_f64("test_assets/multiexp_decay/covmat_5x5_64bit.raw", Some(25));
     let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
     let problem = LevMarProblemBuilder::new(model)
         .observations(DVector::from_vec(y))
@@ -498,6 +506,74 @@ fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit()
     assert_relative_eq!(1.59995673, a3_calc, epsilon = 1e-5);
     assert_relative_eq!(2.40392137, tau1_calc, epsilon = 1e-5);
     assert_relative_eq!(5.99571068, tau2_calc, epsilon = 1e-5);
+
+    // covariance matrix is correct
+    let expected_covmat = DMatrix::from_row_slice(5, 5, &covmat);
+    let calculated_covmat = fit_stat.covariance_matrix();
+    assert_relative_eq!(expected_covmat, calculated_covmat, epsilon = 1e-6);
+
+    // now for the confidence intervals
+    assert_relative_eq!(
+        DVector::from_vec(conf_radius),
+        fit_stat.confidence_band_radius(0.88),
+        epsilon = 1e-6,
+    );
+}
+
+#[test]
+fn weighted_double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit() {
+    // I have python scripts using the lmfit package that allow me to test
+    // my results.
+    // this tests against the file python/weighted_multiexp_decay.py
+    // see there for more details. The parameters are taken from there.
+
+    let x = read_vec_f64(
+        "test_assets/weighted_multiexp_decay/xdata_1000_64bit.raw",
+        Some(1000),
+    );
+    let y = DVector::from_vec(read_vec_f64(
+        "test_assets/weighted_multiexp_decay/ydata_1000_64bit.raw",
+        Some(1000),
+    ));
+    let conf_radius = read_vec_f64(
+        "test_assets/weighted_multiexp_decay/conf_1000_64bit.raw",
+        Some(1000),
+    );
+    let covmat = read_vec_f64(
+        "test_assets/weighted_multiexp_decay/covmat_5x5_64bit.raw",
+        Some(25),
+    );
+    let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
+    let problem = LevMarProblemBuilder::new(model)
+        .observations(y.clone())
+        // in the python script we also apply these weights
+        .weights(y.map(|v| 1. / v.sqrt()))
+        .build()
+        .expect("building the lev mar problem must not fail");
+
+    let (fit_result, fit_stat) = LevMarSolver::default()
+        .fit_with_statistics(problem)
+        .expect("fitting must not fail");
+
+    // extract the calculated paramters, because tau1 and tau2 might switch places here
+    let tau1_calc = fit_result.nonlinear_parameters()[0];
+    let tau2_calc = fit_result.nonlinear_parameters()[1];
+    let coeff = fit_result
+        .linear_coefficients()
+        .expect("linear coefficients must exist");
+    let a1_calc = coeff[0];
+    let a2_calc = coeff[1];
+    let a3_calc = coeff[2];
+
+    // parameters are taken from the python/weighted_multiexp_decay
+    // script in the root dir of this library. We compare against the
+    // fit results of the python lmfit library
+    // run the script to see the output
+    assert_relative_eq!(2.24275841, a1_calc, epsilon = 1e-5);
+    assert_relative_eq!(6.75609070, a2_calc, epsilon = 1e-5);
+    assert_relative_eq!(1.59790007, a3_calc, epsilon = 1e-5);
+    assert_relative_eq!(2.43119160, tau1_calc, epsilon = 1e-5);
+    assert_relative_eq!(6.02052311, tau2_calc, epsilon = 1e-5);
 
     // covariance matrix is correct
     let expected_covmat = DMatrix::from_row_slice(5, 5, &covmat);
