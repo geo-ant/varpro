@@ -31,6 +31,7 @@ shared_test_code = { path = "./shared_test_code" }
 assert_matches = "1.5"
 mockall = "0.11"
 rand = "0.8"
+byteorder = "1.5"
 
 [[bench]]
 name = "double_exponential_without_noise"

@@ -462,7 +462,81 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
 
 #[test]
 fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit() {
+    // this tests against the file python/multiexp_decay.py
+    // see there for more details. The parameters are taken from there.
+
+    let x = read_vec_f64("test_assets/xdata_1000_64bit.raw", Some(1000));
+    let y = read_vec_f64("test_assets/ydata_1000_64bit.raw", Some(1000));
+    let conf_radius = read_vec_f64("test_assets/conf_1000_64bit.raw", Some(1000));
+    let covmat = read_vec_f64("test_assets/covmat_5x5_64bit.raw", Some(25));
+    let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
+    let problem = LevMarProblemBuilder::new(model)
+        .observations(DVector::from_vec(y))
+        .build()
+        .expect("building the lev mar problem must not fail");
+
+    let (fit_result, fit_stat) = LevMarSolver::default()
+        .fit_with_statistics(problem)
+        .expect("fitting must not fail");
+
+    // extract the calculated paramters, because tau1 and tau2 might switch places here
+    let tau1_calc = fit_result.nonlinear_parameters()[0];
+    let tau2_calc = fit_result.nonlinear_parameters()[1];
+    let coeff = fit_result
+        .linear_coefficients()
+        .expect("linear coefficients must exist");
+    let a1_calc = coeff[0];
+    let a2_calc = coeff[1];
+    let a3_calc = coeff[2];
+
+    // parameters are taken from the python/multiexp_decay
+    // script in the root dir of this library. We compare against the
+    // fit results of the python lmfit library
+    // run the script to see the output
+    assert_relative_eq!(2.19344628, a1_calc, epsilon = 1e-5);
+    assert_relative_eq!(6.80462652, a2_calc, epsilon = 1e-5);
+    assert_relative_eq!(1.59995673, a3_calc, epsilon = 1e-5);
+    assert_relative_eq!(2.40392137, tau1_calc, epsilon = 1e-5);
+    assert_relative_eq!(5.99571068, tau2_calc, epsilon = 1e-5);
+
+    let expected_covmat = DMatrix::from_row_slice(5, 5, &covmat);
+    let calculated_covmat = fit_stat.covariance_matrix();
+    assert_relative_eq!(expected_covmat, calculated_covmat, epsilon = 1e-6);
+
+    // panic!(
+    //     "{:#?}",
+    //     DVector::from_vec(conf_radius) - fit_stat.confidence_band_radius(0.88)
+    // );
+
+    // now for the confidence intervals
+    // assert_relative_eq!(
+    //     DVector::from_vec(conf_radius),
+    //     fit_stat.confidence_band_radius(0.88),
+    //     epsilon = 1e-4,
+    // );
+
     todo!()
+}
+
+// helper function to read a vector of f64 from a file
+fn read_vec_f64(path: impl AsRef<std::path::Path>, size_hint: Option<usize>) -> Vec<f64> {
+    use byteorder::{LittleEndian, ReadBytesExt};
+    let mut vect = Vec::with_capacity(size_hint.unwrap_or(1024));
+
+    let f = std::fs::File::open(path).expect("error opening file");
+    let mut r = std::io::BufReader::new(f);
+
+    loop {
+        match r.read_f64::<LittleEndian>() {
+            Ok(val) => {
+                vect.push(val);
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(_e) => panic!("error parsing file"),
+        }
+    }
+
+    vect
 }
 
 #[test]

@@ -28,7 +28,7 @@ params = model.make_params(c1 = 1.0,c2 = 5, c3 = 0.3,tau1 = 1.,tau2 = 7.)
 result = model.fit(ydata,params,t=tdata)
 
 print(result.fit_report())
-confidence_radius = result.eval_uncertainty(sigma=0.88,dscale = 0.0001);
+confidence_radius = result.eval_uncertainty(sigma=0.88,dscale = 0.0000001);
 
 # print(cb)
 # print(result.ci_report())
@@ -38,3 +38,6 @@ confidence_radius = result.eval_uncertainty(sigma=0.88,dscale = 0.0001);
 tdata.astype(np.float64).tofile(f"xdata_{ndata}_64bit.raw");
 ydata.astype(np.float64).tofile(f"ydata_{ndata}_64bit.raw");
 confidence_radius.astype(np.float64).tofile(f"conf_{ndata}_64bit.raw");
+
+cov = result.covar.astype(np.float64);
+cov.tofile(f"covmat_{cov.shape[0]}x{cov.shape[1]}_64bit.raw");
