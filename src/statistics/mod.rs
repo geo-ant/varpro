@@ -369,15 +369,15 @@ where
         let H = weights * J.clone();
         let weighted_residuals = weighted_data - weights * model.eval()? * linear_coefficients;
         let total_parameter_count = model.parameter_count() + model.base_function_count();
+        let degrees_of_freedom = output_len - total_parameter_count;
         if output_len <= total_parameter_count {
             return Err(Error::Underdetermined);
         }
 
         let sigma: Model::ScalarType = weighted_residuals.norm()
             / Float::sqrt(
-                Model::ScalarType::from_usize(output_len - total_parameter_count).ok_or(
-                    Error::IntegerToFloatConversion(output_len - total_parameter_count),
-                )?,
+                Model::ScalarType::from_usize(degrees_of_freedom)
+                    .ok_or(Error::IntegerToFloatConversion(degrees_of_freedom))?,
             );
 
         let HTH_inv = (H.transpose() * H)
@@ -420,7 +420,7 @@ where
             weighted_residuals,
             sigma,
             linear_coefficient_count: model.base_function_count(),
-            degrees_of_freedom: model.output_len() - total_parameter_count,
+            degrees_of_freedom,
             nonlinear_parameter_count: model.parameter_count(),
             unscaled_confidence_sigma,
         })
