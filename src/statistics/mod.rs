@@ -404,10 +404,7 @@ where
             .iter_mut()
             // we have to iterate over the columns of J^T (transpose)
             // so we iterate over the rows of J.
-            // @todo this could be made much more maybe by calculating
-            // J in a suitable format from the beginning (or maybe we
-            // can use a better dot product down below that does not
-            // require us to transpose the vector like this
+            // @todo(georgios) check how to make this more efficient (performance)
             .zip(J.row_iter())
             .for_each(|(sig, j)| {
                 let j = j.transpose();
