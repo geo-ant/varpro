@@ -35,6 +35,6 @@ confidence_radius = result.eval_uncertainty(sigma=0.88,dscale = 0.0001);
 
 # now write the data and the results to disk
 # as raw float 64 values
+tdata.astype(np.float64).tofile(f"xdata_{ndata}_64bit.raw");
 ydata.astype(np.float64).tofile(f"ydata_{ndata}_64bit.raw");
 confidence_radius.astype(np.float64).tofile(f"conf_{ndata}_64bit.raw");
-print(result.params)
