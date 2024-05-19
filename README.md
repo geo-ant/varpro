@@ -16,12 +16,12 @@ It uses the VarPro algorithm to achieve this, hence the name.
 This crate implements a powerful algorithm
 to fit model functions to data, but it is restricted to so called _separable_
 models. See the next section for an explanation. The lack of formulas on this 
-site makes it hard to get into the depth of the what and how of this crate at this point.
+site makes it hard to get into detail, see the next sections for a brief overview.
 [Refer to the documentation](https://docs.rs/varpro/) for all the meaty details including the math.
 
 ### What are Separable Models?
 
-Put simply, separable models are nonlinear functions that can be 
+Put simply, separable models are nonlinear functions which can be 
 written as a *linear combination* of some *nonlinear* basis functions.
 A common use case for VarPro is e.g. fitting sums of exponentials,
 which is a notoriously ill-conditioned problem.
@@ -29,18 +29,18 @@ which is a notoriously ill-conditioned problem.
 ### What is VarPro?
 
 Variable Projection (VarPro) is an algorithm that takes advantage of the fact 
-that the given fitting problem can be separated into linear and truly nonlinear parameters.
-The linear parameters are eliminated using some clever linear algebra
-and the fitting problem is cast into a problem that only depends on the nonlinear parameters.
-This reduced problem is then solved by using a common nonlinear fitting algorithm,
+that the given fitting problem can be separated into linear and nonlinear parameters.
+The linear parameters are eliminated using some clever linear algebra, 
+then the fitting problem is cast into a one that only depends on the nonlinear parameters.
+This reduced problem is solved by using a common nonlinear fitting algorithm,
 such as Levenberg-Marquardt (LM).
 
 ### When Should You Give it a Try?
 
 VarPro can dramatically increase the robustness and speed of the fitting process
-compared to using a "normal" nonlinear least squares fitting algorithm. When
+compared to using a more general nonlinear least squares fitting algorithm. When
 
-* the model function you want to fit is a linear combination of nonlinear functions
+* the model function you want to fit is a linear combination of nonlinear functions,
 * _and_ you know the analytical derivatives of all those functions
 
 _then_ you should give it a whirl.
@@ -108,7 +108,7 @@ For more examples please refer to the crate documentation.
 ### Fit Statistics
 
 Additionally to the `fit` member function, the `LevMarSolver` also provides a 
-`fit_with_statistics` function that calculates some additional statistical
+`fit_with_statistics` function that calculates useful additional statistical
 information after the fit has finished.
 
 ### Global Fitting of Multiple Right Hand Sides
@@ -120,12 +120,12 @@ right hand sides, `vapro` will performa a _global fit_
 in which the nonlinear parameters are optimized across all right hand sides, but
 linear parameters of the fit are optimized for each right hand side individually.
 
-This is an application where varpro really shines because it can take advantage
-of the separable nature of the problem. It allows us to perform a global fit over thousands
+This is an application where varpro really shines, since it can take advantage
+of the separable nature of the problem. It allows us to perform a global fit over thousands,
 or even tens of thousands of right hand sides in reasonable time (fractions of seconds to minutes),
 where conventional purely nonlinear solvers must perform much more work.
 
-### Maximum Performance
+### Maximum Performance and Other Use Cases
 
 The example code above will already run many times faster
 than just using a nonlinear solver without the magic of varpro.
@@ -135,6 +135,11 @@ The `SeparableNonlinearModel` trait can be manually
 implemented to describe a model function. This often allows us to shave of the 
 last hundreds of microseconds from the computation e.g. by caching intermediate
 calculations. The crate documentation contains detailed examples.
+
+This interface is not only useful for performance, but also for cases that are difficult
+or impossible to accomodate using only the `SeparableModelBuilder`. It
+was designed for performance and ease of use and should cover most use cases,
+but there are limitations to what it is supposed to do.
 
 ## Acknowledgements
 
