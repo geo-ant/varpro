@@ -507,6 +507,8 @@ fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit()
     assert_relative_eq!(2.40392137, tau1_calc, epsilon = 1e-5);
     assert_relative_eq!(5.99571068, tau2_calc, epsilon = 1e-5);
 
+    assert_relative_eq!(fit_stat.reduced_chi2(), 1.0109e-4, epsilon = 1e-8);
+
     // covariance matrix is correct
     let expected_covmat = DMatrix::from_row_slice(5, 5, &covmat);
     let calculated_covmat = fit_stat.covariance_matrix();
@@ -574,6 +576,13 @@ fn weighted_double_exponential_model_with_noise_gives_same_confidence_interval_a
     assert_relative_eq!(1.59790007, a3_calc, epsilon = 1e-5);
     assert_relative_eq!(2.43119160, tau1_calc, epsilon = 1e-5);
     assert_relative_eq!(6.02052311, tau2_calc, epsilon = 1e-5);
+
+    assert_relative_eq!(fit_stat.reduced_chi2(), 3.2117e-5, epsilon = 1e-8);
+    assert_relative_eq!(
+        fit_stat.reduced_chi2().sqrt(),
+        fit_stat.regression_standard_error(),
+        epsilon = 1e-8
+    );
 
     // covariance matrix is correct
     let expected_covmat = DMatrix::from_row_slice(5, 5, &covmat);
