@@ -51,27 +51,31 @@ The following example shows how to use varpro to fit a double exponential decay
 with constant offset to a data vector `y` obtained at grid points `x`. 
 [Refer to the documentation](https://docs.rs/varpro/) for a more in-depth guide.
 
-The exponential decay and it's derivative are given as:
-
-```rust
-use nalgebra::DVector;
-fn exp_decay(x :&DVector<f64>, tau : f64) -> DVector<f64> {
-  x.map(|x|(-x/tau).exp())
-}
-
-fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) -> DVector<f64> {
-  tvec.map(|t| (-t / tau).exp() * t / tau.powi(2))
-}
-```
-
-The steps to perform the fitting are:
-
 ```rust
 use varpro::prelude::*;
 use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+use nalgebra::{dvector,DVector};
 
-let x = /*time or spatial coordinates of the observations*/;
-let y = /*the observed data we want to fit*/;
+// Define the exponential decay.
+// both of the basis functions in this example
+// are exponential decays
+fn exp_decay(x :&DVector<f64>, tau : f64) 
+  -> DVector<f64> {
+  x.map(|x|(-x/tau).exp())
+}
+
+// the partial derivative of the exponential
+// decay with respect to the nonlinear parameter
+fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) 
+  -> DVector<f64> {
+  tvec.map(|t| (-t / tau)
+    .exp() * t / tau.powi(2))
+}
+
+// temporal or spatial coordintates of the observations
+let x = dvector![0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.];
+// the observations we want to fit
+let y = dvector![6.0,4.8,4.0,3.3,2.8,2.5,2.2,1.9,1.7,1.6,1.5];
 
 // 1. create the model by giving only the nonlinear parameter names it depends on
 let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
@@ -81,7 +85,7 @@ let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
   .partial_deriv("tau2", exp_decay_dtau)
   .invariant_function(|x|DVector::from_element(x.len(),1.))
   .independent_variable(x)
-  .initial_parameters(initial_params)
+  .initial_parameters(vec![2.5,5.5])
   .build()
   .unwrap();
 // 2. Cast the fitting problem as a nonlinear least squares minimization problem
@@ -90,7 +94,7 @@ let problem = LevMarProblemBuilder::new(model)
   .build()
   .unwrap();
 // 3. Solve the fitting problem
-let fit_result = LevMarSolver::new()
+let fit_result = LevMarSolver::default()
     .fit(problem)
     .expect("fit must exit successfully");
 // 4. obtain the nonlinear parameters after fitting
