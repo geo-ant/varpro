@@ -95,9 +95,8 @@ where
     /// standard deviation that we can use in calculation for the
     /// confidence band.
     /// calculated according to eq (97) in
-    /// https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals
-    /// with the difference that the square root has already been
-    /// applied
+    /// [this example](https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals)
+    /// with the difference that the square root has already been applied
     unscaled_confidence_sigma: OVector<Model::ScalarType, Dyn>,
 }
 
