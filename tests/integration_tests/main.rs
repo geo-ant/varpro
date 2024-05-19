@@ -718,7 +718,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     -0.9914,   0.9918,   0.1103,   0.7729,   1.0000;
       ];
     assert_relative_eq!(
-        statistics.calc_correlation_matrix(),
+        statistics.calculate_correlation_matrix(),
         &expected_correlation_matrix,
         epsilon = 1e-4
     );
@@ -857,7 +857,7 @@ fn test_oleary_example_with_separable_model() {
         ],
     );
     assert_relative_eq!(
-        statistics.calc_correlation_matrix(),
+        statistics.calculate_correlation_matrix(),
         &expected_correlation_matrix,
         epsilon = 1e-4
     );

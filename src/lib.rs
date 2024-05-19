@@ -430,5 +430,9 @@ pub mod statistics;
 /// implemented in the nalgebra crate
 pub mod util;
 
+/// a helper module for doctesting code in my readme
+#[cfg(doctest)]
+mod readme;
+
 #[cfg(any(test, doctest))]
 pub mod test_helpers;

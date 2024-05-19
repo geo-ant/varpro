@@ -1,3 +1,4 @@
+use self::numeric_traits::CastF64;
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
     allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix,
@@ -5,8 +6,6 @@ use nalgebra::{
 };
 use num_traits::{Float, FromPrimitive, One, Zero};
 use thiserror::Error as ThisError;
-
-use self::numeric_traits::CastF64;
 
 #[cfg(any(test, doctest))]
 mod test;
@@ -138,7 +137,7 @@ where
     where
         Model::ScalarType: Float,
     {
-        self.calc_correlation_matrix().clone()
+        self.calculate_correlation_matrix().clone()
     }
 
     /// The correlation matrix, ordered the same way as the covariance matrix.
@@ -146,7 +145,7 @@ where
     /// **Note** The correlation matrix is calculated on the fly from the
     /// covariance matrix when this function is called. It is suggested to
     /// store this matrix somewhere to avoid having to recalculate it.
-    pub fn calc_correlation_matrix(&self) -> OMatrix<Model::ScalarType, Dyn, Dyn>
+    pub fn calculate_correlation_matrix(&self) -> OMatrix<Model::ScalarType, Dyn, Dyn>
     where
         Model::ScalarType: Float,
     {
@@ -209,6 +208,12 @@ where
     /// of the fitted model function at the best fit parameters evaluated at
     /// the support points.
     ///
+    /// This function was inspired by the function
+    /// [eval_uncertainty](https://lmfit.github.io/lmfit-py/model.html#lmfit.model.ModelResult.eval_uncertainty)
+    /// of the python package [lmfit](https://lmfit.github.io/lmfit-py/intro.html).
+    /// It will produce an identical result (within numerical accuracy) for the
+    /// same fit, given the same probability level.
+    ///
     /// # Arguments
     ///
     /// * `probability` the confidence level of the confidence interval, expressed
@@ -216,7 +221,7 @@ where
     /// anything in between. Since least squares fitting assumes Gaussian error
     /// distributions, we can use the quantiles of the normal distribution to
     /// relate this to often used "number of sigmas". For example the probability
-    /// `$68.3 \%$` corresponds to `$1\sigma$`.
+    /// `$68.3 \% = 0.683$` corresponds to (approximately) `$1\sigma$`.
     ///
     /// # Returns
     ///
@@ -250,6 +255,12 @@ where
     /// let cb_upper = best_fit + cb_radius;
     /// let cb_lower = best_fit - cb_radius;
     /// ```
+    /// # An Important Note on the Confidence Band Values
+    ///
+    /// ```
+    /// fail!!
+    /// ```
+    ///
     ///
     /// # Panics
     ///
@@ -408,6 +419,9 @@ where
             .zip(J.row_iter())
             .for_each(|(sig, j)| {
                 let j = j.transpose();
+                // in the linked docs, the code is given as a double sum. However,
+                // this can be simplified into a quadratic form b^T A b, where b are the
+                // rows of the Jacobian and A is the covariance matrix.
                 *sig = j.dot(&(&covariance_matrix * &j));
                 *sig = Float::sqrt(*sig);
             });

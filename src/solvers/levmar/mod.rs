@@ -3,7 +3,8 @@ use crate::statistics::FitStatistics;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OMatrix, OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1
+    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OMatrix,
+    OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
 };
 
 mod builder;
@@ -72,7 +73,7 @@ where
     /// Returns None if there was an error during fitting.
     /// Since this is for single right hand sides, the output is
     /// a column vector.
-    pub fn best_fit(&self) -> Option<OMatrix<Model::ScalarType, Dyn,Dyn>> {
+    pub fn best_fit(&self) -> Option<OMatrix<Model::ScalarType, Dyn, Dyn>> {
         let coeff = self.linear_coefficients()?;
         let eval = self.problem.model().eval().ok()?;
         Some(eval * coeff)
@@ -211,7 +212,6 @@ where
             Err(result)
         }
     }
-
 }
 
 impl<Model> LevMarSolver<Model, false>
@@ -409,7 +409,7 @@ where
     ///
     /// This method is for fitting a multiple right hand sides, hence the data
     /// matrix is a matrix that contains the right hand sides as columns.
-    pub fn weighted_data(&self) -> MatrixView<Model::ScalarType,Dyn,Dyn> {
+    pub fn weighted_data(&self) -> MatrixView<Model::ScalarType, Dyn, Dyn> {
         self.Y_w.as_view()
     }
 }
@@ -432,7 +432,7 @@ where
     pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
         self.cached
             .as_ref()
-            .map(|cache|{ 
+            .map(|cache|{
                 debug_assert_eq!(cache.linear_coefficients.ncols(),1,
                     "coefficient matrix must have exactly one column for single right hand side. This indicates a programming error in the library.");
                 cache.linear_coefficients.as_view()
@@ -445,8 +445,8 @@ where
     ///
     /// This method is for fitting a single right hand side, hence the data
     /// is a single column vector.
-    pub fn weighted_data(&self) -> VectorView<Model::ScalarType,Dyn> {
-                debug_assert_eq!(self.Y_w.ncols(),1,
+    pub fn weighted_data(&self) -> VectorView<Model::ScalarType, Dyn> {
+        debug_assert_eq!(self.Y_w.ncols(),1,
                     "data matrix must have exactly one column for single right hand side. This indicates a programming error in the library.");
         self.Y_w.as_view()
     }
@@ -465,7 +465,6 @@ where
     pub fn weights(&self) -> &Weights<Model::ScalarType, Dyn> {
         &self.weights
     }
-
 }
 
 impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
