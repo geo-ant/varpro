@@ -28,7 +28,7 @@ which is a notoriously ill-conditioned problem.
 
 ### What is VarPro?
 
-Variable Projection (VarPro) is an algorithm that exploits that the given fitting
+Variable Projection (VarPro) is an algorithm that exploits that its fitting
 problem can be separated into linear and nonlinear parameters.
 First, the linear parameters are eliminated using some clever linear algebra. Then,
 the fitting problem is rewritten so that it depends only on the nonlinear parameters.
@@ -49,7 +49,7 @@ which provides another great use case for this crate.
 ## Example Usage
 
 The following example shows, how to use this crate to fit a double exponential decay
-with constant offset to a data vector `y` obtained at grid points `x`. 
+with constant offset to a data vector `y` obtained at time points `t`. 
 [Refer to the documentation](https://docs.rs/varpro/) for a more in-depth guide.
 
 ```rust
@@ -60,17 +60,17 @@ use nalgebra::{dvector,DVector};
 // Define the exponential decay e^(-t/tau).
 // Both of the nonlinear basis functions in this example
 // are exponential decays.
-fn exp_decay(x :&DVector<f64>, tau : f64) 
+fn exp_decay(t :&DVector<f64>, tau : f64) 
   -> DVector<f64> {
-  x.map(|x|(-x/tau).exp())
+  t.map(|t|(-t/tau).exp())
 }
 
 // the partial derivative of the exponential
 // decay with respect to the nonlinear parameter tau.
 // d/dtau e^(-t/tau) = e^(-t/tau)*t/tau^2
-fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) 
+fn exp_decay_dtau(t: &DVector<f64>,tau: f64) 
   -> DVector<f64> {
-  tvec.map(|t| (-t / tau)
+  t.map(|t| (-t / tau)
     .exp() * t / tau.powi(2))
 }
 
@@ -151,7 +151,7 @@ contains detailed examples.
 
 This is not only useful for performance, but also for use cases that are difficult
 or impossible to accomodate using only the `SeparableModelBuilder`. The builder
-was created for ease of use and performance, but it has some limitations by design.
+was created for ease of use _and_ performance, but it has some limitations by design.
 
 ## Acknowledgements
 
