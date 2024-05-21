@@ -56,12 +56,20 @@ pub enum LevMarBuilderError {
 ///                 .unwrap();
 /// # }
 /// ```
+///
 /// # Building a Model
-/// A new builder is constructed with the [new](LevMarProblemBuilder::new) method. It must be filled with
+///
+/// A new builder is constructed with the [new](LevMarProblemBuilder::new) constructor. It must be filled with
 /// content using the methods described in the following. After all mandatory fields have been filled,
 /// the [build](LevMarProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
 /// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
 /// it contains an error variant.
+///
+/// ## Multiple Right Hand Sides
+///
+/// We can also construct a problem with multiple right hand sides, using the
+/// [mrhs](LevMarProblemBuilder::mrhs) constructor, see [LevMarProblem] for
+/// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
 pub struct LevMarProblemBuilder<Model, const MRHS: bool>
@@ -95,7 +103,8 @@ where
     Model: SeparableNonlinearModel,
 {
     /// Create a new builder based on the given model for a problem
-    /// with a **single right hand side**.
+    /// with a **single right hand side**. This is the standard use case,
+    /// where the data is a vector that is fitted by the model.
     pub fn new(model: Model) -> Self {
         Self {
             Y: None,
@@ -129,7 +138,15 @@ where
     Model: SeparableNonlinearModel,
 {
     /// Create a new builder based on the given model
-    /// for a problem with **multiple right hand sides**
+    /// for a problem with **multiple right hand sides** and perform a global
+    /// fit.
+    ///
+    /// That means the observations are expected to be a matrix, where the
+    /// columns correspond to the individual observations. The nonlinear
+    /// parameters will be optimized across all the observations, but the
+    /// linear coefficients are calculated for each observation individually.
+    /// Hence, they also become a matrix where the columns correspond to the
+    /// linear coefficients of the observation in the same column.
     pub fn mrhs(model: Model) -> Self {
         Self {
             Y: None,

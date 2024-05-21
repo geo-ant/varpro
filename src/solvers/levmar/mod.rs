@@ -327,7 +327,7 @@ where
 /// is provided in this crate documentation as well. The [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
 /// solver is reexported by this module as [LevMarSolver](self::LevMarSolver) for naming consistency.
 ///
-/// # MRHS: Multiple Right Hand Sides
+/// # `MRHS`: Multiple Right Hand Sides
 ///
 /// The problem generic on the boolean `MRHS` which indicates whether the
 /// problem fits a single (`MRHS == false`) or multiple (`MRHS == true`) right

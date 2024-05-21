@@ -142,6 +142,7 @@
 //! use varpro::solvers::levmar::LevMarSolver;
 //! let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! ```
+//!
 //! Finally, check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
 //! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
 //! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
