@@ -28,10 +28,10 @@ which is a notoriously ill-conditioned problem.
 
 ### What is VarPro?
 
-Variable Projection (VarPro) is an algorithm which exploits that the given fitting
+Variable Projection (VarPro) is an algorithm that exploits that the given fitting
 problem can be separated into linear and nonlinear parameters.
 First, the linear parameters are eliminated using some clever linear algebra. Then,
-the fitting problem is cast into one that depends only on the nonlinear parameters.
+the fitting problem is rewritten so that it depends only on the nonlinear parameters.
 Finally, this reduced problem is solved by using a general purpose nonlinear minimization algorithm,
 such as Levenberg-Marquardt (LM).
 
@@ -48,7 +48,7 @@ which provides another great use case for this crate.
 
 ## Example Usage
 
-The following example shows how to use varpro to fit a double exponential decay
+The following example shows, how to use this crate to fit a double exponential decay
 with constant offset to a data vector `y` obtained at grid points `x`. 
 [Refer to the documentation](https://docs.rs/varpro/) for a more in-depth guide.
 
@@ -75,7 +75,7 @@ fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64)
 }
 
 // temporal (or spatial) coordintates of the observations
-let x = dvector![0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.];
+let t = dvector![0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.];
 // the observations we want to fit
 let y = dvector![6.0,4.8,4.0,3.3,2.8,2.5,2.2,1.9,1.7,1.6,1.5];
 
@@ -93,9 +93,9 @@ let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
   // a constant offset is added as an invariant basefunction
   // as a vector of ones. It is multiplied with its own linear coefficient,
   // creating a fittable offset
-  .invariant_function(|x|DVector::from_element(x.len(),1.))
+  .invariant_function(|v|DVector::from_element(v.len(),1.))
   // give the coordinates of the problem
-  .independent_variable(x)
+  .independent_variable(t)
   // provide guesses only for the nonlinear parameters in the
   // order that they were given on construction.
   .initial_parameters(vec![2.5,5.5])
@@ -116,11 +116,11 @@ let alpha = fit_result.nonlinear_parameters();
 let c = fit_result.linear_coefficients().unwrap();
 ```
 
-For more examples please refer to the crate documentation.
+For more in depth examples, please refer to the crate documentation.
 
 ### Fit Statistics
 
-Additionally to the `fit` member function, the `LevMarSolver` also provides a 
+Additionally to the `fit` member function, the `LevMarSolver` provides a 
 `fit_with_statistics` function that calculates quite a bit of useful additional statistical
 information.
 
@@ -128,29 +128,28 @@ information.
 
 In the example above, we have passed a single column vector as the observations.
 The library also allows fitting multiple right hand sides, by constructing a
-problem via `LevMarProblemBuilder::mrhs`. In this case, the observations expected
-to be a matrix, whose columns represent individual observations. When fitting multiple 
-right hand sides, `vapro` will performa a _global fit_
-in which the nonlinear parameters are optimized across all right hand sides, but
-linear coefficients of the fit are optimized for each right hand side individually.
+problem via `LevMarProblemBuilder::mrhs`. When fitting multiple right hand sides,
+`vapro` will performa a _global fit_, in which the nonlinear parameters are optimized
+across all right hand sides, but linear coefficients of the fit are optimized for
+each right hand side individually.
 
 This is another application where varpro really shines, since it can take advantage
 of the separable nature of the problem. It allows us to perform a global fit over thousands,
 or even tens of thousands of right hand sides in reasonable time (fractions of seconds to minutes),
 where conventional purely nonlinear solvers must perform much more work.
 
-### Maximum Performance and Other Use Cases
+### Maximum Performance and Advanced Use Cases
 
 The example code above will already run many times faster
 than just using a nonlinear solver without the magic of varpro.
-But this crate offers an additional way to eek out the last bits of  performance.
+But this crate offers an additional way to eek out the last bits of performance.
 
-The `SeparableNonlinearModel` trait can be manually
-implemented to describe a model function. This often allows us to shave of the 
-last hundreds of microseconds from the computation, e.g. by caching intermediate
-calculations. The crate documentation contains detailed examples.
+The `SeparableNonlinearModel` trait can be manually implemented to describe a
+model function. This often allows us to shave of the last hundreds of microseconds
+from the computation, e.g. by caching intermediate calculations. The crate documentation
+contains detailed examples.
 
-This interface is not only useful for performance, but also for use cases that are difficult
+This is not only useful for performance, but also for use cases that are difficult
 or impossible to accomodate using only the `SeparableModelBuilder`. The builder
 was created for ease of use and performance, but it has some limitations by design.
 
