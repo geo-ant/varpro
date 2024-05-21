@@ -3,6 +3,18 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.9.0
+
+- We can now calculate confidence bands using via `FitStatistics`. Only available
+for problems with a single RHS, though. 
+- The API for calculating the correlation matrix changed to on-the-fly
+calculations, deprecated (a drop-in replacement) for the old API.
+- Cleaner separation (API changes) for problems with single and multiple right
+hand sides.
+- Removed some overly clever (but ultimately bad) generics from the `SeparableModelBuilder`
+that were making it hard to use to add functions in a loop. State machine is now
+a runtime thing.
+
 ## 0.8.0 Multiple Right Hand Sides
 
 - Observations can now be a matrix, in this case a global fit with multiple right

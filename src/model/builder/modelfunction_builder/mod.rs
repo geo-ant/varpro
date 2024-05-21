@@ -19,7 +19,7 @@ use crate::model::model_basis_function::ModelBasisFunction;
 /// (all other derivatives are zero, because the function does not depends on other params)
 ///
 #[doc(hidden)]
-pub(crate) struct ModelBasisFunctionBuilder<ScalarType>
+pub struct ModelBasisFunctionBuilder<ScalarType>
 where
     ScalarType: Scalar,
 {

@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DMatrix, DVector, Dyn, OVector, Scalar};
+use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
@@ -11,7 +11,7 @@ use thiserror::Error as ThisError;
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 pub enum LevMarBuilderError {
     /// the data for y variable was not given to the builder
-    #[error("Data for vector y not provided.")]
+    #[error("Right hand side(s) not provided")]
     YDataMissing,
 
     /// x and y vector have different lengths
@@ -38,31 +38,6 @@ pub enum LevMarBuilderError {
     InvalidLengthOfWeights,
 }
 
-/// a type describing the observation `$\vec{y}$` or `$\boldsymbol{Y}$` that we want to fit
-/// with a model. The observation can either be create from a single column vector, corresponding
-/// to the common case of fitting a single right hand side with a model. It can
-/// also be create from a matrix, which corresponds to a global fitting problem
-/// with multiple right hand sides. The observations in this case are a matrix
-/// where each _column_ represents an observation.
-pub struct Observation<T> {
-    data: DMatrix<T>,
-}
-
-// construct the obseration from a single vector or matrix
-impl<T> From<DMatrix<T>> for Observation<T> {
-    fn from(data: DMatrix<T>) -> Self {
-        Self { data }
-    }
-}
-
-impl<T: Scalar> From<DVector<T>> for Observation<T> {
-    fn from(data: DVector<T>) -> Self {
-        Self {
-            data: DMatrix::from_column_slice(data.nrows(), 1, data.as_slice()),
-        }
-    }
-}
-
 /// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
 /// fitting a separable model to data.
 /// # Example
@@ -81,15 +56,23 @@ impl<T: Scalar> From<DVector<T>> for Observation<T> {
 ///                 .unwrap();
 /// # }
 /// ```
+///
 /// # Building a Model
-/// A new builder is constructed with the [new](LevMarProblemBuilder::new) method. It must be filled with
+///
+/// A new builder is constructed with the [new](LevMarProblemBuilder::new) constructor. It must be filled with
 /// content using the methods described in the following. After all mandatory fields have been filled,
 /// the [build](LevMarProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
 /// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
 /// it contains an error variant.
+///
+/// ## Multiple Right Hand Sides
+///
+/// We can also construct a problem with multiple right hand sides, using the
+/// [mrhs](LevMarProblemBuilder::mrhs) constructor, see [LevMarProblem] for
+/// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemBuilder<Model>
+pub struct LevMarProblemBuilder<Model, const MRHS: bool>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -111,7 +94,7 @@ where
     weights: Weights<Model::ScalarType, Dyn>,
 }
 
-impl<Model> LevMarProblemBuilder<Model>
+impl<Model> LevMarProblemBuilder<Model, false>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -119,7 +102,9 @@ where
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
 {
-    /// Create a new builder based on the given model
+    /// Create a new builder based on the given model for a problem
+    /// with a **single right hand side**. This is the standard use case,
+    /// where the data is a vector that is fitted by the model.
     pub fn new(model: Model) -> Self {
         Self {
             Y: None,
@@ -128,7 +113,48 @@ where
             weights: Weights::default(),
         }
     }
+    /// **Mandatory**: Set the data which we want to fit: since this
+    /// is called on a model builder for problems with **single right hand sides**,
+    /// this is a column vector `$\vec{y}=\vec{y}(\vec{x})$` containing the
+    /// values we want to fit with the model.
+    ///
+    /// The length of `$\vec{y}` and the output dimension of the model must be
+    /// the same.
+    pub fn observations(self, observed: OVector<Model::ScalarType, Dyn>) -> Self {
+        let nrows = observed.nrows();
+        Self {
+            Y: Some(observed.reshape_generic(Dyn(nrows), Dyn(1))),
+            ..self
+        }
+    }
+}
 
+impl<Model> LevMarProblemBuilder<Model, true>
+where
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
+    Model: SeparableNonlinearModel,
+{
+    /// Create a new builder based on the given model
+    /// for a problem with **multiple right hand sides** and perform a global
+    /// fit.
+    ///
+    /// That means the observations are expected to be a matrix, where the
+    /// columns correspond to the individual observations. The nonlinear
+    /// parameters will be optimized across all the observations, but the
+    /// linear coefficients are calculated for each observation individually.
+    /// Hence, they also become a matrix where the columns correspond to the
+    /// linear coefficients of the observation in the same column.
+    pub fn mrhs(model: Model) -> Self {
+        Self {
+            Y: None,
+            separable_model: model,
+            epsilon: None,
+            weights: Weights::default(),
+        }
+    }
     /// **Mandatory**: Set the data which we want to fit: This is either a single vector
     /// `$\vec{y}=\vec{y}(\vec{x})$` or a matrix `$\boldsymbol{Y}$` of multiple
     /// vectors. In the former case this corresponds to fitting a single right hand side,
@@ -136,13 +162,22 @@ where
     /// multiple right hand sides.
     /// The length of `$\vec{x}$` and the number of _rows_ in the data must
     /// be the same.
-    pub fn observations(self, observed: impl Into<Observation<Model::ScalarType>>) -> Self {
+    pub fn observations(self, observed: OMatrix<Model::ScalarType, Dyn, Dyn>) -> Self {
         Self {
-            Y: Some(observed.into().data),
+            Y: Some(observed),
             ..self
         }
     }
+}
 
+impl<Model, const MRHS: bool> LevMarProblemBuilder<Model, MRHS>
+where
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
+    Model: SeparableNonlinearModel,
+{
     /// **Optional** This value is relevant for the solver, because it uses singular value decomposition
     /// internally. This method sets a value `\epsilon` for which smaller (i.e. absolute - wise) singular
     /// values are considered zero. In essence this gives a truncation of the SVD. This might be
@@ -185,7 +220,7 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblem<Model>, LevMarBuilderError> {
+    pub fn build(self) -> Result<LevMarProblem<Model, MRHS>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
         let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;

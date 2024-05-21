@@ -13,7 +13,8 @@ type BaseFuncType<ScalarType> =
 
 /// An internal type that is used to store basefunctions whose interface has been wrapped in
 /// such a way that they can accept the location and the *complete model parameters as arguments*.
-pub(crate) struct ModelBasisFunction<ScalarType>
+#[doc(hidden)]
+pub struct ModelBasisFunction<ScalarType>
 where
     ScalarType: Scalar,
 {

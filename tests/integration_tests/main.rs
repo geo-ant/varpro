@@ -4,7 +4,6 @@ use nalgebra::DMatrix;
 use nalgebra::DVector;
 use nalgebra::Dyn;
 use nalgebra::OVector;
-use nalgebra::Scalar;
 use nalgebra::U1;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
@@ -16,11 +15,6 @@ use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::models::OLearyExampleModel;
 use varpro::prelude::*;
 use varpro::solvers::levmar::*;
-
-fn to_vector<T: Scalar + std::fmt::Debug + Clone>(mat: DMatrix<T>) -> DVector<T> {
-    let new_rows = Dyn(mat.nrows() * mat.ncols());
-    mat.reshape_generic(new_rows, U1)
-}
 
 #[test]
 // sanity check my calculations above
@@ -117,7 +111,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     );
 
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
     _ = format!("{:?}", problem);
@@ -129,6 +123,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         fit_result.minimization_report.termination.was_successful(),
         "Levenberg Marquardt did not converge"
     );
+    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-5);
     assert_relative_eq!(
         fit_result.problem.residuals().unwrap(),
         statistics.weighted_residuals(),
@@ -184,7 +179,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     );
 
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
 
@@ -197,6 +192,8 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         statistics.weighted_residuals(),
         epsilon = 1e-5
     );
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-5);
 
     // extract the calculated paramters, because tau1 and tau2 might switch places here
     let (tau1_index, tau2_index) =
@@ -423,26 +420,27 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     );
 
     let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
-    let problem = LevMarProblemBuilder::new(model)
-        .observations(Y)
+    let problem = LevMarProblemBuilder::mrhs(model)
+        .observations(Y.clone())
         .build()
         .expect("building the lev mar problem must not fail");
-    let (levenberg_marquardt_solution, report) = LevenbergMarquardt::new().minimize(problem);
 
-    assert!(
-        report.termination.was_successful(),
-        "Levenberg Marquardt did not converge"
-    );
+    let fit_result = LevMarSolver::default()
+        .fit(problem)
+        .expect("fitting must not fail");
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), Y, epsilon = 1e-5);
+
     // extract the calculated paramters, because tau1 and tau2 might switch places here
     let (tau1_index, tau2_index) =
-        if levenberg_marquardt_solution.params()[0] < levenberg_marquardt_solution.params()[1] {
+        if fit_result.nonlinear_parameters()[0] < fit_result.nonlinear_parameters()[1] {
             (0, 1)
         } else {
             (1, 0)
         };
-    let tau1_calc = levenberg_marquardt_solution.params()[tau1_index];
-    let tau2_calc = levenberg_marquardt_solution.params()[tau2_index];
-    let coeff = levenberg_marquardt_solution
+    let tau1_calc = fit_result.nonlinear_parameters()[tau1_index];
+    let tau2_calc = fit_result.nonlinear_parameters()[tau2_index];
+    let coeff = fit_result
         .linear_coefficients()
         .expect("linear coefficients must exist");
     let a1_calc = coeff[tau1_index];
@@ -460,6 +458,164 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     assert_relative_eq!(b3, b3_calc, epsilon = 1e-8);
     assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
+}
+
+#[test]
+fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit() {
+    // I have python scripts using the lmfit package that allow me to test
+    // my results.
+    // this tests against the file python/multiexp_decay.py
+    // see there for more details. The parameters are taken from there.
+
+    let x = read_vec_f64(
+        "test_assets/multiexp_decay/xdata_1000_64bit.raw",
+        Some(1000),
+    );
+    let y = read_vec_f64(
+        "test_assets/multiexp_decay/ydata_1000_64bit.raw",
+        Some(1000),
+    );
+    let conf_radius = read_vec_f64("test_assets/multiexp_decay/conf_1000_64bit.raw", Some(1000));
+    let covmat = read_vec_f64("test_assets/multiexp_decay/covmat_5x5_64bit.raw", Some(25));
+    let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
+    let problem = LevMarProblemBuilder::new(model)
+        .observations(DVector::from_vec(y))
+        .build()
+        .expect("building the lev mar problem must not fail");
+
+    let (fit_result, fit_stat) = LevMarSolver::default()
+        .fit_with_statistics(problem)
+        .expect("fitting must not fail");
+
+    // extract the calculated paramters, because tau1 and tau2 might switch places here
+    let tau1_calc = fit_result.nonlinear_parameters()[0];
+    let tau2_calc = fit_result.nonlinear_parameters()[1];
+    let coeff = fit_result
+        .linear_coefficients()
+        .expect("linear coefficients must exist");
+    let a1_calc = coeff[0];
+    let a2_calc = coeff[1];
+    let a3_calc = coeff[2];
+
+    // parameters are taken from the python/multiexp_decay
+    // script in the root dir of this library. We compare against the
+    // fit results of the python lmfit library
+    // run the script to see the output
+    assert_relative_eq!(2.19344628, a1_calc, epsilon = 1e-5);
+    assert_relative_eq!(6.80462652, a2_calc, epsilon = 1e-5);
+    assert_relative_eq!(1.59995673, a3_calc, epsilon = 1e-5);
+    assert_relative_eq!(2.40392137, tau1_calc, epsilon = 1e-5);
+    assert_relative_eq!(5.99571068, tau2_calc, epsilon = 1e-5);
+
+    assert_relative_eq!(fit_stat.reduced_chi2(), 1.0109e-4, epsilon = 1e-8);
+
+    // covariance matrix is correct
+    let expected_covmat = DMatrix::from_row_slice(5, 5, &covmat);
+    let calculated_covmat = fit_stat.covariance_matrix();
+    assert_relative_eq!(expected_covmat, calculated_covmat, epsilon = 1e-6);
+
+    // now for the confidence intervals
+    assert_relative_eq!(
+        DVector::from_vec(conf_radius),
+        fit_stat.confidence_band_radius(0.88),
+        epsilon = 1e-6,
+    );
+}
+
+#[test]
+fn weighted_double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit() {
+    // I have python scripts using the lmfit package that allow me to test
+    // my results.
+    // this tests against the file python/weighted_multiexp_decay.py
+    // see there for more details. The parameters are taken from there.
+
+    let x = read_vec_f64(
+        "test_assets/weighted_multiexp_decay/xdata_1000_64bit.raw",
+        Some(1000),
+    );
+    let y = DVector::from_vec(read_vec_f64(
+        "test_assets/weighted_multiexp_decay/ydata_1000_64bit.raw",
+        Some(1000),
+    ));
+    let conf_radius = read_vec_f64(
+        "test_assets/weighted_multiexp_decay/conf_1000_64bit.raw",
+        Some(1000),
+    );
+    let covmat = read_vec_f64(
+        "test_assets/weighted_multiexp_decay/covmat_5x5_64bit.raw",
+        Some(25),
+    );
+    let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
+    let problem = LevMarProblemBuilder::new(model)
+        .observations(y.clone())
+        // in the python script we also apply these weights
+        .weights(y.map(|v| 1. / v.sqrt()))
+        .build()
+        .expect("building the lev mar problem must not fail");
+
+    let (fit_result, fit_stat) = LevMarSolver::default()
+        .fit_with_statistics(problem)
+        .expect("fitting must not fail");
+
+    // extract the calculated paramters, because tau1 and tau2 might switch places here
+    let tau1_calc = fit_result.nonlinear_parameters()[0];
+    let tau2_calc = fit_result.nonlinear_parameters()[1];
+    let coeff = fit_result
+        .linear_coefficients()
+        .expect("linear coefficients must exist");
+    let a1_calc = coeff[0];
+    let a2_calc = coeff[1];
+    let a3_calc = coeff[2];
+
+    // parameters are taken from the python/weighted_multiexp_decay
+    // script in the root dir of this library. We compare against the
+    // fit results of the python lmfit library
+    // run the script to see the output
+    assert_relative_eq!(2.24275841, a1_calc, epsilon = 1e-5);
+    assert_relative_eq!(6.75609070, a2_calc, epsilon = 1e-5);
+    assert_relative_eq!(1.59790007, a3_calc, epsilon = 1e-5);
+    assert_relative_eq!(2.43119160, tau1_calc, epsilon = 1e-5);
+    assert_relative_eq!(6.02052311, tau2_calc, epsilon = 1e-5);
+
+    assert_relative_eq!(fit_stat.reduced_chi2(), 3.2117e-5, epsilon = 1e-8);
+    assert_relative_eq!(
+        fit_stat.reduced_chi2().sqrt(),
+        fit_stat.regression_standard_error(),
+        epsilon = 1e-8
+    );
+
+    // covariance matrix is correct
+    let expected_covmat = DMatrix::from_row_slice(5, 5, &covmat);
+    let calculated_covmat = fit_stat.covariance_matrix();
+    assert_relative_eq!(expected_covmat, calculated_covmat, epsilon = 1e-6);
+
+    // now for the confidence intervals
+    assert_relative_eq!(
+        DVector::from_vec(conf_radius),
+        fit_stat.confidence_band_radius(0.88),
+        epsilon = 1e-6,
+    );
+}
+
+// helper function to read a vector of f64 from a file
+fn read_vec_f64(path: impl AsRef<std::path::Path>, size_hint: Option<usize>) -> Vec<f64> {
+    use byteorder::{LittleEndian, ReadBytesExt};
+    let mut vect = Vec::with_capacity(size_hint.unwrap_or(1024));
+
+    let f = std::fs::File::open(path).expect("error opening file");
+    let mut r = std::io::BufReader::new(f);
+
+    loop {
+        match r.read_f64::<LittleEndian>() {
+            Ok(val) => {
+                vect.push(val);
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(_e) => panic!("error parsing file"),
+        }
+    }
+
+    vect
 }
 
 #[test]
@@ -481,7 +637,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
 
     let model = OLearyExampleModel::new(t, initial_guess);
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .observations(y.clone())
         .weights(w)
         .build()
         .unwrap();
@@ -493,6 +649,9 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         fit_result.minimization_report.termination.was_successful(),
         "fitting did not terminate successfully"
     );
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-2);
+
     let alpha_fit = fit_result.nonlinear_parameters();
     let c_fit = fit_result
         .linear_coefficients()
@@ -503,7 +662,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
         OVector::<f64, Dyn>::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
     let c_true = OVector::<f64, Dyn>::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
-    assert_relative_eq!(to_vector(c_fit), c_true, epsilon = 1e-5);
+    assert_relative_eq!(c_fit.into_owned(), c_true, epsilon = 1e-5);
 
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,
@@ -568,7 +727,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     -0.9914,   0.9918,   0.1103,   0.7729,   1.0000;
       ];
     assert_relative_eq!(
-        statistics.correlation_matrix(),
+        statistics.calculate_correlation_matrix(),
         &expected_correlation_matrix,
         epsilon = 1e-4
     );
@@ -593,7 +752,7 @@ fn test_oleary_example_with_separable_model() {
 
     let model = o_leary_example_model(t, initial_guess);
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .observations(y.clone())
         .weights(w)
         .build()
         .unwrap();
@@ -605,6 +764,9 @@ fn test_oleary_example_with_separable_model() {
         fit_result.minimization_report.termination.was_successful(),
         "fitting did not terminate successfully"
     );
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-2);
+
     let alpha_fit = fit_result.nonlinear_parameters();
     let c_fit = fit_result
         .linear_coefficients()
@@ -614,7 +776,7 @@ fn test_oleary_example_with_separable_model() {
     let alpha_true = DVector::from_vec(vec![1.0132255e+00, 2.4968675e+00, 4.0625148e+00]);
     let c_true = DVector::from_vec(vec![5.8416357e+00, 1.1436854e+00]);
     assert_relative_eq!(alpha_fit, alpha_true, epsilon = 1e-5);
-    assert_relative_eq!(to_vector(c_fit), &c_true, epsilon = 1e-5);
+    assert_relative_eq!(c_fit.into_owned(), &c_true, epsilon = 1e-5);
 
     let expected_weighted_residuals = DVector::from_column_slice(&[
         -1.1211e-03,
@@ -704,7 +866,7 @@ fn test_oleary_example_with_separable_model() {
         ],
     );
     assert_relative_eq!(
-        statistics.correlation_matrix(),
+        statistics.calculate_correlation_matrix(),
         &expected_correlation_matrix,
         epsilon = 1e-4
     );
