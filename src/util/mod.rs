@@ -105,12 +105,3 @@ pub(crate) fn to_vector<T: Scalar + std::fmt::Debug + Clone>(
     let new_rows = Dyn(mat.nrows() * mat.ncols());
     mat.reshape_generic(new_rows, U1)
 }
-
-#[inline]
-#[cfg(test)]
-pub(crate) fn to_matrix<T: Scalar + std::fmt::Debug + Clone>(
-    vec: DVector<T>,
-) -> nalgebra::DMatrix<T> {
-    let nrows = Dyn(vec.nrows());
-    vec.reshape_generic(nrows, Dyn(1))
-}

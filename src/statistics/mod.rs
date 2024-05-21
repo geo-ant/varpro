@@ -1,16 +1,18 @@
-use crate::{
-    prelude::SeparableNonlinearModel,
-    util::{to_vector, Weights},
-};
+use self::numeric_traits::CastF64;
+use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
-    allocator::Allocator, ComplexField, DVector, DefaultAllocator, Dim, DimAdd, DimMin, DimSub,
-    Dyn, Matrix, OMatrix, OVector, RealField, Scalar, U0, U1,
+    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix,
+    OMatrix, OVector, RealField, Scalar, VectorView, U0, U1,
 };
-use num_traits::{Float, FromPrimitive, Zero};
+use num_traits::{Float, FromPrimitive, One, Zero};
 use thiserror::Error as ThisError;
 
 #[cfg(any(test, doctest))]
 mod test;
+
+/// contains some helper traits for numeric conversions that
+/// are too specialized for the num_traits crate
+pub mod numeric_traits;
 
 /// Information about an error that can occur during calculation of the
 /// of the fit statistics.
@@ -24,7 +26,7 @@ pub(crate) enum Error<ModelError: std::error::Error> {
     Underdetermined,
     #[error("Floating point unable to capture integral value {}", .0)]
     /// the floating point type was unable to capture an integral value
-    FloatToIntConversion(usize),
+    IntegerToFloatConversion(usize),
     /// Failed to calculate the inverse of a matrix
     #[error("Matrix inversion error")]
     MatrixInversion,
@@ -70,26 +72,32 @@ where
     /// # References
     /// See [O'Leary and Rust 2012](https://www.nist.gov/publications/variable-projection-nonlinear-least-squares-problems)
     /// for reference.
-    #[allow(clippy::type_complexity)]
     covariance_matrix: OMatrix<Model::ScalarType, Dyn, Dyn>,
-
-    /// the correlation matrix, ordered the same way as the covariance matrix.
-    #[allow(clippy::type_complexity)]
-    correlation_matrix: OMatrix<Model::ScalarType, Dyn, Dyn>,
 
     /// the weighted residuals `$\vec{r_w}$ = W * (\vec{y} - \vec{f}(vec{\alpha},\vec{c}))$`,
     /// where `$\vec{y}$` is the data, `$\vec{f}$` is the model function and `$W$` is the
     /// weights
-    weighted_residuals: OMatrix<Model::ScalarType, Dyn, Dyn>,
+    weighted_residuals: OVector<Model::ScalarType, Dyn>,
 
-    /// the _weighted residual mean square_ or _regression standard error_.
-    sigma: Model::ScalarType,
+    // reduced chi squared
+    reduced_chi2: Model::ScalarType,
 
     /// the number of linear coefficients
     linear_coefficient_count: usize,
 
+    /// the number of degrees of freedom
+    degrees_of_freedom: usize,
+
     /// the number of nonlinear parameters
     nonlinear_parameter_count: usize,
+
+    /// a helper variable that stores the calculated unscaled
+    /// standard deviation that we can use in calculation for the
+    /// confidence band.
+    /// calculated according to eq (97) in
+    /// [this example](https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals)
+    /// with the difference that the square root has already been applied
+    unscaled_confidence_sigma: OVector<Model::ScalarType, Dyn>,
 }
 
 impl<Model> FitStatistics<Model>
@@ -117,15 +125,30 @@ where
     /// * `$C_{12}$` is the covariance between `$c_1$`and `$c_2$`,
     /// * `$C_{13}$` is the covariance between `$c_1$` and `$\alpha_1$`,
     /// * and so on.
-    #[allow(clippy::type_complexity)]
     pub fn covariance_matrix(&self) -> &OMatrix<Model::ScalarType, Dyn, Dyn> {
         &self.covariance_matrix
     }
 
-    /// the correlation matrix, ordered the same way as the covariance matrix.
-    #[allow(clippy::type_complexity)]
-    pub fn correlation_matrix(&self) -> &OMatrix<Model::ScalarType, Dyn, Dyn> {
-        &self.correlation_matrix
+    #[deprecated(note = "Use the method calc_correlation_matrix.", since = "0.9.0")]
+    /// calculate the correlation matrix. **Deprecated**, use the `calc_correlation_matrix``
+    /// function instead.
+    pub fn correlation_matrix(&self) -> OMatrix<Model::ScalarType, Dyn, Dyn>
+    where
+        Model::ScalarType: Float,
+    {
+        self.calculate_correlation_matrix().clone()
+    }
+
+    /// The correlation matrix, ordered the same way as the covariance matrix.
+    ///
+    /// **Note** The correlation matrix is calculated on the fly from the
+    /// covariance matrix when this function is called. It is suggested to
+    /// store this matrix somewhere to avoid having to recalculate it.
+    pub fn calculate_correlation_matrix(&self) -> OMatrix<Model::ScalarType, Dyn, Dyn>
+    where
+        Model::ScalarType: Float,
+    {
+        calc_correlation_matrix(&self.covariance_matrix)
     }
 
     /// the weighted residuals
@@ -136,8 +159,8 @@ where
     ///
     /// In case of a dataset with multiple members, the residuals are
     /// written one after the other into the vector
-    pub fn weighted_residuals(&self) -> DVector<Model::ScalarType> {
-        to_vector(self.weighted_residuals.clone())
+    pub fn weighted_residuals(&self) -> OVector<Model::ScalarType, Dyn> {
+        self.weighted_residuals.clone()
     }
 
     /// the _regression standard error_ (also called _weighted residual mean square_, or _sigma_).
@@ -148,8 +171,17 @@ where
     /// where `$N_{data}$` is the number of data points (observations), `$N_{params}$` is the number of nonlinear
     /// parameters, and `$N_{basis}$` is the number of linear parameters (i.e. the number
     /// of basis functions).
-    pub fn regression_standard_error(&self) -> Model::ScalarType {
-        self.sigma.clone()
+    pub fn regression_standard_error(&self) -> Model::ScalarType
+    where
+        Model::ScalarType: Float,
+    {
+        Float::sqrt(self.reduced_chi2)
+    }
+
+    /// the reduced chi-squared after the fit, i.e. `$\chi^2/\nu$`, where
+    /// `$\nu$` is the number of degrees of freedom.
+    pub fn reduced_chi2(&self) -> Model::ScalarType {
+        self.reduced_chi2.clone()
     }
 
     /// helper function to extract the estimated _variance_
@@ -178,6 +210,143 @@ where
     {
         let diagonal = self.covariance_matrix.diagonal();
         extract_range(&diagonal, U0, Dyn(self.linear_coefficient_count))
+    }
+
+    /// Calculate the radius (i.e. half of the width) of the confidence band
+    /// of the fitted model function at the best fit parameters evaluated at
+    /// the support points.
+    ///
+    /// This function was inspired by the function
+    /// [eval_uncertainty](https://lmfit.github.io/lmfit-py/model.html#lmfit.model.ModelResult.eval_uncertainty)
+    /// of the python package [lmfit](https://lmfit.github.io/lmfit-py/intro.html).
+    /// It will produce an identical result (within numerical accuracy) for the
+    /// same fit, given the same probability level.
+    ///
+    /// # Arguments
+    ///
+    /// * `probability` the confidence level of the confidence interval, expressed
+    /// as a probability value between 0 and 1. Note that it can't be 0 or 1, but
+    /// anything in between. Since least squares fitting assumes Gaussian error
+    /// distributions, we can use the quantiles of the normal distribution to
+    /// relate this to often used "number of sigmas". For example the probability
+    /// `$68.3 \% = 0.683$` corresponds to (approximately) `$1\sigma$`.
+    ///
+    /// # Returns
+    ///
+    /// The half-width of the confidence band with the given probability. To
+    /// calculate the confidence band, we first need to calculate the fit result at
+    /// the best fit parameters. Then the upper bound of the confidence interval
+    /// is given by adding this radius and the lower bound is given by subtracting
+    /// this radius.
+    ///
+    /// # Example
+    /// Fit model `model` to observations `y` and calculate the best fit and the
+    /// 1-sigma confidence band upper and lower bounds.
+    ///
+    /// ```no_run
+    /// # let model : varpro::model::SeparableModel<f64> = unimplemented!();
+    /// # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
+    /// use varpro::solvers::levmar::LevMarProblemBuilder;
+    /// use varpro::solvers::levmar::LevMarSolver;
+    /// let problem = LevMarProblemBuilder::new(model)
+    ///               .observations(y)
+    ///               .build()
+    ///               .unwrap();
+    ///
+    /// let (fit_result,fit_statistics) = LevMarSolver::default()
+    ///               .fit_with_statistics(problem)
+    ///               .unwrap();
+    ///
+    /// let best_fit = fit_result.best_fit().unwrap();
+    /// let cb_radius = fit_statistics.confidence_band_radius(0.683);
+    /// // upper and lower bounds of the confidence band
+    /// let cb_upper = best_fit + cb_radius;
+    /// let cb_lower = best_fit - cb_radius;
+    /// ```
+    /// # An Important Note on the Confidence Band Values
+    ///
+    /// This library chooses to implement the confidence interval such that it
+    /// gives the same results as the python library [`lmfit`](https://lmfit.github.io/lmfit-py/).
+    /// That means that the confidence interval is given _as if_ during the
+    /// fitting process the weights had been uniformly scaled such that the
+    /// reduced `$\chi^2$` after fitting is equal to unity: `$\chi_/nu^2 = \chi^2/\nu = 1$`,
+    /// where `$\nu$` is the number of degrees of freedom (i.e. the number of data
+    /// points minus the number of total fit parameters).
+    ///
+    /// Scaling the weights does not influence the best fit parameters themselves,
+    /// but it does influence the resulting uncertainties. Read [here](https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#reduced-chi-squared)
+    /// for an in-depth explanation. Briefly, the expected value for
+    /// `$\chi^2_\nu$` for a fit with `$\nu$` degrees of freedom is one.
+    /// Therefore it can be reasonable to apply the scaling such that we force
+    /// `$chi^2_\nu$` to take its expected value. This will correct an overestimation
+    /// or underestimation of the errors and is often a reasonable choice to make.
+    ///
+    /// However, this will make this confidence band inconsistent with the other
+    /// information from the fit, such as the standard errors from the covariance matrix
+    /// or the reduced `$\chi^2$`. Luckily, it's easy to obtain the confidence
+    /// bands with the errors exactly as given. Just multiply the result of this
+    /// function with the _reduced_ `$\chi^2$` of this fit.
+    ///
+    /// ```no_run
+    /// # let model : varpro::model::SeparableModel<f64> = unimplemented!();
+    /// # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
+    /// # use varpro::solvers::levmar::LevMarProblemBuilder;
+    /// # use varpro::solvers::levmar::LevMarSolver;
+    /// # let problem = LevMarProblemBuilder::new(model)
+    /// #              .observations(y)
+    /// #              .build()
+    /// #              .unwrap();
+    ///
+    /// let (fit_result,fit_statistics) = LevMarSolver::default()
+    ///               .fit_with_statistics(problem)
+    ///               .unwrap();
+    ///
+    /// let best_fit = fit_result.best_fit().unwrap();
+    /// // get the unscaled confidence band by multiplying with the
+    /// // reduced chi2
+    /// let cb_radius_unscaled = fit_statistics.reduced_chi2() * fit_statistics.confidence_band_radius(0.683);
+    /// // upper and lower bounds of the confidence band
+    /// let cb_upper = best_fit + cb_radius_unscaled;
+    /// let cb_lower = best_fit - cb_radius_unscaled;
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if `probability` is not within the half-open interval
+    /// `$(0,1)$`.
+    pub fn confidence_band_radius(
+        &self,
+        probability: Model::ScalarType,
+    ) -> OVector<Model::ScalarType, Dyn>
+    where
+        Model::ScalarType: num_traits::Float + One + Zero + CastF64,
+    {
+        assert!(
+            probability.is_finite()
+                && probability > Model::ScalarType::ZERO
+                && probability < Model::ScalarType::ONE,
+            "probability must be in open interval (0.,1.)"
+        );
+
+        let t_scale = distrs::StudentsT::ppf(
+            (probability.into_f64() + 1.) / 2.,
+            f64::from_usize(self.degrees_of_freedom).expect("failed int to float conversion"),
+        );
+
+        // this is a bit cumbersome due to the method being generic
+        // and t_scale only being available as f64. We are just
+        // multiplying t_scale to the unscaled confidence sigma element wise
+        let mut confidence_radius =
+            OVector::<Model::ScalarType, Dyn>::zeros(self.unscaled_confidence_sigma.nrows());
+
+        confidence_radius
+            .iter_mut()
+            .zip(self.unscaled_confidence_sigma.iter())
+            .for_each(|(cb, sigma)| {
+                *cb = CastF64::from_f64(t_scale * sigma.into_f64());
+            });
+
+        confidence_radius
     }
 }
 
@@ -228,9 +397,9 @@ where
     #[allow(non_snake_case)]
     pub(crate) fn try_calculate(
         model: &Model,
-        weighted_data: &OMatrix<Model::ScalarType, Dyn, Dyn>,
+        weighted_data: VectorView<Model::ScalarType, Dyn>,
         weights: &Weights<Model::ScalarType, Dyn>,
-        linear_coefficients: &OMatrix<Model::ScalarType, Dyn, Dyn>,
+        linear_coefficients: VectorView<Model::ScalarType, Dyn>,
     ) -> Result<Self, Error<Model::Error>>
     where
         Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,
@@ -239,39 +408,80 @@ where
         DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
     {
+        // this is a sanity check and should never actually fail
+        // it just makes sure I have been using this correctly inside of this crate
+        // if this fails, this indicates a programming error
+        debug_assert_eq!(
+            weighted_data.ncols(),
+            linear_coefficients.ncols(),
+            "Data dims and linear coefficient dims don't match. Indicates logic error in library!"
+        );
+        debug_assert_eq!(weighted_data.nrows(),
+            model.output_len(),
+            "model output dimensions and data dimensions do not match. Indicates a programming error in this library!"
+        );
+        let output_len = model.output_len();
+        let J = model_function_jacobian(model, linear_coefficients)?;
+
         // see the OLeary and Rust Paper for reference
         // the names are taken from the paper
-
-        let H = weights * model_function_jacobian(model, linear_coefficients)?;
-        let output_len = model.output_len();
+        let H = weights * J.clone();
         let weighted_residuals = weighted_data - weights * model.eval()? * linear_coefficients;
-        let degrees_of_freedom = model.parameter_count() + model.base_function_count();
-        if output_len <= degrees_of_freedom {
+        let total_parameter_count = model.parameter_count() + model.base_function_count();
+        let degrees_of_freedom = output_len - total_parameter_count;
+        if output_len <= total_parameter_count {
             return Err(Error::Underdetermined);
         }
 
-        let sigma: Model::ScalarType = weighted_residuals.norm()
-            / Float::sqrt(
-                Model::ScalarType::from_usize(output_len - degrees_of_freedom)
-                    .ok_or(Error::FloatToIntConversion(output_len - degrees_of_freedom))?,
-            );
+        let reduced_chi2 = weighted_residuals.norm_squared()
+            / Model::ScalarType::from_usize(degrees_of_freedom)
+                .ok_or(Error::IntegerToFloatConversion(degrees_of_freedom))?;
+
+        let sigma: Model::ScalarType = Float::sqrt(reduced_chi2);
 
         let HTH_inv = (H.transpose() * H)
             .try_inverse()
             .ok_or(Error::MatrixInversion)?;
         let covariance_matrix = HTH_inv * sigma * sigma;
-        let correlation_matrix = calc_correlation_matrix(&covariance_matrix);
 
         // we don't calculate R^2, see the notes on the documentation
         // of this struct
 
+        // what follows is the calculation for the confidence bands.
+        // this is the correspoding github issue #29: https://github.com/geo-ant/varpro/issues/29
+        // also see documentation for the python lmfit library here
+        // https://lmfit.github.io/lmfit-py/model.html#lmfit.model.ModelResult.eval_uncertainty
+        // which references the formula here:
+        // https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals
+
+        //@todo(georgios) this logic assumes that unscaled_sigma
+        // is a column vector. That means iter_mut will just iterate
+        // over the elements.
+        let mut unscaled_confidence_sigma = OVector::<Model::ScalarType, Dyn>::zeros(output_len);
+
+        unscaled_confidence_sigma
+            .iter_mut()
+            // we have to iterate over the columns of J^T (transpose)
+            // so we iterate over the rows of J.
+            // @todo(georgios) check how to make this more efficient (performance)
+            .zip(J.row_iter())
+            .for_each(|(sig, j)| {
+                let j = j.transpose();
+                // in the linked docs, the code is given as a double sum. However,
+                // this can be simplified into a quadratic form b^T A b, where b are the
+                // rows of the Jacobian and A is the covariance matrix.
+                *sig = j.dot(&(&covariance_matrix * &j));
+                *sig = Float::sqrt(*sig);
+            });
+
         Ok(Self {
             covariance_matrix,
-            correlation_matrix,
+            reduced_chi2,
             weighted_residuals,
-            sigma,
             linear_coefficient_count: model.base_function_count(),
+            degrees_of_freedom,
             nonlinear_parameter_count: model.parameter_count(),
+            unscaled_confidence_sigma,
         })
     }
 }
@@ -315,7 +525,7 @@ where
 #[allow(non_snake_case)]
 fn model_function_jacobian<Model>(
     model: &Model,
-    C: &OMatrix<Model::ScalarType, Dyn, Dyn>,
+    c: VectorView<Model::ScalarType, Dyn>,
 ) -> Result<OMatrix<Model::ScalarType, Dyn, Dyn>, Model::Error>
 where
     Model: SeparableNonlinearModel,
@@ -336,7 +546,7 @@ where
     {
         //@todo this is not very efficient, make this better
         //but this does not happen repeatedly, so it might not be as bad
-        col.copy_from(&(to_vector(model.eval_partial_deriv(idx)? * C)));
+        col.copy_from(&(model.eval_partial_deriv(idx)? * c));
     }
 
     Ok(concat_colwise(

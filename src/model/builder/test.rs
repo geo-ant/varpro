@@ -258,6 +258,32 @@ fn test_model_builder_fails_when_initial_parameters_have_incorrect_parameter_cou
     assert_matches!(result, Err(ModelBuildError::IncorrectParameterCount { .. }));
 }
 
+#[test]
+// this is just to make sure that this code compiles when used like that.
+fn model_builder_can_be_used_programmatically_in_a_loop() {
+    let param_names = &["param1", "param2", "param3"];
+    let mut builder = SeparableModelBuilder::<f64>::new(param_names)
+        .independent_variable(nalgebra::dvector![1., 2., 3., 4.])
+        .initial_parameters(vec![1., 2., 3.]);
+
+    fn dummy_function(_x: &DVector<f64>, _param: f64) -> DVector<f64> {
+        todo!()
+    }
+    fn dummy_deriv(_x: &DVector<f64>, _param: f64) -> DVector<f64> {
+        todo!()
+    }
+
+    for param in param_names {
+        builder = builder
+            .function(&[*param], dummy_function)
+            .partial_deriv(*param, dummy_deriv);
+    }
+
+    // we just need this to build the model successfully
+    // all evaluations would panic
+    let _ = builder.build().unwrap();
+}
+
 /// a function that calculates exp( -(t-t0)/tau)) for every location t
 /// **ATTENTION** for this kind of exponential function the shift will
 /// just be a linear multiplier exp(t0/tau), so it might not a good idea to include it in the fitting

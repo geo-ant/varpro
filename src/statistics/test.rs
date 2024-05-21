@@ -1,7 +1,5 @@
 use std::convert::Infallible;
 
-#[cfg(test)]
-use crate::util::to_matrix;
 use crate::{
     prelude::SeparableNonlinearModel,
     statistics::{extract_range, model_function_jacobian},
@@ -114,7 +112,7 @@ fn model_function_jacobian_is_calculated_correctly() {
         model.eval().unwrap(),
         DMatrix::from_column_slice(3, 2, &[12., 12., 12., 13., 13., 13.]),
     );
-    let calculated_jac = model_function_jacobian(&model, &to_matrix(c));
+    let calculated_jac = model_function_jacobian(&model, c.as_view());
     assert_relative_eq!(expected_jac, calculated_jac.unwrap());
 }
 

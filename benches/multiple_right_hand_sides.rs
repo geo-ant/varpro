@@ -23,7 +23,7 @@ struct DoubleExponentialParameters {
 fn build_problem_mrhs<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model>
+) -> LevMarProblem<Model, true>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
 {
@@ -31,13 +31,13 @@ where
     // save the initial guess so that we can reset the model to those
     let params = OVector::from_vec_generic(Dyn(model.parameter_count()), U1, vec![tau1, tau2]);
     let y = evaluate_complete_model_at_params_mrhs(&mut model, params, &coeffs);
-    LevMarProblemBuilder::new(model)
+    LevMarProblemBuilder::mrhs(model)
         .observations(y)
         .build()
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization<Model>(problem: LevMarProblem<Model>) -> (DVector<f64>, DMatrix<f64>)
+fn run_minimization_mrhs<Model>(problem: LevMarProblem<Model, true>) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
 {
@@ -46,7 +46,7 @@ where
         .expect("fitting must exit successfully");
     let params = result.nonlinear_parameters();
     let coeff = result.linear_coefficients().unwrap();
-    (params, coeff)
+    (params, coeff.into_owned())
 }
 
 fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
@@ -75,7 +75,7 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
                     DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
                 )
             },
-            run_minimization,
+            run_minimization_mrhs,
             criterion::BatchSize::SmallInput,
         )
     });
@@ -91,7 +91,7 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
                     ),
                 )
             },
-            run_minimization,
+            run_minimization_mrhs,
             criterion::BatchSize::SmallInput,
         )
     });

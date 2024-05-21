@@ -3,6 +3,7 @@ use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::ComplexField;
 
+use nalgebra::DVector;
 use nalgebra::DefaultAllocator;
 
 use nalgebra::Dyn;
@@ -35,7 +36,7 @@ struct DoubleExponentialParameters {
 fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model>
+) -> LevMarProblem<Model, false>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn>,
@@ -68,7 +69,7 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization<Model>(problem: LevMarProblem<Model>) -> [f64; 5]
+fn run_minimization<Model>(problem: LevMarProblem<Model, false>) -> (DVector<f64>, DVector<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
 {
@@ -77,7 +78,7 @@ where
         .expect("fitting must exit successfully");
     let params = result.nonlinear_parameters();
     let coeff = result.linear_coefficients().unwrap();
-    [params[0], params[1], coeff[0], coeff[1], coeff[2]]
+    (params, coeff.into_owned())
 }
 
 /// solve the problem by using nonlinear least squares with levenberg marquardt
