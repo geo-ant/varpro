@@ -11,7 +11,7 @@ Nonlinear function fitting made simple. This library provides robust and fast
 least-squares fitting of a wide class of model functions to data.
 It uses the VarPro algorithm to achieve this, hence the name.
 
-## Brief Introduction
+## Introduction
 
 This crate implements a powerful algorithm to fit model functions to data, 
 but it is restricted to so called _separable_ models. The lack of formulas on 
@@ -59,14 +59,14 @@ use nalgebra::{dvector,DVector};
 
 // Define the exponential decay e^(-t/tau).
 // Both of the nonlinear basis functions in this example
-// are exponential decays
+// are exponential decays.
 fn exp_decay(x :&DVector<f64>, tau : f64) 
   -> DVector<f64> {
   x.map(|x|(-x/tau).exp())
 }
 
 // the partial derivative of the exponential
-// decay with respect to the nonlinear parameter tau
+// decay with respect to the nonlinear parameter tau.
 // d/dtau e^(-t/tau) = e^(-t/tau)*t/tau^2
 fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) 
   -> DVector<f64> {
@@ -81,16 +81,18 @@ let y = dvector![6.0,4.8,4.0,3.3,2.8,2.5,2.2,1.9,1.7,1.6,1.5];
 
 // 1. create the model by giving only the nonlinear parameter names it depends on
 let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
-  // provide the nonlinear basefunctions and their derivatives.
-  // In this example, the nonlinear functions are the same, but they
-  // don't have to be.
+  // provide the nonlinear basis functions and their derivatives.
+  // In general, base functions can depend on more than just one parameter.
+  // first function:
   .function(&["tau1"], exp_decay)
   .partial_deriv("tau1", exp_decay_dtau)
+  // second function and derivatives with respect to all parameters
+  // that it depends on (just one in this case)
   .function(&["tau2"], exp_decay)
   .partial_deriv("tau2", exp_decay_dtau)
   // a constant offset is added as an invariant basefunction
-  // of vectors of ones. It is multiplied with its own linear coefficient,
-  // creating a variable offset
+  // as a vector of ones. It is multiplied with its own linear coefficient,
+  // creating a fittable offset
   .invariant_function(|x|DVector::from_element(x.len(),1.))
   // give the coordinates of the problem
   .independent_variable(x)
