@@ -269,7 +269,7 @@ where
     /// gives the same results as the python library [`lmfit`](https://lmfit.github.io/lmfit-py/).
     /// That means that the confidence interval is given _as if_ during the
     /// fitting process the weights had been uniformly scaled such that the
-    /// reduced `$\chi^2$` after fitting is equal to unity: `$\chi_/nu^2 = \chi^2/\nu = 1$`,
+    /// reduced `$\chi^2$` after fitting is equal to unity: `$\chi_\nu^2 = \chi^2/\nu = 1$`,
     /// where `$\nu$` is the number of degrees of freedom (i.e. the number of data
     /// points minus the number of total fit parameters).
     ///
