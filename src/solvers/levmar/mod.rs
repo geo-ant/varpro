@@ -33,7 +33,7 @@ where
 /// A helper type that contains the fitting problem after the
 /// minimization, as well as a report and some convenience functions
 #[derive(Debug)]
-pub struct FitResult<Model, const MRHS: bool>
+pub struct FitResult<Model, const MRHS: bool, const SUCCESS: bool>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
@@ -49,13 +49,14 @@ where
     pub minimization_report: MinimizationReport<Model::ScalarType>,
 }
 
-impl<Model> FitResult<Model, true>
+impl<Model> FitResult<Model, true, true>
 // take trait bounds from above:
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
 {
     /// **Note** This implementation is for fitting problems with multiple right hand sides.
+    /// It is also for the case that the fit was successful.
     ///
     /// Convenience function to get the linear coefficients after the fit has
     /// finished. Will return None if there was an error during fitting.
@@ -66,7 +67,14 @@ where
     pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
         Some(self.problem.cached.as_ref()?.linear_coefficients.as_view())
     }
+}
 
+impl<Model, const SUCCESS: bool> FitResult<Model, true, SUCCESS>
+// take trait bounds from above:
+where
+    Model: SeparableNonlinearModel,
+    Model::ScalarType: RealField + Scalar + Float,
+{
     /// **Note** This implementation is for fitting problems with a single right hand side.
     ///
     /// Calculate the values of the model at the best fit parameters.
