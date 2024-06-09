@@ -28,7 +28,7 @@ pub(crate) enum Error<ModelError: std::error::Error> {
     /// the floating point type was unable to capture an integral value
     IntegerToFloatConversion(usize),
     /// Failed to calculate the inverse of a matrix
-    #[error("Matrix inversion error")]
+    #[error("Matrix inverse does not exist or could not be calculated")]
     MatrixInversion,
 }
 
@@ -312,7 +312,8 @@ where
     /// # Panics
     ///
     /// Panics if `probability` is not within the half-open interval
-    /// `$(0,1)$`.
+    /// `$(0,1)$` or if the number of degrees of freedom is too large
+    /// to fit into a value of type `f64` without loss of precision.
     pub fn confidence_band_radius(
         &self,
         probability: Model::ScalarType,
