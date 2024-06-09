@@ -274,18 +274,17 @@ where
     /// points minus the number of total fit parameters).
     ///
     /// Scaling the weights does not influence the best fit parameters themselves,
-    /// but it does influence the resulting uncertainties. Read [here](https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#reduced-chi-squared)
+    /// or the resulting uncertainties. Read [here](https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#reduced-chi-squared)
     /// for an in-depth explanation. Briefly, the expected value for
     /// `$\chi^2_\nu$` for a fit with `$\nu$` degrees of freedom is one.
     /// Therefore it can be reasonable to apply the scaling such that we force
     /// `$chi^2_\nu$` to take its expected value. This will correct an overestimation
     /// or underestimation of the errors and is often a reasonable choice to make.
     ///
-    /// However, this will make this confidence band inconsistent with the other
-    /// information from the fit, such as the standard errors from the covariance matrix
-    /// or the reduced `$\chi^2$`. Luckily, it's easy to obtain the confidence
-    /// bands with the errors exactly as given. Just multiply the result of this
-    /// function with the _reduced_ `$\chi^2$` of this fit.
+    /// However, this will make this confidence band inconsistent with the
+    /// reported reduced `$\chi^2$` from the fit. Luckily, it's easy to obtain
+    /// the confidence bands without scaling the errors. Just multiply the result of this
+    /// function with the _reduced_ `$\chi^2$` of this fit:
     ///
     /// ```no_run
     /// # let model : varpro::model::SeparableModel<f64> = unimplemented!();
