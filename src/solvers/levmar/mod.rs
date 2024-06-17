@@ -69,12 +69,25 @@ where
     }
 }
 
-impl<Model, const SUCCESS: bool> FitResult<Model, true, SUCCESS>
+impl<Model> FitResult<Model, true, false>
 // take trait bounds from above:
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
 {
+    /// **Note** This implementation is for fitting problems with multiple right hand sides.
+    /// It is also for the case that the fit was successful.
+    ///
+    /// Convenience function to get the linear coefficients after the fit has
+    /// finished. Will return None if there was an error during fitting.
+    ///
+    /// The coefficients vectors for the individual
+    /// members of the datasets are the colums of the returned matrix. That means
+    /// one coefficient vector for each right hand side.
+    pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
+        Some(self.problem.cached.as_ref()?.linear_coefficients.as_view())
+    }
+
     /// **Note** This implementation is for fitting problems with a single right hand side.
     ///
     /// Calculate the values of the model at the best fit parameters.
@@ -88,7 +101,7 @@ where
     }
 }
 
-impl<Model> FitResult<Model, false>
+impl<Model> FitResult<Model, false, true>
 // take trait bounds from above:
 where
     Model: SeparableNonlinearModel,
@@ -118,7 +131,37 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> FitResult<Model, MRHS>
+impl<Model> FitResult<Model, false, false>
+// take trait bounds from above:
+where
+    Model: SeparableNonlinearModel,
+    Model::ScalarType: RealField + Scalar + Float,
+{
+    /// **Note** This implementation is for fitting problems with a single right hand side.
+    ///
+    /// Convenience function to get the linear coefficients after the fit has
+    /// finished. Will return None if there was an error during fitting.
+    /// The coefficients are given as a single vector.
+    pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
+        let coeff = &self.problem.cached.as_ref()?.linear_coefficients;
+        debug_assert_eq!(coeff.ncols(),1,
+            "Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!");
+        Some(self.problem.cached.as_ref()?.linear_coefficients.column(0))
+    }
+    /// **Note** This implementation is for fitting problems with multiple right hand sides
+    ///
+    /// Calculate the values of the model at the best fit parameters.
+    /// Returns None if there was an error during fitting.
+    /// Since this is for single right hand sides, the output is
+    /// a matrix containing composed of column vectors for the right hand sides.
+    pub fn best_fit(&self) -> Option<OVector<Model::ScalarType, Dyn>> {
+        let coeff = self.linear_coefficients()?;
+        let eval = self.problem.model().eval().ok()?;
+        Some(eval * coeff)
+    }
+}
+
+impl<Model, const MRHS: bool, const SUCCESS: bool> FitResult<Model, MRHS, SUCCESS>
 // take trait bounds from above:
 where
     Model: SeparableNonlinearModel,
@@ -128,7 +171,8 @@ where
     fn new(
         problem: LevMarProblem<Model, MRHS>,
         minimization_report: MinimizationReport<Model::ScalarType>,
-    ) -> Self {
+    ) -> Result<Self<Model,MHRS,true>,Self<Model,MRHS,false>>{
+        if 
         Self {
             problem,
             minimization_report,
@@ -205,7 +249,7 @@ where
     pub fn fit(
         &self,
         problem: LevMarProblem<Model, MRHS>,
-    ) -> Result<FitResult<Model, MRHS>, FitResult<Model, MRHS>>
+    ) -> Result<FitResult<Model, MRHS, true>, FitResult<Model, MRHS, false>>
     where
         Model: SeparableNonlinearModel,
         LevMarProblem<Model, MRHS>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
@@ -213,11 +257,10 @@ where
     {
         #[allow(deprecated)]
         let (problem, report) = self.minimize(problem);
-        let result = FitResult::new(problem, report);
-        if result.was_successful() {
-            Ok(result)
+        if report.was_successful() {
+            Ok(FitResult::new(problem, report);)
         } else {
-            Err(result)
+            Err(FitResult::new(problem, report);)
         }
     }
 }
