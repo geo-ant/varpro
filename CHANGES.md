@@ -3,6 +3,10 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.9.1
+
+No changes, except for CI badge links in Readme.
+
 ## 0.9.0
 
 - We can now calculate confidence bands using via `FitStatistics`. Only available
