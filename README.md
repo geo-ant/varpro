@@ -1,8 +1,8 @@
 # varpro
 
-![build](https://github.com/geo-ant/varpro/workflows/build/badge.svg?branch=main)
-![tests](https://github.com/geo-ant/varpro/workflows/tests/badge.svg?branch=main)
-![lints](https://github.com/geo-ant/varpro/workflows/lints/badge.svg?branch=main)
+![build](https://github.com/geo-ant/varpro/workflows/build/badge.svg)
+![tests](https://github.com/geo-ant/varpro/workflows/tests/badge.svg)
+![lints](https://github.com/geo-ant/varpro/workflows/lints/badge.svg)
 [![crates](https://img.shields.io/crates/v/varpro)](https://crates.io/crates/varpro)
 [![Coverage Status](https://coveralls.io/repos/github/geo-ant/varpro/badge.svg?branch=main)](https://coveralls.io/github/geo-ant/varpro?branch=main)
 ![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
