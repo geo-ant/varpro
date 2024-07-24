@@ -39,12 +39,10 @@ fn build_problem<Model>(
 ) -> LevMarProblem<Model, false>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<f64, Dyn, Dyn>,
-    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Dyn>>::Buffer: Storage<f64, Dyn>,
-    <DefaultAllocator as nalgebra::allocator::Allocator<f64, Dyn>>::Buffer: RawStorageMut<f64, Dyn>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<(<f64 as ComplexField>::RealField, usize), Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn, Dyn>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<Dyn>>::Buffer<f64>: Storage<f64, Dyn>,
+    <DefaultAllocator as nalgebra::allocator::Allocator<Dyn>>::Buffer<f64>: RawStorageMut<f64, Dyn>,
 {
     let DoubleExponentialParameters {
         tau1,

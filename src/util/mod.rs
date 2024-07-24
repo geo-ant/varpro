@@ -1,9 +1,9 @@
 #[cfg(any(test, doctest))]
 mod test;
-
+use nalgebra::U1;
 use nalgebra::{
-    ClosedMul, ComplexField, DVector, DefaultAllocator, Dim, Dyn, Matrix, OMatrix, OVector,
-    RawStorageMut, Scalar, U1,
+    ComplexField, DVector, DefaultAllocator, Dim, Dyn, Matrix, OMatrix, OVector, RawStorageMut,
+    Scalar,
 };
 use std::ops::Mul;
 
@@ -19,7 +19,7 @@ pub struct DiagMatrix<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
+    DefaultAllocator: nalgebra::allocator::Allocator<D>,
 {
     diagonal: OVector<ScalarType, D>,
 }
@@ -28,7 +28,7 @@ impl<ScalarType, D> DiagMatrix<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
+    DefaultAllocator: nalgebra::allocator::Allocator<D>,
 {
     /// get the number of columns of the matrix
     /// The matrix is square, so this is equal to the number of rows
@@ -51,8 +51,7 @@ where
     /// contains only real field values of this (potentially) complex type
     pub fn from_real_field(diagonal: OVector<ScalarType::RealField, D>) -> Self
     where
-        DefaultAllocator:
-            nalgebra::allocator::Allocator<<ScalarType as ComplexField>::RealField, D>,
+        DefaultAllocator: nalgebra::allocator::Allocator<D>,
     {
         Self::from(diagonal.map(ScalarType::from_real))
     }
@@ -62,7 +61,7 @@ impl<ScalarType, D> From<OVector<ScalarType, D>> for DiagMatrix<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
+    DefaultAllocator: nalgebra::allocator::Allocator<D>,
 {
     fn from(diagonal: OVector<ScalarType, D>) -> Self {
         Self { diagonal }
@@ -76,11 +75,11 @@ where
 /// The result of the matrix multiplication as a new dynamically sized matrix
 impl<ScalarType, R, C, S> Mul<Matrix<ScalarType, R, C, S>> for &DiagMatrix<ScalarType, R>
 where
-    ScalarType: ClosedMul + Scalar + ComplexField,
+    ScalarType: Mul<ScalarType, Output = ScalarType> + Scalar + ComplexField,
     C: Dim,
     R: Dim,
     S: RawStorageMut<ScalarType, R, C>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R>,
+    DefaultAllocator: nalgebra::allocator::Allocator<R>,
 {
     type Output = Matrix<ScalarType, R, C, S>;
 

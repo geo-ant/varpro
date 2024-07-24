@@ -59,8 +59,8 @@ pub(crate) enum Error<ModelError: std::error::Error> {
 pub struct FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Dyn, Dyn>,
+    DefaultAllocator: Allocator<Dyn>,
 {
     /// The covariance matrix of the parameter estimates. The linear
     /// parameters are ordered first, followed by the non-linear parameters
@@ -103,8 +103,8 @@ where
 impl<Model> FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Dyn, Dyn>,
+    DefaultAllocator: Allocator<Dyn>,
 {
     /// The covariance matrix of the parameter estimates. Here the parameters
     /// are both the linear as well as the nonlinear parameters of the model.
@@ -190,7 +190,7 @@ where
     pub fn nonlinear_parameters_variance(&self) -> OVector<Model::ScalarType, Dyn>
     where
         Model::ScalarType: Scalar + Zero,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+        DefaultAllocator: Allocator<Dyn>,
     {
         let total_parameter_count = self.linear_coefficient_count + self.nonlinear_parameter_count;
         let diagonal = self.covariance_matrix.diagonal();
@@ -206,7 +206,7 @@ where
     pub fn linear_coefficients_variance(&self) -> OVector<Model::ScalarType, Dyn>
     where
         Model::ScalarType: Scalar + Zero,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+        DefaultAllocator: Allocator<Dyn>,
     {
         let diagonal = self.covariance_matrix.diagonal();
         extract_range(&diagonal, U0, Dyn(self.linear_coefficient_count))
@@ -362,9 +362,9 @@ where
     Start: Dim,
     End: DimMin<Start>,
     End: DimSub<Start>,
-    nalgebra::DefaultAllocator: Allocator<ScalarType, D>,
+    nalgebra::DefaultAllocator: Allocator<D>,
     nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<ScalarType, <End as nalgebra::DimSub<Start>>::Output>,
+        nalgebra::allocator::Allocator<<End as nalgebra::DimSub<Start>>::Output>,
 {
     assert!(end.value() >= start.value());
     assert!(end.value() <= vector.nrows());
@@ -382,8 +382,8 @@ where
 impl<Model> FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: Allocator<<Model as SeparableNonlinearModel>::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Dyn, Dyn>,
+    DefaultAllocator: Allocator<Dyn>,
 {
     /// Calculate the fit statistics from the model, the WEIGHTED data, the weights, and the linear coefficients.
     /// Note the nonlinear coefficients are part of state of the model.
@@ -404,8 +404,8 @@ where
     where
         Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
+        DefaultAllocator: Allocator<Dyn>,
+        DefaultAllocator: Allocator<Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
     {
         // this is a sanity check and should never actually fail
@@ -494,7 +494,7 @@ fn calc_correlation_matrix<ScalarType, D>(
 where
     ScalarType: Float + Scalar + Zero,
     D: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D, D>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<D, D>,
 {
     assert_eq!(
         covariance_matrix.nrows(),
@@ -530,8 +530,8 @@ fn model_function_jacobian<Model>(
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Float + Zero + Scalar + ComplexField,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
+    nalgebra::DefaultAllocator: Allocator<Dyn>,
+    nalgebra::DefaultAllocator: Allocator<Dyn, Dyn>,
 {
     // the part of the jacobian that contains the derivatives
     // with respect to the nonlinear parameters
@@ -567,9 +567,9 @@ where
     C1: Dim + DimAdd<C2>,
     C2: Dim,
     T: Scalar + Zero,
-    nalgebra::DefaultAllocator: Allocator<T, R, <C1 as DimAdd<C2>>::Output>,
-    nalgebra::DefaultAllocator: Allocator<T, R, C1>,
-    nalgebra::DefaultAllocator: Allocator<T, R, C2>,
+    nalgebra::DefaultAllocator: Allocator<R, <C1 as DimAdd<C2>>::Output>,
+    nalgebra::DefaultAllocator: Allocator<R, C1>,
+    nalgebra::DefaultAllocator: Allocator<R, C2>,
     S2: nalgebra::RawStorage<T, R, C2>,
     S1: nalgebra::RawStorage<T, R, C1>,
 {

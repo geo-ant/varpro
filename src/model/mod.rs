@@ -237,8 +237,8 @@ pub mod test;
 #[allow(clippy::type_complexity)]
 pub trait SeparableNonlinearModel
 where
-    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Dyn, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn, Dyn>,
 {
     /// the scalar number type for this model, which should be
     /// a real or complex number type, commonly either `f64` or `f32`.
