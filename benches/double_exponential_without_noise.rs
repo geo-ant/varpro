@@ -1,23 +1,17 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
-use nalgebra::ComplexField;
-
 use nalgebra::DVector;
 use nalgebra::DefaultAllocator;
-
 use nalgebra::Dyn;
 use nalgebra::OVector;
 use nalgebra::RawStorageMut;
-
 use nalgebra::Storage;
 use nalgebra::U1;
-
 use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::*;
-
 use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
