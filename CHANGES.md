@@ -5,7 +5,8 @@ See also here for a [version history](https://crates.io/crates/varpro/versions).
 
 ## 0.10.0
 
-Updated dependencies to current versions.
+- Updated dependencies to current versions.
+- Updates to documentation
 
 ## 0.9.0
 

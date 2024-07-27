@@ -130,8 +130,7 @@ where
     }
 
     #[deprecated(note = "Use the method calc_correlation_matrix.", since = "0.9.0")]
-    /// calculate the correlation matrix. **Deprecated**, use the `calc_correlation_matrix``
-    /// function instead.
+    /// calculate the correlation matrix.
     pub fn correlation_matrix(&self) -> OMatrix<Model::ScalarType, Dyn, Dyn>
     where
         Model::ScalarType: Float,
@@ -262,52 +261,6 @@ where
     /// // upper and lower bounds of the confidence band
     /// let cb_upper = best_fit + cb_radius;
     /// let cb_lower = best_fit - cb_radius;
-    /// ```
-    /// # An Important Note on the Confidence Band Values
-    ///
-    /// This library chooses to implement the confidence interval such that it
-    /// gives the same results as the python library [`lmfit`](https://lmfit.github.io/lmfit-py/).
-    /// That means that the confidence interval is given _as if_ during the
-    /// fitting process the weights had been uniformly scaled such that the
-    /// reduced `$\chi^2$` after fitting is equal to unity: `$\chi_/nu^2 = \chi^2/\nu = 1$`,
-    /// where `$\nu$` is the number of degrees of freedom (i.e. the number of data
-    /// points minus the number of total fit parameters).
-    ///
-    /// Scaling the weights does not influence the best fit parameters themselves,
-    /// but it does influence the resulting uncertainties. Read [here](https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#reduced-chi-squared)
-    /// for an in-depth explanation. Briefly, the expected value for
-    /// `$\chi^2_\nu$` for a fit with `$\nu$` degrees of freedom is one.
-    /// Therefore it can be reasonable to apply the scaling such that we force
-    /// `$chi^2_\nu$` to take its expected value. This will correct an overestimation
-    /// or underestimation of the errors and is often a reasonable choice to make.
-    ///
-    /// However, this will make this confidence band inconsistent with the other
-    /// information from the fit, such as the standard errors from the covariance matrix
-    /// or the reduced `$\chi^2$`. Luckily, it's easy to obtain the confidence
-    /// bands with the errors exactly as given. Just multiply the result of this
-    /// function with the _reduced_ `$\chi^2$` of this fit.
-    ///
-    /// ```no_run
-    /// # let model : varpro::model::SeparableModel<f64> = unimplemented!();
-    /// # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
-    /// # use varpro::solvers::levmar::LevMarProblemBuilder;
-    /// # use varpro::solvers::levmar::LevMarSolver;
-    /// # let problem = LevMarProblemBuilder::new(model)
-    /// #              .observations(y)
-    /// #              .build()
-    /// #              .unwrap();
-    ///
-    /// let (fit_result,fit_statistics) = LevMarSolver::default()
-    ///               .fit_with_statistics(problem)
-    ///               .unwrap();
-    ///
-    /// let best_fit = fit_result.best_fit().unwrap();
-    /// // get the unscaled confidence band by multiplying with the
-    /// // reduced chi2
-    /// let cb_radius_unscaled = fit_statistics.reduced_chi2() * fit_statistics.confidence_band_radius(0.683);
-    /// // upper and lower bounds of the confidence band
-    /// let cb_upper = best_fit + cb_radius_unscaled;
-    /// let cb_lower = best_fit - cb_radius_unscaled;
     /// ```
     ///
     /// # Panics

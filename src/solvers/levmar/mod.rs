@@ -218,12 +218,12 @@ impl<Model> LevMarSolver<Model, false>
 where
     Model: SeparableNonlinearModel,
 {
-    /// Same as the [LevMarProblem::fit] function but also calculates some additional
+    /// Same as the [LevMarSolver::fit] function but also calculates some additional
     /// statistical information about the fit, if the fit was successful.
     ///
     /// # Returns
     ///
-    /// See also the [LevMarProblem::fit] function, but on success also returns statistical
+    /// See also the [LevMarSolver::fit] function, but on success also returns statistical
     /// information about the fit.
     ///
     /// ## Problems with Multiple Right Hand Sides

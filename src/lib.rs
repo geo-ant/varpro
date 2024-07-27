@@ -200,7 +200,7 @@
 //! ```
 //!
 //! We'll see in the example how the [function](crate::model::builder::SeparableModelBuilder::function) method
-//! and the [partial_deriv](crate::model::builder::SeparableModelBuilderProxyWithDerivatives::partial_deriv)
+//! and the [partial_deriv](crate::model::builder::SeparableModelBuilder::partial_deriv)
 //! methods let us add the function and the derivative as base functions.
 //!
 //! There is a second type of basis function, which corresponds to coefficient `$c_3$`. This is a constant
