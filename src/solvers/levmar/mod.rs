@@ -218,12 +218,12 @@ impl<Model> LevMarSolver<Model, false>
 where
     Model: SeparableNonlinearModel,
 {
-    /// Same as the [LevMarProblem::fit] function but also calculates some additional
+    /// Same as the [LevMarSolver::fit] function but also calculates some additional
     /// statistical information about the fit, if the fit was successful.
     ///
     /// # Returns
     ///
-    /// See also the [LevMarProblem::fit] function, but on success also returns statistical
+    /// See also the [LevMarSolver::fit] function, but on success also returns statistical
     /// information about the fit.
     ///
     /// ## Problems with Multiple Right Hand Sides
@@ -285,22 +285,13 @@ where
     ScalarType: Scalar + ComplexField,
     ModelDim: Dim,
     OutputDim: Dim + nalgebra::DimMin<ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, OutputDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        ScalarType,
-        <OutputDim as DimMin<ModelDim>>::Output,
-        ModelDim,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        ScalarType,
-        OutputDim,
-        <OutputDim as DimMin<ModelDim>>::Output,
-    >,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        <ScalarType as ComplexField>::RealField,
-        <OutputDim as DimMin<ModelDim>>::Output,
-    >,
+    DefaultAllocator: nalgebra::allocator::Allocator<ModelDim>,
+    DefaultAllocator: nalgebra::allocator::Allocator<OutputDim>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<<OutputDim as DimMin<ModelDim>>::Output, ModelDim>,
+    DefaultAllocator:
+        nalgebra::allocator::Allocator<OutputDim, <OutputDim as DimMin<ModelDim>>::Output>,
+    DefaultAllocator: nalgebra::allocator::Allocator<<OutputDim as DimMin<ModelDim>>::Output>,
 {
     /// The current residual matrix of model function values belonging to the current parameters
     current_residuals: DMatrix<ScalarType>,
@@ -474,12 +465,7 @@ where
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<
-        (<Model::ScalarType as ComplexField>::RealField, usize),
-        Dyn,
-    >,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<<Model::ScalarType as ComplexField>::RealField, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
 {
     type ResidualStorage = Owned<Model::ScalarType, Dyn>;
     type JacobianStorage = Owned<Model::ScalarType, Dyn, Dyn>;

@@ -11,6 +11,11 @@ Nonlinear function fitting made simple. This library provides robust and fast
 least-squares fitting of a wide class of model functions to data.
 It uses the VarPro algorithm to achieve this, hence the name.
 
+## Support
+
+If you like this crate, recommend it to others. You can also [buy me a coffee](https://ko-fi.com/geoant)
+if you feel like it.
+
 ## Introduction
 
 This crate implements a powerful algorithm to fit model functions to data, 
@@ -28,8 +33,8 @@ which is a notoriously ill-conditioned problem.
 
 ### What is VarPro?
 
-Variable Projection (VarPro) is an algorithm that exploits that its fitting
-problem can be separated into linear and nonlinear parameters.
+Variable Projection (VarPro) is an algorithm that tatkes advantage of
+the fact that its fitting problem can be separated into linear and nonlinear parameters.
 First, the linear parameters are eliminated using some clever linear algebra. Then,
 the fitting problem is rewritten so that it depends only on the nonlinear parameters.
 Finally, this reduced problem is solved by using a general purpose nonlinear minimization algorithm,
@@ -145,7 +150,7 @@ than just using a nonlinear solver without the magic of varpro.
 But this crate offers an additional way to eek out the last bits of performance.
 
 The `SeparableNonlinearModel` trait can be manually implemented to describe a
-model function. This often allows us to shave of the last hundreds of microseconds
+model function. This often allows us to shave off the last hundreds of microseconds
 from the computation, e.g. by caching intermediate calculations. The crate documentation
 contains detailed examples.
 

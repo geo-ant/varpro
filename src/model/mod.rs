@@ -237,8 +237,8 @@ pub mod test;
 #[allow(clippy::type_complexity)]
 pub trait SeparableNonlinearModel
 where
-    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Self::ScalarType, Dyn, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn, Dyn>,
 {
     /// the scalar number type for this model, which should be
     /// a real or complex number type, commonly either `f64` or `f32`.
@@ -312,11 +312,11 @@ where
     /// # Arguments
     ///
     /// * `derivative_index`: The index of the nonlinear parameter with respect to which
-    /// partial derivative should be evaluated. We use _zero based indexing_
-    /// here! Put in more simple terms, say your model has three nonlinear parameters
-    /// `a,b,c`, so your vector of nonlinear parameters is `$\vec{\alpha} = (a,b,c)$`.
-    /// Then index 0 requests `$\partial/\partial_a$`, index 1 requests `$\partial/\partial_b$`
-    /// and index 2 requests `$\partial/\partial_c$`.
+    ///    partial derivative should be evaluated. We use _zero based indexing_
+    ///    here! Put in more simple terms, say your model has three nonlinear parameters
+    ///    `a,b,c`, so your vector of nonlinear parameters is `$\vec{\alpha} = (a,b,c)$`.
+    ///    Then index 0 requests `$\partial/\partial_a$`, index 1 requests `$\partial/\partial_b$`
+    ///    and index 2 requests `$\partial/\partial_c$`.
     ///
     /// # Result
     ///

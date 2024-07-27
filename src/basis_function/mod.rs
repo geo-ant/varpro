@@ -9,6 +9,7 @@ use nalgebra::{DVector, Scalar};
 ///
 /// * `$\vec{x}$` is an independent variable, like time, spatial coordinates and so on,
 /// * `$\alpha_j$` are scalar parameter of this function
+///
 /// The functions must have at least one parameter argument additional ot the location parameter, i.e. a function
 /// `$f(\vec{x})$` does not satisfy the trait, but e.g. `$f(\vec{x},\alpha_1)$` does. The function
 /// must be vector valued and should produce a vector of the same size as `\vec{x}`. (If you want to
@@ -18,15 +19,20 @@ use nalgebra::{DVector, Scalar};
 /// If it is violated, then calculations using the basis function will return errors in the [SeparableModel](crate::model::SeparableModel).
 ///
 /// # Variadic Functions
+///
 /// Since Rust does not have variadic functions or generics, this trait is implemented for all functions up to
 /// a maximum number of arguments. Right now this is implemented for up to 10 arguments.
 ///
 /// # Generic Parameters
+///
 /// ## Scalar Type
+///
 /// The functions must have an interface `Fn(&DVector<ScalarType>,ScalarType)-> DVector<ScalarType>`,
 /// `Fn(&DVector<ScalarType>,ScalarType,ScalarType)-> DVector<ScalarType>` and so on.
 /// All numeric types, including the return value must be of the same scalar type.
+///
 /// ## ArgList : The argument list
+///
 /// This type is of no consequence for the user because it will be correctly inferred when
 /// passing a function. It is a [nifty trick](https://geo-ant.github.io/blog/2021/rust-traits-and-variadic-functions/)
 /// that allows us to implement this trait for functions taking different arguments. Just FYI: The
@@ -42,9 +48,10 @@ where
     /// # Arguments
     /// * `x`: the vector `$\vec{x}$`
     /// * `params`: The parameters `$(\alpha_1,...,\alpha_N)$` as a slice. The slice must have
-    /// the correct number of arguments for calling the function (no more, no less).
+    ///    the correct number of arguments for calling the function (no more, no less).
     ///
     /// # Effect and Panics
+    ///
     /// If the slice has fewer elements than the parameter argument list. If the slice has more element,
     /// only the first `$N$` elements are used and dispatched to the parameters in order, i.e.
     /// `$\alpha_1$`=`param[0]`, ..., `$\alpha_N$`=`param[N-1]`. Calling eval will result in evaluating

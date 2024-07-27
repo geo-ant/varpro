@@ -9,7 +9,9 @@ use crate::model::builder::error::ModelBuildError;
 /// * the set of parameters is not empty
 /// * the set of parameters contains only unique elements
 /// * any of the parameter names contains a comma. This indicates most likely a typo when giving the parameter list
+///
 /// # Returns
+///
 /// Ok if the conditions hold, otherwise an error variant.
 pub fn check_parameter_names<StrType>(param_names: &[StrType]) -> Result<(), ModelBuildError>
 where
@@ -80,11 +82,13 @@ where
 /// of model parameters and dispatch them to our model function
 /// # Arguments
 /// * `model_parameters`: the parameters that the complete model that this function belongs to
-/// depends on
+///    depends on
 /// * `function_parameters`: the parameters (in right to left order) that the basisfunction depends
-/// on. Must be a subset of the model parameters.
+///    on. Must be a subset of the model parameters.
 /// * `function` a basis function that depends on a number of parameters
+///
 /// # Result
+///
 /// Say our model depends on parameters `$\vec{p}=(\alpha,\beta,\gamma)$` and the `function` argument
 /// is a basis function `$f(\vec{x},\gamma,\beta)$`. Then calling `create_wrapped_basis_function(&["alpha","beta","gamma"],&["gamma","alpha"],f)`
 /// creates a wrapped function `$\tilde{f}(\vec{x},\vec{p})$` which can be called with `$\tilde{f}(\vec{x},\vec{p})=f(\vec{x},\gamma,\beta$`.

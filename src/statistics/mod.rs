@@ -59,8 +59,8 @@ pub(crate) enum Error<ModelError: std::error::Error> {
 pub struct FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Dyn, Dyn>,
+    DefaultAllocator: Allocator<Dyn>,
 {
     /// The covariance matrix of the parameter estimates. The linear
     /// parameters are ordered first, followed by the non-linear parameters
@@ -103,8 +103,8 @@ where
 impl<Model> FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Dyn, Dyn>,
+    DefaultAllocator: Allocator<Dyn>,
 {
     /// The covariance matrix of the parameter estimates. Here the parameters
     /// are both the linear as well as the nonlinear parameters of the model.
@@ -130,8 +130,7 @@ where
     }
 
     #[deprecated(note = "Use the method calc_correlation_matrix.", since = "0.9.0")]
-    /// calculate the correlation matrix. **Deprecated**, use the `calc_correlation_matrix``
-    /// function instead.
+    /// calculate the correlation matrix.
     pub fn correlation_matrix(&self) -> OMatrix<Model::ScalarType, Dyn, Dyn>
     where
         Model::ScalarType: Float,
@@ -190,7 +189,7 @@ where
     pub fn nonlinear_parameters_variance(&self) -> OVector<Model::ScalarType, Dyn>
     where
         Model::ScalarType: Scalar + Zero,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+        DefaultAllocator: Allocator<Dyn>,
     {
         let total_parameter_count = self.linear_coefficient_count + self.nonlinear_parameter_count;
         let diagonal = self.covariance_matrix.diagonal();
@@ -206,7 +205,7 @@ where
     pub fn linear_coefficients_variance(&self) -> OVector<Model::ScalarType, Dyn>
     where
         Model::ScalarType: Scalar + Zero,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
+        DefaultAllocator: Allocator<Dyn>,
     {
         let diagonal = self.covariance_matrix.diagonal();
         extract_range(&diagonal, U0, Dyn(self.linear_coefficient_count))
@@ -225,11 +224,11 @@ where
     /// # Arguments
     ///
     /// * `probability` the confidence level of the confidence interval, expressed
-    /// as a probability value between 0 and 1. Note that it can't be 0 or 1, but
-    /// anything in between. Since least squares fitting assumes Gaussian error
-    /// distributions, we can use the quantiles of the normal distribution to
-    /// relate this to often used "number of sigmas". For example the probability
-    /// `$68.3 \% = 0.683$` corresponds to (approximately) `$1\sigma$`.
+    ///    as a probability value between 0 and 1. Note that it can't be 0 or 1, but
+    ///    anything in between. Since least squares fitting assumes Gaussian error
+    ///    distributions, we can use the quantiles of the normal distribution to
+    ///    relate this to often used "number of sigmas". For example the probability
+    ///    `$68.3 \% = 0.683$` corresponds to (approximately) `$1\sigma$`.
     ///
     /// # Returns
     ///
@@ -262,52 +261,6 @@ where
     /// // upper and lower bounds of the confidence band
     /// let cb_upper = best_fit + cb_radius;
     /// let cb_lower = best_fit - cb_radius;
-    /// ```
-    /// # An Important Note on the Confidence Band Values
-    ///
-    /// This library chooses to implement the confidence interval such that it
-    /// gives the same results as the python library [`lmfit`](https://lmfit.github.io/lmfit-py/).
-    /// That means that the confidence interval is given _as if_ during the
-    /// fitting process the weights had been uniformly scaled such that the
-    /// reduced `$\chi^2$` after fitting is equal to unity: `$\chi_/nu^2 = \chi^2/\nu = 1$`,
-    /// where `$\nu$` is the number of degrees of freedom (i.e. the number of data
-    /// points minus the number of total fit parameters).
-    ///
-    /// Scaling the weights does not influence the best fit parameters themselves,
-    /// but it does influence the resulting uncertainties. Read [here](https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#reduced-chi-squared)
-    /// for an in-depth explanation. Briefly, the expected value for
-    /// `$\chi^2_\nu$` for a fit with `$\nu$` degrees of freedom is one.
-    /// Therefore it can be reasonable to apply the scaling such that we force
-    /// `$chi^2_\nu$` to take its expected value. This will correct an overestimation
-    /// or underestimation of the errors and is often a reasonable choice to make.
-    ///
-    /// However, this will make this confidence band inconsistent with the other
-    /// information from the fit, such as the standard errors from the covariance matrix
-    /// or the reduced `$\chi^2$`. Luckily, it's easy to obtain the confidence
-    /// bands with the errors exactly as given. Just multiply the result of this
-    /// function with the _reduced_ `$\chi^2$` of this fit.
-    ///
-    /// ```no_run
-    /// # let model : varpro::model::SeparableModel<f64> = unimplemented!();
-    /// # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
-    /// # use varpro::solvers::levmar::LevMarProblemBuilder;
-    /// # use varpro::solvers::levmar::LevMarSolver;
-    /// # let problem = LevMarProblemBuilder::new(model)
-    /// #              .observations(y)
-    /// #              .build()
-    /// #              .unwrap();
-    ///
-    /// let (fit_result,fit_statistics) = LevMarSolver::default()
-    ///               .fit_with_statistics(problem)
-    ///               .unwrap();
-    ///
-    /// let best_fit = fit_result.best_fit().unwrap();
-    /// // get the unscaled confidence band by multiplying with the
-    /// // reduced chi2
-    /// let cb_radius_unscaled = fit_statistics.reduced_chi2() * fit_statistics.confidence_band_radius(0.683);
-    /// // upper and lower bounds of the confidence band
-    /// let cb_upper = best_fit + cb_radius_unscaled;
-    /// let cb_lower = best_fit - cb_radius_unscaled;
     /// ```
     ///
     /// # Panics
@@ -362,9 +315,9 @@ where
     Start: Dim,
     End: DimMin<Start>,
     End: DimSub<Start>,
-    nalgebra::DefaultAllocator: Allocator<ScalarType, D>,
+    nalgebra::DefaultAllocator: Allocator<D>,
     nalgebra::DefaultAllocator:
-        nalgebra::allocator::Allocator<ScalarType, <End as nalgebra::DimSub<Start>>::Output>,
+        nalgebra::allocator::Allocator<<End as nalgebra::DimSub<Start>>::Output>,
 {
     assert!(end.value() >= start.value());
     assert!(end.value() <= vector.nrows());
@@ -382,8 +335,8 @@ where
 impl<Model> FitStatistics<Model>
 where
     Model: SeparableNonlinearModel,
-    DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: Allocator<<Model as SeparableNonlinearModel>::ScalarType, Dyn>,
+    DefaultAllocator: Allocator<Dyn, Dyn>,
+    DefaultAllocator: Allocator<Dyn>,
 {
     /// Calculate the fit statistics from the model, the WEIGHTED data, the weights, and the linear coefficients.
     /// Note the nonlinear coefficients are part of state of the model.
@@ -404,8 +357,8 @@ where
     where
         Model::ScalarType: Scalar + ComplexField + Float + Zero + FromPrimitive,
         Model: SeparableNonlinearModel,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
-        DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
+        DefaultAllocator: Allocator<Dyn>,
+        DefaultAllocator: Allocator<Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + Copy + RealField + Float,
     {
         // this is a sanity check and should never actually fail
@@ -494,7 +447,7 @@ fn calc_correlation_matrix<ScalarType, D>(
 where
     ScalarType: Float + Scalar + Zero,
     D: Dim,
-    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D, D>,
+    nalgebra::DefaultAllocator: nalgebra::allocator::Allocator<D, D>,
 {
     assert_eq!(
         covariance_matrix.nrows(),
@@ -530,8 +483,8 @@ fn model_function_jacobian<Model>(
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Float + Zero + Scalar + ComplexField,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn>,
-    nalgebra::DefaultAllocator: Allocator<Model::ScalarType, Dyn, Dyn>,
+    nalgebra::DefaultAllocator: Allocator<Dyn>,
+    nalgebra::DefaultAllocator: Allocator<Dyn, Dyn>,
 {
     // the part of the jacobian that contains the derivatives
     // with respect to the nonlinear parameters
@@ -567,9 +520,9 @@ where
     C1: Dim + DimAdd<C2>,
     C2: Dim,
     T: Scalar + Zero,
-    nalgebra::DefaultAllocator: Allocator<T, R, <C1 as DimAdd<C2>>::Output>,
-    nalgebra::DefaultAllocator: Allocator<T, R, C1>,
-    nalgebra::DefaultAllocator: Allocator<T, R, C2>,
+    nalgebra::DefaultAllocator: Allocator<R, <C1 as DimAdd<C2>>::Output>,
+    nalgebra::DefaultAllocator: Allocator<R, C1>,
+    nalgebra::DefaultAllocator: Allocator<R, C2>,
     S2: nalgebra::RawStorage<T, R, C2>,
     S1: nalgebra::RawStorage<T, R, C1>,
 {

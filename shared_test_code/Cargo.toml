@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 varpro = {path = "../"}
-nalgebra = "0.32"
+nalgebra = "0.33"
 num-traits = "0.2"
-levenberg-marquardt = "0.13"
+levenberg-marquardt = "0.14"
 approx = "0.5"
 rand = "0.8"
