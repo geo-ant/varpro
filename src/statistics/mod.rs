@@ -224,11 +224,11 @@ where
     /// # Arguments
     ///
     /// * `probability` the confidence level of the confidence interval, expressed
-    /// as a probability value between 0 and 1. Note that it can't be 0 or 1, but
-    /// anything in between. Since least squares fitting assumes Gaussian error
-    /// distributions, we can use the quantiles of the normal distribution to
-    /// relate this to often used "number of sigmas". For example the probability
-    /// `$68.3 \% = 0.683$` corresponds to (approximately) `$1\sigma$`.
+    ///    as a probability value between 0 and 1. Note that it can't be 0 or 1, but
+    ///    anything in between. Since least squares fitting assumes Gaussian error
+    ///    distributions, we can use the quantiles of the normal distribution to
+    ///    relate this to often used "number of sigmas". For example the probability
+    ///    `$68.3 \% = 0.683$` corresponds to (approximately) `$1\sigma$`.
     ///
     /// # Returns
     ///

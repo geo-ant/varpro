@@ -47,10 +47,11 @@
 //! Lets look at the components of this equation in more detail. The vector valued function
 //! `$\vec{f}(\vec{\alpha},\vec{c}) \in \mathbb{C}^{N_{data}}$` is the model we want to fit. It depends on
 //! two vector valued parameters:
+//!
 //! * `$\vec{\alpha}=(\alpha_1,\dots,\alpha_{N_{params}})^T$` is the vector of nonlinear model parameters.
-//! We will get back to these later.
+//!    We will get back to these later.
 //! * `$\vec{c}=(c_1,\dots,c_{N_{basis}})^T$` is the vector of coefficients for the basis functions.
-//! Those are the linear model parameters.
+//!    Those are the linear model parameters.
 //!
 //! Note that we call `$\vec{\alpha}$` the _nonlinear parameters_ and `$\vec{c}$` the _coefficients_ of the model
 //! just to make the distinction between the two types of parameters clear. The coefficients are
@@ -349,11 +350,11 @@
 //! statement is the following:
 //!
 //!  * We have not only one observation but a set `$\{\vec{y}_s\}$`, `$s=1,...,S$` of
-//! observations.
+//!    observations.
 //!  * We want to fit the separable nonlinear function `$\vec{f}(\vec{\alpha},\vec{c})$`
-//! to all vectors of observations, but in such a way that the linear parameters
-//! are allowed to vary with `$s$`, but the nonlinear parameters
-//! are the same for the whole dataset.
+//!    to all vectors of observations, but in such a way that the linear parameters
+//!    are allowed to vary with `$s$`, but the nonlinear parameters
+//!    are the same for the whole dataset.
 //!
 //! This is called global fitting with multiple right hand sides,
 //! because the nonlinear parameters are not

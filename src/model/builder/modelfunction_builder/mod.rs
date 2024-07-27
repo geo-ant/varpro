@@ -16,7 +16,7 @@ use crate::model::model_basis_function::ModelBasisFunction;
 /// * the model parameters are unique and non-empty
 /// * the function parameters are unique, non-empty and a subset of the model params
 /// * a derivative is provided for each parameter that the function depends on
-/// (all other derivatives are zero, because the function does not depends on other params)
+///   (all other derivatives are zero, because the function does not depend on other params)
 ///
 #[doc(hidden)]
 pub struct ModelBasisFunctionBuilder<ScalarType>
@@ -38,13 +38,17 @@ where
     /// begin constructing a modelfunction for a specific model. The modelfunction must take
     /// a subset of the model parameters. This is the first step in creating a function, because
     /// the modelfunction must have partial derivatives specified for each parameter it takes.
+    ///
     /// # Arguments
+    ///
     /// * `model_parameters`: the model parameters of the model to which this function belongs. This is important
-    /// so the builder understands how the parameters of the function relate to the parameters of the model.
+    ///    so the builder understands how the parameters of the function relate to the parameters of the model.
     /// * `function_parameters`: the parameters that the function takes. Those must be in the order
-    /// of the parameter vector. The paramters must not be empty, nor may they contain duplicates
+    ///    of the parameter vector. The paramters must not be empty, nor may they contain duplicates
     /// * `function`: the actual function.
+    ///
     /// # Result
+    ///
     /// A model builder that can be used to add derivatives.
     pub fn new<FuncType, StrCollection, ArgList>(
         model_parameters: Vec<String>,
@@ -88,9 +92,9 @@ where
     /// Add a derivative for the function with respect to the given parameter.
     /// # Arguments
     /// * `parameter`: the parameter with respect to which the derivative is taken.
-    /// The parameter must be inside the set of model parameters. Furthermore the
+    ///    The parameter must be inside the set of model parameters. Furthermore the
     /// * `derivative`: the partial derivative of the function with which the
-    /// builder was created.
+    ///    builder was created.
     pub fn partial_deriv<FuncType, ArgList>(mut self, parameter: &str, derivative: FuncType) -> Self
     where
         FuncType: BasisFunction<ScalarType, ArgList> + 'static,
