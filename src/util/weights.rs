@@ -1,7 +1,5 @@
 use crate::util::DiagMatrix;
-use nalgebra::{
-    ClosedMul, ComplexField, DefaultAllocator, Dim, Matrix, OVector, RawStorageMut, Scalar,
-};
+use nalgebra::{ComplexField, DefaultAllocator, Dim, Matrix, OVector, RawStorageMut, Scalar};
 use std::ops::Mul;
 
 /// a variant for different weights that can be applied to a least squares problem
@@ -13,7 +11,7 @@ pub enum Weights<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
+    DefaultAllocator: nalgebra::allocator::Allocator<D>,
 {
     /// unit weights, which means the problem is unweighted
     Unit,
@@ -25,7 +23,7 @@ impl<ScalarType, D> Weights<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
+    DefaultAllocator: nalgebra::allocator::Allocator<D>,
 {
     /// create diagonal weights with the given diagonal elements of a matrix.
     /// The resulting diagonal matrix is a square matrix with the given diagonal
@@ -54,7 +52,7 @@ impl<ScalarType, D> Default for Weights<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
+    DefaultAllocator: nalgebra::allocator::Allocator<D>,
 {
     fn default() -> Self {
         Self::Unit
@@ -66,7 +64,7 @@ impl<ScalarType, D> From<DiagMatrix<ScalarType, D>> for Weights<ScalarType, D>
 where
     ScalarType: Scalar + ComplexField,
     D: Dim,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, D>,
+    DefaultAllocator: nalgebra::allocator::Allocator<D>,
 {
     fn from(diag: DiagMatrix<ScalarType, D>) -> Self {
         Self::Diagonal(diag)
@@ -83,12 +81,12 @@ where
 #[allow(non_snake_case)]
 impl<ScalarType, R, C, S> Mul<Matrix<ScalarType, R, C, S>> for &Weights<ScalarType, R>
 where
-    ScalarType: ClosedMul + Scalar + ComplexField,
+    ScalarType: Mul<ScalarType, Output = ScalarType> + Scalar + ComplexField,
     C: Dim,
     R: Dim,
     S: RawStorageMut<ScalarType, R, C>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ScalarType, R, C>,
+    DefaultAllocator: nalgebra::allocator::Allocator<R>,
+    DefaultAllocator: nalgebra::allocator::Allocator<R, C>,
 {
     type Output = Matrix<ScalarType, R, C, S>;
 

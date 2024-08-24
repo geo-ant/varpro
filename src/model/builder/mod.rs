@@ -54,9 +54,9 @@ pub mod error;
 /// **Function Arguments and Output**
 ///
 /// * The first argument of the function must be a reference to a `&DVector` type
-/// that accepts the independent variable (the `$\vec{x}$` values) and the other
-/// parameters must be scalars that are the nonlinear parameters that the basis
-/// function depends on.
+///   that accepts the independent variable (the `$\vec{x}$` values) and the other
+///   parameters must be scalars that are the nonlinear parameters that the basis
+///   function depends on.
 ///
 /// So if we want to model a basis function `$\vec{f_1}(\vec{x},\vec{\alpha})$`
 /// where `$\vec{\alpha}=(\alpha_1,\alpha_2)$` we would write the function in Rust as
@@ -129,14 +129,14 @@ pub mod error;
 /// ** Rules You Must Abide By **
 ///
 /// * Basis functions must be **nonlinear** in the parameters they take. If they aren't, you can always
-/// rewrite the problem so that the linear parameters go in the coefficient vector `$\vec{c}$`. This
-/// means that each partial derivative also depend on all the parameters that the basis function depends
-/// on.
+///   rewrite the problem so that the linear parameters go in the coefficient vector `$\vec{c}$`. This
+///   means that each partial derivative also depend on all the parameters that the basis function depends
+///   on.
 ///
 /// * Derivatives must take the same parameter arguments *and in the same order* as the original
-/// basis function. This means if basis function `$\vec{f}_j$` is given as `$\vec{f}_j(\vec{x},a,b)$`,
-/// then the derivatives must also be given with the parameters `$a,b$` in the same order, i.e.
-/// `$\partial/\partial a \vec{f}_j(\vec{x},a,b)$`, `$\partial/\partial b \vec{f}_j(\vec{x},a,b)$`.
+///   basis function. This means if basis function `$\vec{f}_j$` is given as `$\vec{f}_j(\vec{x},a,b)$`,
+///   then the derivatives must also be given with the parameters `$a,b$` in the same order, i.e.
+///   `$\partial/\partial a \vec{f}_j(\vec{x},a,b)$`, `$\partial/\partial b \vec{f}_j(\vec{x},a,b)$`.
 ///
 /// **Rules Enforced at Compile Time**
 ///
@@ -333,8 +333,8 @@ where
     /// * The list of parameters must only contain unique names
     /// * The list of parameter names must not be empty
     /// * Parameter names must not contain a comma. This is a precaution because
-    /// `&["alpha,beta"]` most likely indicates a typo for `&["alpha","beta"]`. Any other form
-    /// of punctuation is allowed.
+    ///   `&["alpha,beta"]` most likely indicates a typo for `&["alpha","beta"]`. Any other form
+    ///   of punctuation is allowed.
     pub fn new<StrCollection>(parameter_names: StrCollection) -> Self
     where
         StrCollection: IntoIterator,

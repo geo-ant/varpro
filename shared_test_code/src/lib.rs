@@ -54,8 +54,8 @@ pub fn evaluate_complete_model_at_params<Model>(
 where
     Model::ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
 {
     let original_params = model.params();
     model
@@ -80,8 +80,8 @@ pub fn evaluate_complete_model_at_params_mrhs<Model>(
 where
     Model::ScalarType: Scalar + ComplexField,
     Model: SeparableNonlinearModel,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn, Dyn>,
-    DefaultAllocator: nalgebra::allocator::Allocator<Model::ScalarType, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn, Dyn>,
+    DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
 {
     let original_params = model.params();
     model
