@@ -12,6 +12,7 @@ pub mod errors;
 pub mod builder;
 mod model_basis_function;
 #[cfg(any(test, doctest))]
+#[allow(missing_docs)]
 pub mod test;
 
 /// Represents an abstraction for a separable nonlinear model
