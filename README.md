@@ -12,11 +12,6 @@ Nonlinear function fitting made simple. This library provides robust and fast
 least-squares fitting of a wide class of model functions to data.
 It uses the VarPro algorithm to achieve this, hence the name.
 
-## Support
-
-If you like this crate, recommend it to others. You can also [buy me a coffee](https://ko-fi.com/geoant)
-if you feel like it.
-
 ## Introduction
 
 This crate implements a powerful algorithm to fit model functions to data, 
