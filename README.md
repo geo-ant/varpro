@@ -6,6 +6,7 @@
 [![crates](https://img.shields.io/crates/v/varpro)](https://crates.io/crates/varpro)
 [![Coverage Status](https://coveralls.io/repos/github/geo-ant/varpro/badge.svg?branch=main)](https://coveralls.io/github/geo-ant/varpro?branch=main)
 ![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
+[![crates](https://raw.githubusercontent.com/geo-ant/user-content/refs/heads/main/ko-fi-support.svg)](https://ko-fi.com/geoant)
 
 Nonlinear function fitting made simple. This library provides robust and fast 
 least-squares fitting of a wide class of model functions to data.
