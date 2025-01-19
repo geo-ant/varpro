@@ -97,7 +97,10 @@ pub fn create_wrapped_basis_function<ScalarType, ArgList, F, StrType, StrType2>(
     model_parameters: &[StrType],
     function_parameters: &[StrType2],
     function: F,
-) -> Result<Box<dyn Fn(&DVector<ScalarType>, &[ScalarType]) -> DVector<ScalarType>>, ModelBuildError>
+) -> Result<
+    Box<dyn Fn(&DVector<ScalarType>, &[ScalarType]) -> DVector<ScalarType> + Sync>,
+    ModelBuildError,
+>
 where
     ScalarType: Scalar,
     F: BasisFunction<ScalarType, ArgList> + 'static,

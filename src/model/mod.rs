@@ -236,7 +236,7 @@ pub mod test;
 /// }
 /// ```
 #[allow(clippy::type_complexity)]
-pub trait SeparableNonlinearModel
+pub trait SeparableNonlinearModel: std::marker::Sync
 where
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn, Dyn>,
@@ -411,7 +411,7 @@ where
 
 impl<ScalarType> SeparableNonlinearModel for SeparableModel<ScalarType>
 where
-    ScalarType: Scalar + Zero,
+    ScalarType: Scalar + Zero + std::marker::Sync,
 {
     type ScalarType = ScalarType;
     type Error = ModelError;

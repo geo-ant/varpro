@@ -6,6 +6,7 @@ use nalgebra::{
     ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OMatrix,
     OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
 };
+use rayon::prelude::*;
 
 mod builder;
 #[cfg(any(test, doctest))]
@@ -564,12 +565,14 @@ where
             // we don't short circuit anymore if there is an error in calculation,
             // but since that is the sad path anyways, we don't care about a
             // performance hit in the sad path.
+            let model = &self.model;
+            let weights = &self.weights;
             let result: Result<Vec<()>, Model::Error> = jacobian_matrix
-                .column_iter_mut()
+                .par_column_iter_mut()
                 .enumerate()
                 .map(|(k, mut jacobian_col)| {
                     // weighted derivative matrix
-                    let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
+                    let Dk = weights * model.eval_partial_deriv(k)?; // will return none if this could not be calculated
                     let Dk_C = Dk * linear_coefficients;
                     let minus_ak = U * (&U_t * (&Dk_C)) - Dk_C;
 

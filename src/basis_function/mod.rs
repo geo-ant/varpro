@@ -38,7 +38,7 @@ use nalgebra::{DVector, Scalar};
 /// that allows us to implement this trait for functions taking different arguments. Just FYI: The
 /// type reflects the list of parameters `\alpha_j$`, so that for a function `Fn(&DVector<ScalarType>,ScalarType) -> DVector<ScalarType>`
 /// it follows that `ArgList=ScalarType`, while for `Fn(&DVector<ScalarType>,ScalarType)-> DVector<ScalarType>` it is `ArgList=(ScalarType,ScalarType)`.
-pub trait BasisFunction<ScalarType, ArgList>
+pub trait BasisFunction<ScalarType, ArgList>: Sync
 where
     ScalarType: Scalar + Clone,
 {

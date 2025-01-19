@@ -17,10 +17,10 @@ members = ["shared_test_code"]
 [dependencies]
 thiserror = "1"
 levenberg-marquardt = "0.14"
-nalgebra = { version = "0.33" } #, features = ["rayon"]}
+nalgebra = { version = "0.33" , features = ["rayon"]}
 num-traits = "0.2"
 distrs = "0.2"
-# rayon = "1.6"
+rayon = "1.6"
 
 [dev-dependencies]
 approx = "0.5"

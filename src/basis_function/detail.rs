@@ -14,7 +14,7 @@ use nalgebra::{DVector, Scalar};
 impl<ScalarType, Func> BasisFunction<ScalarType, ScalarType> for Func
 where
     ScalarType: Scalar,
-    Func: Fn(&DVector<ScalarType>, ScalarType) -> DVector<ScalarType>,
+    Func: Fn(&DVector<ScalarType>, ScalarType) -> DVector<ScalarType> + Sync,
 {
     fn eval(&self, x: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType> {
         if params.len() != Self::ARGUMENT_COUNT {
@@ -49,7 +49,7 @@ macro_rules! count_args {
 // https://github.com/actix/actix-web/blob/web-v3.3.2/src/handler.rs
 macro_rules! basefunction_impl_helper ({$ScalarType:ident, $(($n:tt, $T:ident)),+} => {
     impl<$ScalarType, Func> BasisFunction<$ScalarType,($($T,)+)> for Func
-    where Func: Fn(&DVector<$ScalarType>,$($T,)+) -> DVector<$ScalarType>,
+    where Func: Fn(&DVector<$ScalarType>,$($T,)+) -> DVector<$ScalarType> + Sync,
     $ScalarType : Scalar
     {
         fn eval(&self, x : &DVector<$ScalarType>,params : &[$ScalarType]) -> DVector<$ScalarType> {

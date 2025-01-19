@@ -365,7 +365,7 @@ where
     /// struct documentation.
     pub fn invariant_function<F>(self, function: F) -> Self
     where
-        F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static,
+        F: Fn(&DVector<ScalarType>) -> DVector<ScalarType> + 'static + Sync,
     {
         match self {
             SeparableModelBuilder::Error(err) => Self::from(err),
