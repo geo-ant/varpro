@@ -335,7 +335,25 @@ where
     /// convert from parallel problem to sequential one. Useful for funnelling the results
     /// of the parallel calculations to downstream tasks that only take sequential models
     /// for simplicity.
-    fn into_sequential(self) -> LevMarProblem<Model, MRHS, false> {
+    pub fn into_sequential(self) -> LevMarProblem<Model, MRHS, false> {
+        let LevMarProblem {
+            Y_w,
+            model,
+            svd_epsilon,
+            weights,
+            cached,
+        } = self;
+        LevMarProblem {
+            Y_w,
+            model,
+            svd_epsilon,
+            weights,
+            cached,
+        }
+    }
+
+    /// convert from sequential problem to a parallel one
+    pub fn into_parallel(self) -> LevMarProblem<Model, MRHS, false> {
         let LevMarProblem {
             Y_w,
             model,

@@ -1,4 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
+use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::DMatrix;
 use nalgebra::DVector;
 use nalgebra::Dyn;
@@ -23,7 +24,7 @@ struct DoubleExponentialParameters {
 fn build_problem_mrhs<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model, true>
+) -> LevMarProblem<Model, true, false>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
 {
@@ -37,9 +38,12 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization_mrhs<Model>(problem: LevMarProblem<Model, true>) -> (DVector<f64>, DMatrix<f64>)
+fn run_minimization_mrhs<Model, const PAR: bool>(
+    problem: LevMarProblem<Model, true, PAR>,
+) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
+    LevMarProblem<Model, true, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()
         .fit(problem)
