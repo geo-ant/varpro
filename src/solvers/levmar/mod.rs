@@ -159,7 +159,7 @@ where
     }
 
     /// creata a new solver using the given underlying solver. This allows
-    /// us to configure the underlying with non-default parameters
+    /// us to configure the underlying solver with non-default parameters
     pub fn with_solver(solver: LevenbergMarquardt<Model::ScalarType>) -> Self {
         Self { solver }
     }

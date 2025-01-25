@@ -8,7 +8,7 @@
 //!
 //! ## Multiple Right Hand Sides
 //!
-//! Since version 0.8.0, support for global fitting with multiple right hand
+//! Since version 0.8.0, support for _global fitting_ with multiple right hand
 //! sides has been added to this library. This is a powerful technique for suitable
 //! problems and is explained at the end of this introductory chapter.
 //!
@@ -366,6 +366,28 @@
 //!
 //! To take advantage of global fitting we don't need to change anything about the
 //! model, we just have to make a slight modification to the way we build a problem.
+//! The crucial differences to the single right hand side case are:
+//!
+//! 1. We have to use the [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
+//!    constructor rather than `new`.
+//! 2. We have to sort the right hand sides into a matrix, where each right
+//!    hand side, which is a column-vector on its own, will become a column
+//!    of the resulting matrix.
+//!
+//! For a set of observations `$\vec{y}_1,\dots,\vec{y}_S$` (column vectors) we
+//! now have to pass a _matrix_ `$Y$` of observations, rather than a single
+//! vector to the builder. As explained above, the resulting matrix would look
+//! like this.
+//!
+//! ```math
+//! \boldsymbol{Y}=\left(\begin{matrix}
+//!  \vert &  & \vert \\
+//!  \vec{y}_1 &  \dots & \vec{y}_S \\
+//!  \vert &  & \vert \\
+//! \end{matrix}\right)
+//! ```
+//!
+//! The order of the vectors in the matrix doesn't matter.
 //!
 //! ## Example
 //! ```no_run
