@@ -374,8 +374,10 @@
 //!    hand side, which is a column-vector on its own, will become a column
 //!    of the resulting matrix.
 //!
-//! For a set of observations `$\vec{y}_1,\dots,\vec{y}_S$` (column vectors),
-//! the matrix `$Y$` of observations becomes:
+//! For a set of observations `$\vec{y}_1,\dots,\vec{y}_S$` (column vectors) we
+//! now have to pass a _matrix_ `$Y$` of observations, rather than a single
+//! vector to the builder. As explained above, the resulting matrix would look
+//! like this.
 //!
 //! ```math
 //! \boldsymbol{Y}=\left(\begin{matrix}
@@ -384,6 +386,8 @@
 //!  \vert &  & \vert \\
 //! \end{matrix}\right)
 //! ```
+//!
+//! The order of the vectors in the matrix doesn't matter.
 //!
 //! ## Example
 //! ```no_run
