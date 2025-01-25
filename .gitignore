@@ -19,3 +19,5 @@ Cargo.lock
 
 # ide folders
 .idea/
+
+lcov.info
