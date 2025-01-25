@@ -3,6 +3,18 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.11.0
+
+* Removed `new` and `minimize` associated functions of the `LevMarSolver`
+  type.
+* Require `Send` and `Sync` bounds for `BasisFunction` implementors.
+* Expose parrallel calculations for `LevMarProblem` using extra generic
+  arguments and the rayon dependency.
+
+## 0.10.1
+
+Documentation updates
+
 ## 0.10.0
 
 - Updated dependencies to current versions.
