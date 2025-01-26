@@ -34,6 +34,7 @@ rand = "0.8"
 byteorder = "1.5"
 
 [features]
+# additional solvers which use multithreading with rayon for some part of the calculations
 parallel = ["rayon", "nalgebra/rayon"]
 
 [[bench]]
