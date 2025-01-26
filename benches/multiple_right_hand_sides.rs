@@ -99,6 +99,37 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
             criterion::BatchSize::SmallInput,
         )
     });
+
+    group.bench_function("Handcrafted Model (MRHS) [multithreaded]", |bencher| {
+        bencher.iter_batched(
+            || {
+                build_problem_mrhs(
+                    true_parameters.clone(),
+                    DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
+                )
+                .into_parallel()
+            },
+            run_minimization_mrhs,
+            criterion::BatchSize::SmallInput,
+        )
+    });
+
+    group.bench_function("Using Model Builder (MRHS) [multithreaded]", |bencher| {
+        bencher.iter_batched(
+            || {
+                build_problem_mrhs(
+                    true_parameters.clone(),
+                    get_double_exponential_model_with_constant_offset(
+                        x.clone(),
+                        vec![tau_guess.0, tau_guess.1],
+                    ),
+                )
+                .into_parallel()
+            },
+            run_minimization_mrhs,
+            criterion::BatchSize::SmallInput,
+        )
+    });
 }
 
 criterion_group!(
