@@ -12,6 +12,18 @@
 //! sides has been added to this library. This is a powerful technique for suitable
 //! problems and is explained at the end of this introductory chapter.
 //!
+//! ## Parallel Computations
+//!
+//! Since version 0.11.0, support for parallelizing some of the more expensive
+//! computations has been added. See the
+//! [`LevMarProblemBuilder::new_parallel`](crate::solvers::levmar::LevMarProblemBuilder::new_parallel) and
+//! [`LevMarProblemBuilder::mrhs_parallel`](crate::solvers::levmar::LevMarProblemBuilder::mrhs_parallel)
+//! builder functions. **Attention** Using multithreaded calculations might actually
+//! slow down the overall computations, so definitely make sure to compare it
+//! to the single-threaded case by **measuring**. For suitable problems it might
+//! give you a speedup in the double digit percentages, but for unsuitable ones
+//! it will slow the computations down much more than that.
+//!
 //! ## Overview
 //!
 //! Many nonlinear models consist of a mixture of both truly nonlinear and _linear_ model
@@ -387,7 +399,10 @@
 //! \end{matrix}\right)
 //! ```
 //!
-//! The order of the vectors in the matrix doesn't matter.
+//! The order of the vectors in the matrix doesn't matter, but it will determine
+//! the order of the linear coefficients, see
+//! [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
+//! for a more detailed explanation.
 //!
 //! ## Example
 //! ```no_run

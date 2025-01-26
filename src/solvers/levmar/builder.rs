@@ -180,11 +180,36 @@ where
     /// fit. This uses single threaded calculations.
     ///
     /// That means the observations are expected to be a matrix, where the
-    /// columns correspond to the individual observations. The nonlinear
-    /// parameters will be optimized across all the observations, but the
-    /// linear coefficients are calculated for each observation individually.
-    /// Hence, they also become a matrix where the columns correspond to the
-    /// linear coefficients of the observation in the same column.
+    /// columns correspond to the individual observations.
+    ///
+    /// For a set of observations `$\vec{y}_1,\dots,\vec{y}_S$` (column vectors) we
+    /// now have to pass a _matrix_ `$Y$` of observations, rather than a single
+    /// vector to the builder. As explained above, the resulting matrix would look
+    /// like this.
+    ///
+    /// ```math
+    /// \boldsymbol{Y}=\left(\begin{matrix}
+    ///  \vert &  & \vert \\
+    ///  \vec{y}_1 &  \dots & \vec{y}_S \\
+    ///  \vert &  & \vert \\
+    /// \end{matrix}\right)
+    /// ```
+    ///
+    /// The nonlinear parameters will be optimized across all the observations
+    /// globally, but the best linear coefficients are calculated for each observation
+    /// individually. Hence, the latter also become a matrix `$C$`, where the columns
+    /// correspond to the linear coefficients of the observation in the same column.
+    ///
+    /// ```math
+    /// \boldsymbol{C}=\left(\begin{matrix}
+    ///  \vert &  & \vert \\
+    ///  \vec{c}_1 &  \dots & \vec{c}_S \\
+    ///  \vert &  & \vert \\
+    /// \end{matrix}\right)
+    /// ```
+    ///
+    /// The (column) vector of linear coefficients `$\vec{c}_j$` is for the observation
+    /// `$\vec{y}_j$` in the same column.
     pub fn mrhs(model: Model) -> Self {
         Self {
             Y: None,
@@ -205,16 +230,12 @@ where
 {
     /// Create a new builder based on the given model
     /// for a problem with **multiple right hand sides** and perform a global
-    /// fit. This tries to increase the speed by using multithreaded calculations.
+    /// fit, see also [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
+    /// for an explanation how to order the observations into a matrix.
+    ///
+    /// This approach tries to increase the speed by using multithreaded calculations.
     /// **Attention**: using multithreading might actually be slower,
     /// so always try it for your usecase and measure!
-    ///
-    /// That means the observations are expected to be a matrix, where the
-    /// columns correspond to the individual observations. The nonlinear
-    /// parameters will be optimized across all the observations, but the
-    /// linear coefficients are calculated for each observation individually.
-    /// Hence, they also become a matrix where the columns correspond to the
-    /// linear coefficients of the observation in the same column.
     pub fn mrhs_parallel(model: Model) -> Self {
         Self {
             Y: None,
