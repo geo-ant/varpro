@@ -139,7 +139,7 @@
 //!
 //! ```no_run
 //! # use varpro::model::*;
-//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false,false> = unimplemented!();
 //! use varpro::solvers::levmar::LevMarSolver;
 //! let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! ```
@@ -155,7 +155,7 @@
 //! ```no_run
 //! # use varpro::model::SeparableModel;
 //! # use varpro::prelude::*;
-//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false,false> = unimplemented!();
 //! # use varpro::solvers::levmar::LevMarSolver;
 //! # let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! let alpha = fit_result.nonlinear_parameters();
