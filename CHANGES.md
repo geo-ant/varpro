@@ -10,6 +10,11 @@ See also here for a [version history](https://crates.io/crates/varpro/versions).
 * Require `Send` and `Sync` bounds for `BasisFunction` implementors.
 * Expose parrallel calculations for `LevMarProblem` using extra generic
   arguments and the rayon dependency.
+* Require `Send` and `Sync` trait bounds on all base functions for building
+  separable models whether or not the calculations are to be run in parallel.
+  This should not pose restrictions in practice for sane models. If `Send`
+  and `Sync` bounds cannot be satisfied there's always the possibility to
+  implement `SeparableNonlinearModel` by hand.
 
 ## 0.10.1
 
