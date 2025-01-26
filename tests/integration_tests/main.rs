@@ -155,6 +155,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
 }
 
 #[test]
+#[cfg(feature = "parallel")]
 fn double_exponential_fitting_without_noise_produces_accurate_results_parallel_computation() {
     // the independent variable
     let x = linspace(0., 12.5, 1024);
@@ -292,6 +293,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
 }
 
 #[test]
+#[cfg(feature = "parallel")]
 fn double_exponential_fitting_without_noise_produces_accurate_results_with_handrolled_model_parallel(
 ) {
     // true parameters
@@ -600,6 +602,7 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
 
 #[test]
 #[allow(non_snake_case)]
+#[cfg(feature = "parallel")]
 fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results_parallel() {
     let x = linspace(0., 12.5, 20);
     let tau1 = 1.;

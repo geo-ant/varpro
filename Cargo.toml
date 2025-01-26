@@ -17,10 +17,10 @@ members = ["shared_test_code"]
 [dependencies]
 thiserror = "1"
 levenberg-marquardt = "0.14"
-nalgebra = { version = "0.33", features = ["rayon"]}
+nalgebra = { version = "0.33", features = []}
 num-traits = "0.2"
 distrs = "0.2"
-rayon = "1.6"
+rayon = {version = "1.6", optional = true}
 
 [dev-dependencies]
 approx = "0.5"
@@ -33,6 +33,9 @@ mockall = "0.11"
 rand = "0.8"
 byteorder = "1.5"
 
+[features]
+parallel = ["rayon", "nalgebra/rayon"]
+
 [[bench]]
 name = "double_exponential_without_noise"
 harness = false
@@ -40,6 +43,7 @@ harness = false
 [[bench]]
 name = "multiple_right_hand_sides"
 harness = false
+required-features = ["parallel"]
 
 [package.metadata.docs.rs]
 # To build locally use

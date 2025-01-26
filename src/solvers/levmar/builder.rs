@@ -7,6 +7,10 @@ use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
 
+use super::PARALLEL_NO;
+#[cfg(feature = "parallel")]
+use super::PARALLEL_YES;
+
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 pub enum LevMarBuilderError {
@@ -94,7 +98,7 @@ where
     weights: Weights<Model::ScalarType, Dyn>,
 }
 
-impl<Model> LevMarProblemBuilder<Model, false, false>
+impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_NO>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -117,7 +121,8 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, false, true>
+#[cfg(feature = "parallel")]
+impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_YES>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -167,7 +172,7 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, true, false>
+impl<Model> LevMarProblemBuilder<Model, true, PARALLEL_NO>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -220,6 +225,7 @@ where
     }
 }
 
+#[cfg(feature = "parallel")]
 impl<Model> LevMarProblemBuilder<Model, true, true>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,

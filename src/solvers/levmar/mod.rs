@@ -12,6 +12,7 @@ use nalgebra::{
     OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
 };
 use num_traits::{Float, FromPrimitive};
+#[cfg(feature = "parallel")]
 use rayon::prelude::*;
 use std::ops::Mul;
 
@@ -40,7 +41,7 @@ where
 {
     /// the final state of the fitting problem after the
     /// minimization finished (regardless of whether fitting was successful or not)
-    pub problem: LevMarProblem<Model, MRHS, false>,
+    pub problem: LevMarProblem<Model, MRHS, PARALLEL_NO>,
 
     /// the minimization report of the underlying solver.
     /// It contains information about the minimization process
@@ -118,7 +119,7 @@ where
 {
     /// internal helper for constructing an instance
     fn new(
-        problem: LevMarProblem<Model, MRHS, false>,
+        problem: LevMarProblem<Model, MRHS, PARALLEL_NO>,
         minimization_report: MinimizationReport<Model::ScalarType>,
     ) -> Self {
         Self {
@@ -335,7 +336,7 @@ where
     /// convert from parallel problem to sequential one. Useful for funnelling the results
     /// of the parallel calculations to downstream tasks that only take sequential models
     /// for simplicity.
-    pub fn into_sequential(self) -> LevMarProblem<Model, MRHS, false> {
+    pub fn into_sequential(self) -> LevMarProblem<Model, MRHS, PARALLEL_NO> {
         let LevMarProblem {
             Y_w,
             model,
@@ -353,7 +354,7 @@ where
     }
 
     /// convert from sequential problem to a parallel one
-    pub fn into_parallel(self) -> LevMarProblem<Model, MRHS, false> {
+    pub fn into_parallel(self) -> LevMarProblem<Model, MRHS, PARALLEL_NO> {
         let LevMarProblem {
             Y_w,
             model,
@@ -371,8 +372,9 @@ where
     }
 }
 
-const PARALLEL_YES: bool = true;
-const PARALLEL_NO: bool = false;
+#[allow(unused)]
+pub(crate) const PARALLEL_YES: bool = true;
+pub(crate) const PARALLEL_NO: bool = false;
 
 impl<Model, const MRHS: bool, const PAR: bool> std::fmt::Debug for LevMarProblem<Model, MRHS, PAR>
 where
@@ -614,6 +616,7 @@ where
     }
 }
 
+#[cfg(feature = "parallel")]
 impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
     for LevMarProblem<Model, MRHS, PARALLEL_YES>
 where
