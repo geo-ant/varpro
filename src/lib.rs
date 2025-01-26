@@ -12,6 +12,20 @@
 //! sides has been added to this library. This is a powerful technique for suitable
 //! problems and is explained at the end of this introductory chapter.
 //!
+//! ## Parallel Computations (Experimental)
+//!
+//! Since version 0.11.0, support for parallelizing some of the more expensive
+//! computations has been added. Consider this support **experimental**, although
+//! it has been thorougly tested. The problem is that I have yet to see an
+//! example where the benches run faster than for the single threaded case.
+//! Parallel calculations have to be enabled using the `parallel` feature of
+//! this crate.
+//!
+//! To check out if parallelizing (some of the) computations works for you, see the
+//! [`LevMarProblemBuilder::new_parallel`](crate::solvers::levmar::LevMarProblemBuilder::new_parallel) and
+//! [`LevMarProblemBuilder::mrhs_parallel`](crate::solvers::levmar::LevMarProblemBuilder::mrhs_parallel)
+//! builder functions.
+//!
 //! ## Overview
 //!
 //! Many nonlinear models consist of a mixture of both truly nonlinear and _linear_ model
@@ -139,13 +153,13 @@
 //!
 //! ```no_run
 //! # use varpro::model::*;
-//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false,false> = unimplemented!();
 //! use varpro::solvers::levmar::LevMarSolver;
 //! let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! ```
 //!
-//! Finally, check the minimization report and, if successful, retrieve the nonlinear parameters `$\alpha$`
-//! using the [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
+//! If successful, retrieve the nonlinear parameters `$\alpha$` using the
+//! [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
 //! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
 //!
 //! **Fit Statistics:** To get additional statistical information after the fit
@@ -155,7 +169,7 @@
 //! ```no_run
 //! # use varpro::model::SeparableModel;
 //! # use varpro::prelude::*;
-//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
+//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false,false> = unimplemented!();
 //! # use varpro::solvers::levmar::LevMarSolver;
 //! # let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! let alpha = fit_result.nonlinear_parameters();
@@ -387,7 +401,10 @@
 //! \end{matrix}\right)
 //! ```
 //!
-//! The order of the vectors in the matrix doesn't matter.
+//! The order of the vectors in the matrix doesn't matter, but it will determine
+//! the order of the linear coefficients, see
+//! [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
+//! for a more detailed explanation.
 //!
 //! ## Example
 //! ```no_run

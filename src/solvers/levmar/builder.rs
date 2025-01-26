@@ -2,10 +2,14 @@ use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Scalar};
+use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Owned, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
+
+use super::PARALLEL_NO;
+#[cfg(feature = "parallel")]
+use super::PARALLEL_YES;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
@@ -72,7 +76,7 @@ pub enum LevMarBuilderError {
 /// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemBuilder<Model, const MRHS: bool>
+pub struct LevMarProblemBuilder<Model, const MRHS: bool, const PAR: bool>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -94,7 +98,7 @@ where
     weights: Weights<Model::ScalarType, Dyn>,
 }
 
-impl<Model> LevMarProblemBuilder<Model, false>
+impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_NO>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -104,7 +108,9 @@ where
 {
     /// Create a new builder based on the given model for a problem
     /// with a **single right hand side**. This is the standard use case,
-    /// where the data is a vector that is fitted by the model.
+    /// where the data is a vector that is fitted by the model. Calculations
+    /// are run in a _single threaded_ fashion, see also [`LevMarProblemBuilder::new_parallel`].
+    ///
     pub fn new(model: Model) -> Self {
         Self {
             Y: None,
@@ -113,6 +119,43 @@ where
             weights: Weights::default(),
         }
     }
+}
+
+#[cfg(feature = "parallel")]
+impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_YES>
+where
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
+    Model: SeparableNonlinearModel,
+{
+    /// Create a new builder based on the given model for a problem
+    /// with a **single right hand side**, that tries to make use
+    /// of parallelism in the calculations.
+    ///
+    /// # Attention: Parallel calculations might actually be slower!
+    ///
+    /// Requesting parallelism can slow down the calculations significantly.
+    /// As always with performance questions, try it out and *measure*!
+    pub fn new_parallel(model: Model) -> Self {
+        Self {
+            Y: None,
+            separable_model: model,
+            epsilon: None,
+            weights: Weights::default(),
+        }
+    }
+}
+
+impl<Model, const PAR: bool> LevMarProblemBuilder<Model, false, PAR>
+where
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
+    Model: SeparableNonlinearModel,
+{
     /// **Mandatory**: Set the data which we want to fit: since this
     /// is called on a model builder for problems with **single right hand sides**,
     /// this is a column vector `$\vec{y}=\vec{y}(\vec{x})$` containing the
@@ -129,7 +172,7 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, true>
+impl<Model> LevMarProblemBuilder<Model, true, PARALLEL_NO>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -139,14 +182,39 @@ where
 {
     /// Create a new builder based on the given model
     /// for a problem with **multiple right hand sides** and perform a global
-    /// fit.
+    /// fit. This uses single threaded calculations.
     ///
     /// That means the observations are expected to be a matrix, where the
-    /// columns correspond to the individual observations. The nonlinear
-    /// parameters will be optimized across all the observations, but the
-    /// linear coefficients are calculated for each observation individually.
-    /// Hence, they also become a matrix where the columns correspond to the
-    /// linear coefficients of the observation in the same column.
+    /// columns correspond to the individual observations.
+    ///
+    /// For a set of observations `$\vec{y}_1,\dots,\vec{y}_S$` (column vectors) we
+    /// now have to pass a _matrix_ `$Y$` of observations, rather than a single
+    /// vector to the builder. As explained above, the resulting matrix would look
+    /// like this.
+    ///
+    /// ```math
+    /// \boldsymbol{Y}=\left(\begin{matrix}
+    ///  \vert &  & \vert \\
+    ///  \vec{y}_1 &  \dots & \vec{y}_S \\
+    ///  \vert &  & \vert \\
+    /// \end{matrix}\right)
+    /// ```
+    ///
+    /// The nonlinear parameters will be optimized across all the observations
+    /// globally, but the best linear coefficients are calculated for each observation
+    /// individually. Hence, the latter also become a matrix `$C$`, where the columns
+    /// correspond to the linear coefficients of the observation in the same column.
+    ///
+    /// ```math
+    /// \boldsymbol{C}=\left(\begin{matrix}
+    ///  \vert &  & \vert \\
+    ///  \vec{c}_1 &  \dots & \vec{c}_S \\
+    ///  \vert &  & \vert \\
+    /// \end{matrix}\right)
+    /// ```
+    ///
+    /// The (column) vector of linear coefficients `$\vec{c}_j$` is for the observation
+    /// `$\vec{y}_j$` in the same column.
     pub fn mrhs(model: Model) -> Self {
         Self {
             Y: None,
@@ -155,6 +223,43 @@ where
             weights: Weights::default(),
         }
     }
+}
+
+#[cfg(feature = "parallel")]
+impl<Model> LevMarProblemBuilder<Model, true, true>
+where
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
+    Model: SeparableNonlinearModel,
+{
+    /// Create a new builder based on the given model
+    /// for a problem with **multiple right hand sides** and perform a global
+    /// fit, see also [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
+    /// for an explanation how to order the observations into a matrix.
+    ///
+    /// This approach tries to increase the speed by using multithreaded calculations.
+    /// **Attention**: using multithreading might actually be slower,
+    /// so always try it for your usecase and measure!
+    pub fn mrhs_parallel(model: Model) -> Self {
+        Self {
+            Y: None,
+            separable_model: model,
+            epsilon: None,
+            weights: Weights::default(),
+        }
+    }
+}
+
+impl<Model, const PAR: bool> LevMarProblemBuilder<Model, true, PAR>
+where
+    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
+    Model: SeparableNonlinearModel,
+{
     /// **Mandatory**: Set the data which we want to fit: This is either a single vector
     /// `$\vec{y}=\vec{y}(\vec{x})$` or a matrix `$\boldsymbol{Y}$` of multiple
     /// vectors. In the former case this corresponds to fitting a single right hand side,
@@ -170,7 +275,7 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> LevMarProblemBuilder<Model, MRHS>
+impl<Model, const MRHS: bool, const PAR: bool> LevMarProblemBuilder<Model, MRHS, PAR>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -220,7 +325,17 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblem<Model, MRHS>, LevMarBuilderError> {
+    pub fn build(self) -> Result<LevMarProblem<Model, MRHS, PAR>, LevMarBuilderError>
+    //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
+    // but the trait solver cannot figure that out without this extra hint.
+    where
+        LevMarProblem<Model, MRHS, PAR>: LeastSquaresProblem<
+            Model::ScalarType,
+            Dyn,
+            Dyn,
+            ParameterStorage = Owned<Model::ScalarType, Dyn>,
+        >,
+    {
         // and assign the defaults to the values we don't have
         let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;
