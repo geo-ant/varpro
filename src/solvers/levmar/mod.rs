@@ -20,6 +20,9 @@ mod builder;
 #[cfg(any(test, doctest))]
 mod test;
 
+/// contains levmar solvers based on QR decomposition
+pub mod qr;
+
 /// A thin wrapper around the
 /// [`LevenbergMarquardt`](https://docs.rs/levenberg-marquardt/latest/levenberg_marquardt/struct.LevenbergMarquardt.html)
 /// solver from the `levenberg_marquardt` crate. The core benefit of this
@@ -41,7 +44,7 @@ where
 {
     /// the final state of the fitting problem after the
     /// minimization finished (regardless of whether fitting was successful or not)
-    pub problem: LevMarProblem<Model, MRHS, PARALLEL_NO>,
+    pub problem: LevMarProblemSvd<Model, MRHS, PARALLEL_NO>,
 
     /// the minimization report of the underlying solver.
     /// It contains information about the minimization process
@@ -119,7 +122,7 @@ where
 {
     /// internal helper for constructing an instance
     fn new(
-        problem: LevMarProblem<Model, MRHS, PARALLEL_NO>,
+        problem: LevMarProblemSvd<Model, MRHS, PARALLEL_NO>,
         minimization_report: MinimizationReport<Model::ScalarType>,
     ) -> Self {
         Self {
@@ -167,11 +170,11 @@ where
     #[allow(clippy::result_large_err)]
     pub fn fit<const PAR: bool>(
         &self,
-        problem: LevMarProblem<Model, MRHS, PAR>,
+        problem: LevMarProblemSvd<Model, MRHS, PAR>,
     ) -> Result<FitResult<Model, MRHS>, FitResult<Model, MRHS>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model, MRHS, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblemSvd<Model, MRHS, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
     {
         #[allow(deprecated)]
@@ -205,11 +208,11 @@ where
     #[allow(clippy::result_large_err)]
     pub fn fit_with_statistics<const PAR: bool>(
         &self,
-        problem: LevMarProblem<Model, false, PAR>,
+        problem: LevMarProblemSvd<Model, false, PAR>,
     ) -> Result<(FitResult<Model, false>, FitStatistics<Model>), FitResult<Model, false>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model, false, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblemSvd<Model, false, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float,
     {
         let FitResult {
@@ -252,7 +255,7 @@ where
 /// helper structure that stores the cached calculations,
 /// which are carried out by the LevMarProblem on setting the parameters
 #[derive(Debug, Clone)]
-struct CachedCalculations<ScalarType, ModelDim, OutputDim>
+struct CachedCalculationsSvd<ScalarType, ModelDim, OutputDim>
 where
     ScalarType: Scalar + ComplexField,
     ModelDim: Dim,
@@ -272,6 +275,12 @@ where
     /// the linear coefficients `$\boldsymbol C$` providing the current best fit
     linear_coefficients: DMatrix<ScalarType>,
 }
+
+/// An alias for the [`LevMarProblemSvd`] type for backwards compatibility.
+/// It's better to explicitly use the problem variants with Svd or Qr directly.
+#[deprecated = "This is an alias for LevMarProblemSvd, use this type explicitly or use the Qr variant"]
+pub type LevMarProblem<M, const MRHS: bool, const PARALLEL: bool> =
+    LevMarProblemSvd<M, MRHS, PARALLEL>;
 
 /// This is a the problem of fitting the separable model to data in a form that the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate can use it to
@@ -301,7 +310,7 @@ where
 /// coefficient vectors and data vectors respectively.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblem<Model, const MRHS: bool, const PARALLEL: bool>
+pub struct LevMarProblemSvd<Model, const MRHS: bool, const PARALLEL: bool>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -325,10 +334,10 @@ where
     /// those are updated on set_params. If this is None, then it indicates some error that
     /// is propagated on to the levenberg-marquardt crate by also returning None results
     /// by residuals() and/or jacobian()
-    cached: Option<CachedCalculations<Model::ScalarType, Dyn, Dyn>>,
+    cached: Option<CachedCalculationsSvd<Model::ScalarType, Dyn, Dyn>>,
 }
 
-impl<Model, const MRHS: bool, const PAR: bool> LevMarProblem<Model, MRHS, PAR>
+impl<Model, const MRHS: bool, const PAR: bool> LevMarProblemSvd<Model, MRHS, PAR>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -336,15 +345,15 @@ where
     /// convert from parallel problem to sequential one. Useful for funnelling the results
     /// of the parallel calculations to downstream tasks that only take sequential models
     /// for simplicity.
-    pub fn into_sequential(self) -> LevMarProblem<Model, MRHS, PARALLEL_NO> {
-        let LevMarProblem {
+    pub fn into_sequential(self) -> LevMarProblemSvd<Model, MRHS, PARALLEL_NO> {
+        let LevMarProblemSvd {
             Y_w,
             model,
             svd_epsilon,
             weights,
             cached,
         } = self;
-        LevMarProblem {
+        LevMarProblemSvd {
             Y_w,
             model,
             svd_epsilon,
@@ -354,15 +363,15 @@ where
     }
 
     /// convert from sequential problem to a parallel one
-    pub fn into_parallel(self) -> LevMarProblem<Model, MRHS, PARALLEL_NO> {
-        let LevMarProblem {
+    pub fn into_parallel(self) -> LevMarProblemSvd<Model, MRHS, PARALLEL_NO> {
+        let LevMarProblemSvd {
             Y_w,
             model,
             svd_epsilon,
             weights,
             cached,
         } = self;
-        LevMarProblem {
+        LevMarProblemSvd {
             Y_w,
             model,
             svd_epsilon,
@@ -376,7 +385,8 @@ where
 pub(crate) const PARALLEL_YES: bool = true;
 pub(crate) const PARALLEL_NO: bool = false;
 
-impl<Model, const MRHS: bool, const PAR: bool> std::fmt::Debug for LevMarProblem<Model, MRHS, PAR>
+impl<Model, const MRHS: bool, const PAR: bool> std::fmt::Debug
+    for LevMarProblemSvd<Model, MRHS, PAR>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -392,7 +402,7 @@ where
     }
 }
 
-impl<Model, const PAR: bool> LevMarProblem<Model, true, PAR>
+impl<Model, const PAR: bool> LevMarProblemSvd<Model, true, PAR>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -425,7 +435,7 @@ where
     }
 }
 
-impl<Model, const PAR: bool> LevMarProblem<Model, false, PAR>
+impl<Model, const PAR: bool> LevMarProblemSvd<Model, false, PAR>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -463,7 +473,7 @@ where
     }
 }
 
-impl<Model, const MRHS: bool, const PAR: bool> LevMarProblem<Model, MRHS, PAR>
+impl<Model, const MRHS: bool, const PAR: bool> LevMarProblemSvd<Model, MRHS, PAR>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -480,7 +490,7 @@ where
 }
 
 impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblem<Model, MRHS, PARALLEL_NO>
+    for LevMarProblemSvd<Model, MRHS, PARALLEL_NO>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
@@ -520,7 +530,7 @@ where
         if let (Some(current_residuals), Some(current_svd), Some(linear_coefficients)) =
             (current_residuals, current_svd, linear_coefficients)
         {
-            self.cached = Some(CachedCalculations {
+            self.cached = Some(CachedCalculationsSvd {
                 current_residuals,
                 current_svd,
                 linear_coefficients,
@@ -558,7 +568,7 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
-        if let Some(CachedCalculations {
+        if let Some(CachedCalculationsSvd {
             current_residuals: _,
             current_svd,
             linear_coefficients,
@@ -618,7 +628,7 @@ where
 
 #[cfg(feature = "parallel")]
 impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblem<Model, MRHS, PARALLEL_YES>
+    for LevMarProblemSvd<Model, MRHS, PARALLEL_YES>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
@@ -658,7 +668,7 @@ where
         if let (Some(current_residuals), Some(current_svd), Some(linear_coefficients)) =
             (current_residuals, current_svd, linear_coefficients)
         {
-            self.cached = Some(CachedCalculations {
+            self.cached = Some(CachedCalculationsSvd {
                 current_residuals,
                 current_svd,
                 linear_coefficients,
@@ -696,7 +706,7 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
-        if let Some(CachedCalculations {
+        if let Some(CachedCalculationsSvd {
             current_residuals: _,
             current_svd,
             linear_coefficients,

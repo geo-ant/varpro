@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::solvers::levmar::LevMarProblem;
+use crate::solvers::levmar::LevMarProblemSvd;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Owned, Scalar};
@@ -325,11 +325,11 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblem<Model, MRHS, PAR>, LevMarBuilderError>
+    pub fn build(self) -> Result<LevMarProblemSvd<Model, MRHS, PAR>, LevMarBuilderError>
     //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
     // but the trait solver cannot figure that out without this extra hint.
     where
-        LevMarProblem<Model, MRHS, PAR>: LeastSquaresProblem<
+        LevMarProblemSvd<Model, MRHS, PAR>: LeastSquaresProblem<
             Model::ScalarType,
             Dyn,
             Dyn,
@@ -369,7 +369,7 @@ where
         let params = model.params();
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
-        let mut problem = LevMarProblem {
+        let mut problem = LevMarProblemSvd {
             // these parameters all come from the builder
             Y_w,
             model,
