@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Owned, Scalar};
+use nalgebra::{ComplexField, DMatrix, DVector, Dyn, OMatrix, OVector, Owned, Scalar};
 use num_traits::{Float, Zero};
 use std::{marker::PhantomData, ops::Mul};
 use thiserror::Error as ThisError;
@@ -10,8 +10,8 @@ use thiserror::Error as ThisError;
 #[cfg(feature = "parallel")]
 use super::PARALLEL_YES;
 use super::{
-    MatrixDecomposition, MultiRhs, Parallel, Parallelism, RhsType, Sequential, SingleRhs,
-    SingularValueDecomposition,
+    qr::QrDecomposition, MatrixDecomposition, MultiRhs, Parallel, Parallelism, RhsType, Sequential,
+    SingleRhs, SingularValueDecomposition,
 };
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
@@ -33,16 +33,252 @@ pub enum LevMarBuilderError {
     #[error("x or y must have nonzero number of elements.")]
     ZeroLengthVector,
 
-    /// the model has a different number of parameters than the provided initial guesses
-    #[error("Initial guess vector must have same length as parameters. Model has {} parameters and {} initial guesses were provided.",model_count, provided_count)]
-    InvalidParameterCount {
-        model_count: usize,
-        provided_count: usize,
-    },
-
     /// y vector and weights have different lengths
     #[error("The weights must have the same length as the data y.")]
     InvalidLengthOfWeights,
+}
+
+pub struct LevMarProblemBuilder2<Model: SeparableNonlinearModel, Rhs, Par, Decomp>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    model: Model,
+    phantom: PhantomData<(Rhs, Par, Decomp)>,
+    // alhtough this is optional, we know this will have been set because the Rhs
+    // parameter is set with it
+    Y: Option<DMatrix<Model::ScalarType>>,
+    weights: Weights<Model::ScalarType, Dyn>,
+    epsilon: <Model::ScalarType as ComplexField>::RealField,
+}
+
+impl<Model: SeparableNonlinearModel> LevMarProblemBuilder2<Model, (), (), ()>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    pub fn new(model: Model) -> LevMarProblemBuilder2<Model, (), (), ()> {
+        LevMarProblemBuilder2 {
+            model,
+            phantom: Default::default(),
+            Y: Default::default(),
+            weights: Default::default(),
+            epsilon: Float::epsilon(),
+        }
+    }
+}
+
+impl<Model: SeparableNonlinearModel, P, D> LevMarProblemBuilder2<Model, (), P, D>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    pub fn rhs(
+        self,
+        rhs: OVector<Model::ScalarType, Dyn>,
+    ) -> LevMarProblemBuilder2<Model, SingleRhs, P, D> {
+        let nrows = rhs.nrows();
+        LevMarProblemBuilder2 {
+            Y: Some(rhs.reshape_generic(Dyn(nrows), Dyn(1))),
+            model: self.model,
+            phantom: PhantomData,
+            weights: self.weights,
+            epsilon: self.epsilon,
+        }
+    }
+}
+
+impl<Model: SeparableNonlinearModel, P, D> LevMarProblemBuilder2<Model, (), P, D>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    pub fn mrhs(
+        self,
+        rhs: DMatrix<Model::ScalarType>,
+    ) -> LevMarProblemBuilder2<Model, MultiRhs, P, D> {
+        LevMarProblemBuilder2 {
+            Y: Some(rhs),
+            model: self.model,
+            phantom: PhantomData,
+            weights: self.weights,
+            epsilon: self.epsilon,
+        }
+    }
+}
+
+impl<Model: SeparableNonlinearModel, R, P, D> LevMarProblemBuilder2<Model, R, P, D>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    pub fn weights(self, weights: DVector<Model::ScalarType>) -> Self {
+        Self {
+            weights: Weights::diagonal(weights),
+            ..self
+        }
+    }
+}
+
+impl<Model: SeparableNonlinearModel, R, P, D> LevMarProblemBuilder2<Model, R, P, D>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    pub fn epsilon(self, eps: <Model::ScalarType as ComplexField>::RealField) -> Self {
+        Self {
+            epsilon: eps,
+            ..self
+        }
+    }
+}
+
+impl<Model: SeparableNonlinearModel, R, P> LevMarProblemBuilder2<Model, R, P, ()>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    pub fn decomposition<Decomp: MatrixDecomposition<Model::ScalarType>>(
+        self,
+    ) -> LevMarProblemBuilder2<Model, R, P, Decomp> {
+        LevMarProblemBuilder2 {
+            model: self.model,
+            phantom: PhantomData,
+            Y: self.Y,
+            weights: self.weights,
+            epsilon: self.epsilon,
+        }
+    }
+
+    pub fn svd(
+        self,
+    ) -> LevMarProblemBuilder2<Model, R, P, SingularValueDecomposition<Model::ScalarType>> {
+        Self::decomposition(self)
+    }
+
+    pub fn qr(self) -> LevMarProblemBuilder2<Model, R, P, QrDecomposition<Model::ScalarType>> {
+        Self::decomposition(self)
+    }
+}
+
+impl<Model: SeparableNonlinearModel, R, D> LevMarProblemBuilder2<Model, R, (), D>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    pub fn parallelism<Par: Parallelism>(self) -> LevMarProblemBuilder2<Model, R, Par, D> {
+        LevMarProblemBuilder2 {
+            model: self.model,
+            phantom: PhantomData,
+            Y: self.Y,
+            weights: self.weights,
+            epsilon: self.epsilon,
+        }
+    }
+}
+
+impl<
+        Model: SeparableNonlinearModel,
+        Rhs: RhsType,
+        Decomp: MatrixDecomposition<Model::ScalarType>,
+    > LevMarProblemBuilder2<Model, Rhs, (), Decomp>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    pub fn build(
+        self,
+    ) -> Result<
+        LevMarProblem<Model, Rhs, Sequential, SingularValueDecomposition<Model::ScalarType>>,
+        LevMarBuilderError,
+    >
+    where
+        LevMarProblem<Model, Rhs, Sequential, SingularValueDecomposition<Model::ScalarType>>:
+            LeastSquaresProblem<
+                Model::ScalarType,
+                Dyn,
+                Dyn,
+                ParameterStorage = Owned<Model::ScalarType, Dyn>,
+            >,
+    {
+        self.parallelism::<Sequential>().build()
+    }
+}
+
+impl<
+        Model: SeparableNonlinearModel,
+        Rhs: RhsType,
+        Decomp: MatrixDecomposition<Model::ScalarType>,
+        Par: Parallelism,
+    > LevMarProblemBuilder2<Model, Rhs, Par, Decomp>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float,
+{
+    #[allow(non_snake_case)]
+    pub fn build(
+        self,
+    ) -> Result<
+        LevMarProblem<Model, Rhs, Par, SingularValueDecomposition<Model::ScalarType>>,
+        LevMarBuilderError,
+    >
+    //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
+    // but the trait solver cannot figure that out without this extra hint.
+    where
+        LevMarProblem<Model, Rhs, Par, SingularValueDecomposition<Model::ScalarType>>:
+            LeastSquaresProblem<
+                Model::ScalarType,
+                Dyn,
+                Dyn,
+                ParameterStorage = Owned<Model::ScalarType, Dyn>,
+            >,
+    {
+        // and assign the defaults to the values we don't have
+        let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
+        let model = self.model;
+        let epsilon = self.epsilon;
+        let weights = self.weights;
+
+        // now do some sanity checks for the values and return
+        // an error if they do not pass the test
+        let x_len: usize = model.output_len();
+        if x_len == 0 || Y.is_empty() {
+            return Err(LevMarBuilderError::ZeroLengthVector);
+        }
+
+        if x_len != Y.nrows() {
+            return Err(LevMarBuilderError::InvalidLengthOfData {
+                x_length: x_len,
+                y_length: Y.nrows(),
+            });
+        }
+
+        if !weights.is_size_correct_for_data_length(Y.nrows()) {
+            //check that weights have correct length if they were given
+            return Err(LevMarBuilderError::InvalidLengthOfWeights);
+        }
+
+        //now that we have valid inputs, construct the levmar problem
+        // 1) create weighted data
+        #[allow(non_snake_case)]
+        let Y_w = &weights * Y;
+
+        let params = model.params();
+        // 2) initialize the levmar problem. Some field values are dummy initialized
+        // (like the SVD) because they are calculated in step 3 as part of set_params
+        let mut problem = LevMarProblem {
+            // these parameters all come from the builder
+            Y_w,
+            model,
+            epsilon,
+            cached: None,
+            weights,
+            phantom: std::marker::PhantomData,
+        };
+        problem.set_params(&params);
+
+        Ok(problem)
+    }
 }
 
 /// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
@@ -393,7 +629,7 @@ where
             // these parameters all come from the builder
             Y_w,
             model,
-            svd_epsilon: epsilon,
+            epsilon,
             cached: None,
             weights,
             phantom: std::marker::PhantomData,

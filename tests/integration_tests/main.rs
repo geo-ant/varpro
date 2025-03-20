@@ -111,8 +111,9 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         &DVector::from(vec![c1, c2, c3]),
     );
 
-    let problem = LevMarProblemBuilder::new(model)
-        .observations(y.clone())
+    let problem = LevMarProblemBuilder2::new(model)
+        .rhs(y.clone())
+        .svd()
         .build()
         .expect("Building valid problem should not panic");
     _ = format!("{:?}", problem);

@@ -2,6 +2,7 @@ use crate::prelude::*;
 use crate::statistics::FitStatistics;
 use crate::util::{to_vector, Weights};
 pub use builder::LevMarProblemBuilder;
+pub use builder::LevMarProblemBuilder2;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
@@ -377,8 +378,9 @@ pub struct LevMarProblem<
     Y_w: DMatrix<Model::ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
     model: Model,
-    /// truncation epsilon for SVD below which all singular values are assumed zero
-    svd_epsilon: <Model::ScalarType as ComplexField>::RealField,
+    /// truncation epsilon for decompositions (QR/SVD) below which (absolute)
+    /// values are considered zero
+    epsilon: <Model::ScalarType as ComplexField>::RealField,
     /// the weights of the data. If none are given, the data is not weighted
     /// If weights were provided, the builder has checked that the weights have the
     /// correct dimension for the data
@@ -405,7 +407,7 @@ where
         let LevMarProblem {
             Y_w,
             model,
-            svd_epsilon,
+            epsilon: svd_epsilon,
             weights,
             cached,
             phantom: _,
@@ -413,7 +415,7 @@ where
         LevMarProblem {
             Y_w,
             model,
-            svd_epsilon,
+            epsilon: svd_epsilon,
             weights,
             cached,
             phantom: PhantomData,
@@ -425,7 +427,7 @@ where
         let LevMarProblem {
             Y_w,
             model,
-            svd_epsilon,
+            epsilon: svd_epsilon,
             weights,
             cached,
             phantom: _,
@@ -433,7 +435,7 @@ where
         LevMarProblem {
             Y_w,
             model,
-            svd_epsilon,
+            epsilon: svd_epsilon,
             weights,
             cached,
             phantom: PhantomData,
@@ -454,7 +456,7 @@ where
         f.debug_struct("LevMarProblem")
             .field("y_w", &self.Y_w)
             .field("model", &"/* omitted */")
-            .field("svd_epsilon", &self.svd_epsilon)
+            .field("svd_epsilon", &self.epsilon)
             .field("weights", &self.weights)
             .field("cached", &self.cached)
             .finish()
@@ -580,7 +582,7 @@ where
         let Phi_w = self.model.eval().ok().map(|Phi| &self.weights * Phi);
 
         // calculate the svd
-        let svd_epsilon = self.svd_epsilon;
+        let svd_epsilon = self.epsilon;
         let current_svd = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
         let linear_coefficients = current_svd
             .as_ref()
@@ -718,7 +720,7 @@ where
         let Phi_w = self.model.eval().ok().map(|Phi| &self.weights * Phi);
 
         // calculate the svd
-        let svd_epsilon = self.svd_epsilon;
+        let svd_epsilon = self.epsilon;
         let current_svd = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
         let linear_coefficients = current_svd
             .as_ref()
