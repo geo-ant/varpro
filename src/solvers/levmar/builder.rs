@@ -9,7 +9,7 @@ use thiserror::Error as ThisError;
 
 #[cfg(feature = "parallel")]
 use super::PARALLEL_YES;
-use super::{MultiRhs, RhsType, SingleRhs, PARALLEL_NO};
+use super::{MultiRhs, Parallel, Parallelism, RhsType, Sequential, SingleRhs, PARALLEL_NO};
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
@@ -76,7 +76,7 @@ pub enum LevMarBuilderError {
 /// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemBuilder<Model, Rhs: RhsType, const PAR: bool>
+pub struct LevMarProblemBuilder<Model, Rhs: RhsType, Par: Parallelism>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -96,10 +96,10 @@ where
     /// all weights were 1.
     /// Must have the same length as x and y.
     weights: Weights<Model::ScalarType, Dyn>,
-    phantom: PhantomData<Rhs>,
+    phantom: PhantomData<(Rhs, Par)>,
 }
 
-impl<Model> LevMarProblemBuilder<Model, SingleRhs, PARALLEL_NO>
+impl<Model> LevMarProblemBuilder<Model, SingleRhs, Sequential>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -124,7 +124,7 @@ where
 }
 
 #[cfg(feature = "parallel")]
-impl<Model> LevMarProblemBuilder<Model, SingleRhs, PARALLEL_YES>
+impl<Model> LevMarProblemBuilder<Model, SingleRhs, Parallel>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -150,7 +150,7 @@ where
     }
 }
 
-impl<Model, const PAR: bool> LevMarProblemBuilder<Model, SingleRhs, PAR>
+impl<Model, Par: Parallelism> LevMarProblemBuilder<Model, SingleRhs, Par>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -174,7 +174,7 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, MultiRhs, PARALLEL_NO>
+impl<Model> LevMarProblemBuilder<Model, MultiRhs, Sequential>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -255,7 +255,7 @@ where
     }
 }
 
-impl<Model, const PAR: bool> LevMarProblemBuilder<Model, MultiRhs, PAR>
+impl<Model, Par: Parallelism> LevMarProblemBuilder<Model, MultiRhs, Par>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -278,7 +278,7 @@ where
     }
 }
 
-impl<Model, Rhs: RhsType, const PAR: bool> LevMarProblemBuilder<Model, Rhs, PAR>
+impl<Model, Rhs: RhsType, Par: Parallelism> LevMarProblemBuilder<Model, Rhs, Par>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -328,11 +328,11 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblemSvd<Model, Rhs, PAR>, LevMarBuilderError>
+    pub fn build(self) -> Result<LevMarProblemSvd<Model, Rhs, Par>, LevMarBuilderError>
     //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
     // but the trait solver cannot figure that out without this extra hint.
     where
-        LevMarProblemSvd<Model, Rhs, PAR>: LeastSquaresProblem<
+        LevMarProblemSvd<Model, Rhs, Par>: LeastSquaresProblem<
             Model::ScalarType,
             Dyn,
             Dyn,
