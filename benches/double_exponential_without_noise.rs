@@ -16,8 +16,6 @@ use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
-use varpro::solvers::levmar::Parallelism;
-use varpro::solvers::levmar::Sequential;
 use varpro::solvers::levmar::SingleRhs;
 use varpro::solvers::levmar::SingularValueDecomposition;
 
@@ -34,7 +32,7 @@ struct DoubleExponentialParameters {
 fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model, SingleRhs, Sequential, SingularValueDecomposition<Model::ScalarType>>
+) -> LevMarProblem<Model, SingleRhs, SingularValueDecomposition<Model::ScalarType>>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
@@ -66,12 +64,12 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization<Model, Par: Parallelism>(
-    problem: LevMarProblem<Model, SingleRhs, Par, SingularValueDecomposition<Model::ScalarType>>,
+fn run_minimization<Model>(
+    problem: LevMarProblem<Model, SingleRhs, SingularValueDecomposition<Model::ScalarType>>,
 ) -> (DVector<f64>, DVector<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-    LevMarProblem<Model, SingleRhs, Par, SingularValueDecomposition<Model::ScalarType>>:
+    LevMarProblem<Model, SingleRhs, SingularValueDecomposition<Model::ScalarType>>:
         LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()

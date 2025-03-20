@@ -1,11 +1,10 @@
 use super::{
     copy_matrix_to_column, to_vector, LevMarProblem, MatrixDecomposition, RhsType,
-    SeparableNonlinearModel, Sequential,
+    SeparableNonlinearModel,
 };
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, OMatrix, Owned, Scalar, UninitMatrix,
-    Vector,
+    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, Owned, Scalar, UninitMatrix, Vector,
 };
 use num_traits::Float;
 use std::ops::Mul;
@@ -80,7 +79,7 @@ impl<ScalarType: Scalar + ComplexField> QrExt<ScalarType> for QrDecomposition<Sc
 // that will get us errors about conflicting implementations, since Svd could
 // theoretically also implement the Qr supertrait, although that's not going to happen
 impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblem<Model, Rhs, Sequential, QrDecomposition<Model::ScalarType>>
+    for LevMarProblem<Model, Rhs, QrDecomposition<Model::ScalarType>>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:

@@ -7,11 +7,9 @@ use num_traits::{Float, Zero};
 use std::{marker::PhantomData, ops::Mul};
 use thiserror::Error as ThisError;
 
-#[cfg(feature = "parallel")]
-use super::PARALLEL_YES;
 use super::{
-    qr::QrDecomposition, MatrixDecomposition, MultiRhs, Parallel, Parallelism, RhsType, Sequential,
-    SingleRhs, SingularValueDecomposition,
+    qr::QrDecomposition, MatrixDecomposition, MultiRhs, RhsType, SingleRhs,
+    SingularValueDecomposition,
 };
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
@@ -38,7 +36,7 @@ pub enum LevMarBuilderError {
     InvalidLengthOfWeights,
 }
 
-pub struct LevMarProblemBuilder<Model: SeparableNonlinearModel, Rhs, Par, Decomp>
+pub struct LevMarProblemBuilder<Model: SeparableNonlinearModel, Rhs, Decomp>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -46,7 +44,7 @@ where
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     model: Model,
-    phantom: PhantomData<(Rhs, Par, Decomp)>,
+    phantom: PhantomData<(Rhs, Decomp)>,
     // alhtough this is optional, we know this will have been set because the Rhs
     // parameter is set with it
     Y: Option<DMatrix<Model::ScalarType>>,
@@ -54,14 +52,14 @@ where
     epsilon: <Model::ScalarType as ComplexField>::RealField,
 }
 
-impl<Model: SeparableNonlinearModel> LevMarProblemBuilder<Model, (), (), ()>
+impl<Model: SeparableNonlinearModel> LevMarProblemBuilder<Model, (), ()>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
-    pub fn new(model: Model) -> LevMarProblemBuilder<Model, (), (), ()> {
+    pub fn new(model: Model) -> LevMarProblemBuilder<Model, (), ()> {
         LevMarProblemBuilder {
             model,
             phantom: Default::default(),
@@ -72,7 +70,7 @@ where
     }
 }
 
-impl<Model: SeparableNonlinearModel, P, D> LevMarProblemBuilder<Model, (), P, D>
+impl<Model: SeparableNonlinearModel, D> LevMarProblemBuilder<Model, (), D>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -82,7 +80,7 @@ where
     pub fn rhs(
         self,
         rhs: OVector<Model::ScalarType, Dyn>,
-    ) -> LevMarProblemBuilder<Model, SingleRhs, P, D> {
+    ) -> LevMarProblemBuilder<Model, SingleRhs, D> {
         let nrows = rhs.nrows();
         LevMarProblemBuilder {
             Y: Some(rhs.reshape_generic(Dyn(nrows), Dyn(1))),
@@ -94,17 +92,14 @@ where
     }
 }
 
-impl<Model: SeparableNonlinearModel, P, D> LevMarProblemBuilder<Model, (), P, D>
+impl<Model: SeparableNonlinearModel, D> LevMarProblemBuilder<Model, (), D>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
-    pub fn mrhs(
-        self,
-        rhs: DMatrix<Model::ScalarType>,
-    ) -> LevMarProblemBuilder<Model, MultiRhs, P, D> {
+    pub fn mrhs(self, rhs: DMatrix<Model::ScalarType>) -> LevMarProblemBuilder<Model, MultiRhs, D> {
         LevMarProblemBuilder {
             Y: Some(rhs),
             model: self.model,
@@ -115,7 +110,7 @@ where
     }
 }
 
-impl<Model: SeparableNonlinearModel, R, P, D> LevMarProblemBuilder<Model, R, P, D>
+impl<Model: SeparableNonlinearModel, R, D> LevMarProblemBuilder<Model, R, D>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -130,7 +125,7 @@ where
     }
 }
 
-impl<Model: SeparableNonlinearModel, R, P, D> LevMarProblemBuilder<Model, R, P, D>
+impl<Model: SeparableNonlinearModel, R, D> LevMarProblemBuilder<Model, R, D>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -145,7 +140,7 @@ where
     }
 }
 
-impl<Model: SeparableNonlinearModel, R, P> LevMarProblemBuilder<Model, R, P, ()>
+impl<Model: SeparableNonlinearModel, R> LevMarProblemBuilder<Model, R, ()>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -154,7 +149,7 @@ where
 {
     pub fn decomposition<Decomp: MatrixDecomposition<Model::ScalarType>>(
         self,
-    ) -> LevMarProblemBuilder<Model, R, P, Decomp> {
+    ) -> LevMarProblemBuilder<Model, R, Decomp> {
         LevMarProblemBuilder {
             model: self.model,
             phantom: PhantomData,
@@ -166,30 +161,12 @@ where
 
     pub fn svd(
         self,
-    ) -> LevMarProblemBuilder<Model, R, P, SingularValueDecomposition<Model::ScalarType>> {
+    ) -> LevMarProblemBuilder<Model, R, SingularValueDecomposition<Model::ScalarType>> {
         Self::decomposition(self)
     }
 
-    pub fn qr(self) -> LevMarProblemBuilder<Model, R, P, QrDecomposition<Model::ScalarType>> {
+    pub fn qr(self) -> LevMarProblemBuilder<Model, R, QrDecomposition<Model::ScalarType>> {
         Self::decomposition(self)
-    }
-}
-
-impl<Model: SeparableNonlinearModel, R, D> LevMarProblemBuilder<Model, R, (), D>
-where
-    Model::ScalarType: Scalar + ComplexField + Copy,
-    <Model::ScalarType as ComplexField>::RealField: Float,
-    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
-        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
-{
-    pub fn parallelism<Par: Parallelism>(self) -> LevMarProblemBuilder<Model, R, Par, D> {
-        LevMarProblemBuilder {
-            model: self.model,
-            phantom: PhantomData,
-            Y: self.Y,
-            weights: self.weights,
-            epsilon: self.epsilon,
-        }
     }
 }
 
@@ -197,32 +174,7 @@ impl<
         Model: SeparableNonlinearModel,
         Rhs: RhsType,
         Decomp: MatrixDecomposition<Model::ScalarType>,
-    > LevMarProblemBuilder<Model, Rhs, (), Decomp>
-where
-    Model::ScalarType: Scalar + ComplexField + Copy,
-    <Model::ScalarType as ComplexField>::RealField: Float,
-    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
-        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
-{
-    pub fn build(self) -> Result<LevMarProblem<Model, Rhs, Sequential, Decomp>, LevMarBuilderError>
-    where
-        LevMarProblem<Model, Rhs, Sequential, Decomp>: LeastSquaresProblem<
-            Model::ScalarType,
-            Dyn,
-            Dyn,
-            ParameterStorage = Owned<Model::ScalarType, Dyn>,
-        >,
-    {
-        self.parallelism::<Sequential>().build()
-    }
-}
-
-impl<
-        Model: SeparableNonlinearModel,
-        Rhs: RhsType,
-        Decomp: MatrixDecomposition<Model::ScalarType>,
-        Par: Parallelism,
-    > LevMarProblemBuilder<Model, Rhs, Par, Decomp>
+    > LevMarProblemBuilder<Model, Rhs, Decomp>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -230,11 +182,11 @@ where
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblem<Model, Rhs, Par, Decomp>, LevMarBuilderError>
+    pub fn build(self) -> Result<LevMarProblem<Model, Rhs, Decomp>, LevMarBuilderError>
     //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
     // but the trait solver cannot figure that out without this extra hint.
     where
-        LevMarProblem<Model, Rhs, Par, Decomp>: LeastSquaresProblem<
+        LevMarProblem<Model, Rhs, Decomp>: LeastSquaresProblem<
             Model::ScalarType,
             Dyn,
             Dyn,

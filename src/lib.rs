@@ -12,20 +12,6 @@
 //! sides has been added to this library. This is a powerful technique for suitable
 //! problems and is explained at the end of this introductory chapter.
 //!
-//! ## Parallel Computations (Experimental)
-//!
-//! Since version 0.11.0, support for parallelizing some of the more expensive
-//! computations has been added. Consider this support **experimental**, although
-//! it has been thorougly tested. The problem is that I have yet to see an
-//! example where the benches run faster than for the single threaded case.
-//! Parallel calculations have to be enabled using the `parallel` feature of
-//! this crate.
-//!
-//! To check out if parallelizing (some of the) computations works for you, see the
-//! [`LevMarProblemBuilder::new_parallel`](crate::solvers::levmar::LevMarProblemBuilder::new_parallel) and
-//! [`LevMarProblemBuilder::mrhs_parallel`](crate::solvers::levmar::LevMarProblemBuilder::mrhs_parallel)
-//! builder functions.
-//!
 //! ## Overview
 //!
 //! Many nonlinear models consist of a mixture of both truly nonlinear and _linear_ model
