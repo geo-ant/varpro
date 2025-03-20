@@ -27,7 +27,8 @@ fn jacobian_of_least_squares_prolem_is_correct_for_correct_parameter_guesses_unw
     let params = vec![2., 4.];
     let model = get_double_exponential_model_with_constant_offset(tvec, params.clone());
     let mut problem = LevMarProblemBuilder::new(model)
-        .observations(yvec)
+        .rhs(yvec)
+        .svd()
         .build()
         .expect("Building a valid solver must not return an error.");
 
@@ -60,7 +61,8 @@ fn jacobian_produces_correct_results_for_differentiating_the_residual_sum_of_squ
     let weights = yvec.map(|v: f64| v.sqrt() + v.sin());
 
     let mut problem = LevMarProblemBuilder::new(model)
-        .observations(yvec)
+        .rhs(yvec)
+        .svd()
         .weights(weights)
         .build()
         .expect("Building a valid solver must not return an error.");
@@ -120,7 +122,8 @@ fn residuals_are_calculated_correctly_unweighted() {
     let data_length = tvec.len();
 
     let mut problem = LevMarProblemBuilder::new(model)
-        .observations(yvec)
+        .rhs(yvec)
+        .svd()
         .build()
         .expect("Building a valid solver must not return an error.");
 
@@ -181,7 +184,8 @@ fn residuals_are_calculated_correctly_with_weights() {
     let weights = yvec.map(|v: f64| v.sqrt() + 2. * v.sin());
 
     let mut problem = LevMarProblemBuilder::new(model)
-        .observations(yvec)
+        .rhs(yvec)
+        .svd()
         .weights(weights)
         .build()
         .expect("Building a valid solver must not return an error.");
@@ -224,7 +228,8 @@ fn levmar_problem_set_params_sets_the_model_parameters_when_built() {
         .returning(move || Ok(nalgebra::DMatrix::zeros(y_len, y_len))); // the returned matrix eval is not used in this test
                                                                         // actually nonsense, but we don't care about that here
     let _problem = LevMarProblemBuilder::new(model)
-        .observations(y)
+        .rhs(y)
+        .svd()
         .build()
         .expect("Building a valid solver must not return an error.");
 }

@@ -1,27 +1,10 @@
 use crate::model::test::MockSeparableNonlinearModel;
 use crate::solvers::levmar::builder::LevMarBuilderError;
 use crate::solvers::levmar::LevMarProblemBuilder;
-use crate::solvers::levmar::SingularValueDecomposition;
 use crate::util::DiagMatrix;
 use crate::util::Weights;
 use assert_matches::assert_matches;
 use nalgebra::{DMatrix, DVector};
-
-#[test]
-fn new_builder_starts_with_empty_fields() {
-    let model = MockSeparableNonlinearModel::default();
-    let builder = LevMarProblemBuilder::<_, _, _, SingularValueDecomposition<f64>>::new(model);
-    let LevMarProblemBuilder {
-        Y: y,
-        separable_model: _model,
-        epsilon,
-        weights,
-        phantom: _,
-    } = builder;
-    assert!(y.is_none());
-    assert!(epsilon.is_none());
-    assert_eq!(weights, Weights::Unit);
-}
 
 #[test]
 #[allow(clippy::float_cmp)] //clippy moans, but it's wrong (again!)
@@ -46,8 +29,9 @@ fn builder_assigns_fields_correctly_simple_case() {
         .returning(move || Ok(DMatrix::zeros(y_len, y_len))); // the returned matrix eval is not used in this test
 
     // build a problem with default epsilon
-    let builder = LevMarProblemBuilder::new(model).observations(y.clone());
+    let builder = LevMarProblemBuilder::new(model).rhs(y.clone());
     let problem = builder
+        .svd()
         .build()
         .expect("Valid builder should not fail build");
 
@@ -87,7 +71,8 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
     let W = DMatrix::from_diagonal(&weights);
 
     let problem = LevMarProblemBuilder::new(model)
-        .observations(y.clone())
+        .rhs(y.clone())
+        .svd()
         .epsilon(-1.337) // check that negative values are converted to absolutes
         .weights(weights.clone())
         .build()
@@ -110,16 +95,6 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
 }
 
 #[test]
-fn builder_gives_errors_for_missing_y_data() {
-    let model = MockSeparableNonlinearModel::default();
-
-    assert_matches!(
-        LevMarProblemBuilder::new(model).build(),
-        Err(LevMarBuilderError::YDataMissing)
-    );
-}
-
-#[test]
 fn builder_gives_errors_for_wrong_data_length() {
     let mut model = MockSeparableNonlinearModel::default();
     //octave y = 2*exp(-t/2)+exp(-t/4)+1;
@@ -134,7 +109,7 @@ fn builder_gives_errors_for_wrong_data_length() {
         .returning(move || wrong_output_len);
 
     assert_matches!(
-        LevMarProblemBuilder::new(model).observations(y).build(),
+        LevMarProblemBuilder::new(model).rhs(y).svd().build(),
         Err(LevMarBuilderError::InvalidLengthOfData { .. }),
         "invalid parameter count must produce correct error"
     );
@@ -154,7 +129,8 @@ fn builder_gives_errors_for_zero_length_data() {
 
     assert_matches!(
         LevMarProblemBuilder::new(model)
-            .observations(DVector::from(Vec::<f64>::new()))
+            .rhs(DVector::from(Vec::<f64>::new()))
+            .svd()
             .build(),
         Err(LevMarBuilderError::ZeroLengthVector),
         "zero parameter count must produce correct error"
@@ -175,7 +151,8 @@ fn builder_gives_errors_for_wrong_length_of_weights() {
 
     assert_matches!(
         LevMarProblemBuilder::new(model)
-            .observations(y)
+            .rhs(y)
+            .svd()
             .weights(DVector::from_vec(vec! {1.,2.,3.}))
             .build(),
         Err(LevMarBuilderError::InvalidLengthOfWeights { .. }),

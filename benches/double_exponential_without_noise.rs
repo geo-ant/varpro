@@ -60,7 +60,8 @@ where
         &OVector::from_vec_generic(Dyn(base_function_count), U1, vec![c1, c2, c3]),
     );
     LevMarProblemBuilder::new(model)
-        .observations(y)
+        .rhs(y)
+        .svd()
         .build()
         .expect("Building valid problem should not panic")
 }
