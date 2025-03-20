@@ -112,7 +112,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
 
     let problem = LevMarProblemBuilder::new(model)
         .rhs(y.clone())
-        .qr()
+        .svd()
         .build()
         .expect("Building valid problem should not panic");
     _ = format!("{:?}", problem);
