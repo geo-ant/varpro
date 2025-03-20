@@ -69,9 +69,9 @@ impl<ScalarType: Scalar + ComplexField> QrExt<ScalarType> for QrDecomposition<Sc
         // after this, M contains Q^T M
         self.current_qr.q_tr_mul(&mut M);
         // illegal dimensions for matrix M
-        assert!(M.ncols() >= self.n, "illegal dimensions for matrix M");
+        assert!(M.nrows() >= self.n, "illegal dimensions for matrix M");
         // this clipping corresponds to the product Q_2^T M
-        let Q2M = M.view_range(self.n..M.ncols(), 0..);
+        let Q2M = M.view_range(self.n..M.nrows(), 0..);
         Q2M.into()
     }
 }
