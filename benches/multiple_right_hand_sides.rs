@@ -9,8 +9,8 @@ use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
-use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
+use varpro::solvers::levmar::LevMarProblemSvd;
 use varpro::solvers::levmar::LevMarSolver;
 
 /// helper struct for the parameters of the double exponential
@@ -24,7 +24,7 @@ struct DoubleExponentialParameters {
 fn build_problem_mrhs<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model, true, false>
+) -> LevMarProblemSvd<Model, true, false>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
 {
@@ -39,11 +39,11 @@ where
 }
 
 fn run_minimization_mrhs<Model, const PAR: bool>(
-    problem: LevMarProblem<Model, true, PAR>,
+    problem: LevMarProblemSvd<Model, true, PAR>,
 ) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-    LevMarProblem<Model, true, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+    LevMarProblemSvd<Model, true, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()
         .fit(problem)
