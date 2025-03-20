@@ -40,7 +40,6 @@ harness = false
 [[bench]]
 name = "multiple_right_hand_sides"
 harness = false
-required-features = ["parallel"]
 
 [package.metadata.docs.rs]
 # To build locally use
