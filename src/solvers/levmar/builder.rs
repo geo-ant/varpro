@@ -4,12 +4,12 @@ use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Owned, Scalar};
 use num_traits::{Float, Zero};
-use std::ops::Mul;
+use std::{marker::PhantomData, ops::Mul};
 use thiserror::Error as ThisError;
 
-use super::PARALLEL_NO;
 #[cfg(feature = "parallel")]
 use super::PARALLEL_YES;
+use super::{MultiRhs, RhsType, SingleRhs, PARALLEL_NO};
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
@@ -76,7 +76,7 @@ pub enum LevMarBuilderError {
 /// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemBuilder<Model, const MRHS: bool, const PAR: bool>
+pub struct LevMarProblemBuilder<Model, Rhs: RhsType, const PAR: bool>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -96,9 +96,10 @@ where
     /// all weights were 1.
     /// Must have the same length as x and y.
     weights: Weights<Model::ScalarType, Dyn>,
+    phantom: PhantomData<Rhs>,
 }
 
-impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_NO>
+impl<Model> LevMarProblemBuilder<Model, SingleRhs, PARALLEL_NO>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -117,12 +118,13 @@ where
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
+            phantom: PhantomData,
         }
     }
 }
 
 #[cfg(feature = "parallel")]
-impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_YES>
+impl<Model> LevMarProblemBuilder<Model, SingleRhs, PARALLEL_YES>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -148,7 +150,7 @@ where
     }
 }
 
-impl<Model, const PAR: bool> LevMarProblemBuilder<Model, false, PAR>
+impl<Model, const PAR: bool> LevMarProblemBuilder<Model, SingleRhs, PAR>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -172,7 +174,7 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, true, PARALLEL_NO>
+impl<Model> LevMarProblemBuilder<Model, MultiRhs, PARALLEL_NO>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -221,12 +223,13 @@ where
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
+            phantom: PhantomData,
         }
     }
 }
 
 #[cfg(feature = "parallel")]
-impl<Model> LevMarProblemBuilder<Model, true, true>
+impl<Model> LevMarProblemBuilder<Model, MultiRhs, true>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -252,7 +255,7 @@ where
     }
 }
 
-impl<Model, const PAR: bool> LevMarProblemBuilder<Model, true, PAR>
+impl<Model, const PAR: bool> LevMarProblemBuilder<Model, MultiRhs, PAR>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -275,7 +278,7 @@ where
     }
 }
 
-impl<Model, const MRHS: bool, const PAR: bool> LevMarProblemBuilder<Model, MRHS, PAR>
+impl<Model, Rhs: RhsType, const PAR: bool> LevMarProblemBuilder<Model, Rhs, PAR>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -325,11 +328,11 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblemSvd<Model, MRHS, PAR>, LevMarBuilderError>
+    pub fn build(self) -> Result<LevMarProblemSvd<Model, Rhs, PAR>, LevMarBuilderError>
     //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
     // but the trait solver cannot figure that out without this extra hint.
     where
-        LevMarProblemSvd<Model, MRHS, PAR>: LeastSquaresProblem<
+        LevMarProblemSvd<Model, Rhs, PAR>: LeastSquaresProblem<
             Model::ScalarType,
             Dyn,
             Dyn,
@@ -376,6 +379,7 @@ where
             svd_epsilon: epsilon,
             cached: None,
             weights,
+            phantom: std::marker::PhantomData,
         };
         problem.set_params(&params);
 
