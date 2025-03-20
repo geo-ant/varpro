@@ -1,75 +1,37 @@
-use std::{marker::PhantomData, ops::Mul};
-
-use super::{copy_matrix_to_column, to_vector, SeparableNonlinearModel};
-use crate::util::Weights;
+use super::{
+    copy_matrix_to_column, to_vector, LevMarProblem, MatrixDecomposition, RhsType,
+    SeparableNonlinearModel, Sequential,
+};
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{
     ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, OMatrix, Owned, Scalar, UninitMatrix,
     Vector,
 };
 use num_traits::Float;
-
-#[derive(Clone)]
-#[allow(non_snake_case)]
-pub struct LevMarProblemQr<Model, QrDecomp, const MRHS: bool>
-where
-    Model: SeparableNonlinearModel,
-    Model::ScalarType: Scalar + ComplexField + Copy,
-    QrDecomp: QrDecomposition<Model::ScalarType>,
-{
-    /// the *weighted* data matrix to which to fit the model `$\boldsymbol{Y}_w$`.
-    /// It is a matrix so it can accomodate multiple right hand sides. If
-    /// the problem has only a single right hand side (MRHS = false), this is just
-    /// a matrix with one column. The underlying math does not change in either case.
-    /// **Attention** the data matrix is weighted with the weights if some weights
-    /// where provided (otherwise it is unweighted)
-    pub(crate) Y_w: DMatrix<Model::ScalarType>,
-    /// a reference to the separable model we are trying to fit to the data
-    pub(crate) model: Model,
-    /// truncation epsilon for column-pivoting QR below which all singular values are assumed zero
-    pub(crate) epsilon: <Model::ScalarType as ComplexField>::RealField,
-    /// the weights of the data. If none are given, the data is not weighted
-    /// If weights were provided, the builder has checked that the weights have the
-    /// correct dimension for the data
-    pub(crate) weights: Weights<Model::ScalarType, Dyn>,
-    /// the currently cached calculations belonging to the currently set model parameters
-    /// those are updated on set_params. If this is None, then it indicates some error that
-    /// is propagated on to the levenberg-marquardt crate by also returning None results
-    /// by residuals() and/or jacobian()
-    pub(crate) cached: Option<CachedCalculationsQr<Model::ScalarType, QrDecomp>>,
-}
-
-impl<Model, QrDecomp, const MRHS: bool> std::fmt::Debug for LevMarProblemQr<Model, QrDecomp, MRHS>
-where
-    Model: SeparableNonlinearModel,
-    Model::ScalarType: Scalar + ComplexField + Copy,
-    QrDecomp: QrDecomposition<Model::ScalarType>,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LevMarProblem")
-            .field("y_w", &self.Y_w)
-            .field("model", &"/* omitted */")
-            .field("svd_epsilon", &self.epsilon)
-            .field("weights", &self.weights)
-            .field("cached/", &"/** omitted **/")
-            .finish()
-    }
-}
+use std::ops::Mul;
 
 /// a wrapper around the QR decomposition without column pivoting of a matrix.
 /// The matrix to be decomposed is assumed to have full rank.
-pub struct Qrd<ScalarType: Scalar + ComplexField> {
+#[derive(Debug)]
+pub struct QrDecomposition<ScalarType: Scalar + ComplexField> {
     /// number of columns of the original matrix
     n: usize,
-    qr: nalgebra::linalg::QR<ScalarType, Dyn, Dyn>,
+    current_qr: nalgebra::linalg::QR<ScalarType, Dyn, Dyn>,
 }
 
-pub struct ColPivQrd {}
+impl<ScalarType: Scalar + ComplexField> MatrixDecomposition<ScalarType>
+    for QrDecomposition<ScalarType>
+{
+    #[allow(non_snake_case)]
+    fn linear_coefficients(&self, Y_w: &DMatrix<ScalarType>) -> Option<DMatrix<ScalarType>> {
+        self.solve(Y_w)
+    }
+}
 
 /// An abstraction over the QR decomposition of a matrix `$A$` with and
 /// without column-pivoting. In the case of column-pivoting, the matrix
 /// is implied to have full rank, whereas in the case of the
-pub trait QrDecomposition<ScalarType>: Sized
+trait QrExt<ScalarType>: Sized + MatrixDecomposition<ScalarType>
 where
     ScalarType: Scalar + ComplexField,
 {
@@ -90,22 +52,22 @@ where
     fn q2_tr_mul(&self, M: DMatrix<ScalarType>) -> DMatrix<ScalarType>;
 }
 
-impl<ScalarType: Scalar + ComplexField> QrDecomposition<ScalarType> for Qrd<ScalarType> {
+impl<ScalarType: Scalar + ComplexField> QrExt<ScalarType> for QrDecomposition<ScalarType> {
     fn new(matrix: DMatrix<ScalarType>) -> Option<Self> {
         let n = matrix.ncols();
         let qr = nalgebra::linalg::QR::new(matrix);
-        Some(Self { n, qr })
+        Some(Self { n, current_qr: qr })
     }
 
     #[allow(non_snake_case)]
     fn solve(&self, B: &DMatrix<ScalarType>) -> Option<DMatrix<ScalarType>> {
-        self.qr.solve(B)
+        self.current_qr.solve(B)
     }
 
     #[allow(non_snake_case)]
     fn q2_tr_mul(&self, mut M: DMatrix<ScalarType>) -> DMatrix<ScalarType> {
         // after this, M contains Q^T M
-        self.qr.q_tr_mul(&mut M);
+        self.current_qr.q_tr_mul(&mut M);
         // illegal dimensions for matrix M
         assert!(M.ncols() >= self.n, "illegal dimensions for matrix M");
         // this clipping corresponds to the product Q_2^T M
@@ -114,26 +76,17 @@ impl<ScalarType: Scalar + ComplexField> QrDecomposition<ScalarType> for Qrd<Scal
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct CachedCalculationsQr<ScalarType, QrDecomp>
-where
-    ScalarType: Scalar + ComplexField,
-    QrDecomp: QrDecomposition<ScalarType>,
-{
-    /// Qr decomposition of the current function value matrix
-    current_qr: QrDecomp,
-    phantom: PhantomData<ScalarType>,
-}
-
-impl<Model, QrDecomp, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblemQr<Model, QrDecomp, MRHS>
+//@note(geo) we cannot simply blanket implement this for the Qr supertrait because
+// that will get us errors about conflicting implementations, since Svd could
+// theoretically also implement the Qr supertrait, although that's not going to happen
+impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
+    for LevMarProblem<Model, Rhs, Sequential, QrDecomposition<Model::ScalarType>>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
-    QrDecomp: QrDecomposition<Model::ScalarType>,
 {
     type ResidualStorage = Owned<Model::ScalarType, Dyn>;
     type JacobianStorage = Owned<Model::ScalarType, Dyn, Dyn>;
@@ -150,18 +103,8 @@ where
         }
         // matrix of weighted model function values
         let Phi_w = self.model.eval().ok().map(|Phi| &self.weights * Phi);
-
-        let current_qr = Phi_w.and_then(|mat| QrDecomp::new(mat));
-
-        // if everything was successful, update the cached calculations, otherwise set the cache to none
-        if let Some(current_qr) = current_qr {
-            self.cached = Some(CachedCalculationsQr {
-                current_qr,
-                phantom: PhantomData,
-            })
-        } else {
-            self.cached = None;
-        }
+        let current_qr = Phi_w.and_then(|mat| QrDecomposition::new(mat));
+        self.cached = current_qr;
     }
 
     /// Retrieve the (nonlinear) model parameters as a vector `$\vec{\alpha}$`.
@@ -181,7 +124,7 @@ where
     /// fit, given the current `$\vec{\alpha}$`. For more info on the math of VarPro, see
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn residuals(&self) -> Option<Vector<Model::ScalarType, Dyn, Self::ResidualStorage>> {
-        let qr = &self.cached.as_ref()?.current_qr;
+        let qr = &self.cached.as_ref()?;
         Some(to_vector(qr.q2_tr_mul(self.Y_w.clone())))
     }
 
@@ -191,7 +134,7 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
-        if let Some(CachedCalculationsQr { current_qr, .. }) = self.cached.as_ref() {
+        if let Some(QrDecomposition { current_qr, .. }) = self.cached.as_ref() {
             // this is not a great pattern, but the trait bounds on copy_from
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
@@ -205,6 +148,7 @@ where
             // matrix C of linear coefficients
             let C = current_qr.solve(&self.Y_w)?;
 
+            let current_qr = self.cached.as_ref()?;
             // we use a functional style calculation here that is more easy to
             // parallelize with rayon later on. The only disadvantage is that
             // we don't short circuit anymore if there is an error in calculation,

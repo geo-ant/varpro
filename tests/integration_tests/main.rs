@@ -5,6 +5,7 @@ use nalgebra::DVector;
 use nalgebra::Dyn;
 use nalgebra::OVector;
 use nalgebra::U1;
+use qr::QrDecomposition;
 use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::levmar_mrhs::DoubleExponentialModelWithConstantOffsetLevmarMrhs;

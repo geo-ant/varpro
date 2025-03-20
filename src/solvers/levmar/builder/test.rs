@@ -1,6 +1,7 @@
 use crate::model::test::MockSeparableNonlinearModel;
 use crate::solvers::levmar::builder::LevMarBuilderError;
 use crate::solvers::levmar::LevMarProblemBuilder;
+use crate::solvers::levmar::SingularValueDecomposition;
 use crate::util::DiagMatrix;
 use crate::util::Weights;
 use assert_matches::assert_matches;
@@ -9,7 +10,7 @@ use nalgebra::{DMatrix, DVector};
 #[test]
 fn new_builder_starts_with_empty_fields() {
     let model = MockSeparableNonlinearModel::default();
-    let builder = LevMarProblemBuilder::new(model);
+    let builder = LevMarProblemBuilder::<_, _, _, SingularValueDecomposition<f64>>::new(model);
     let LevMarProblemBuilder {
         Y: y,
         separable_model: _model,
