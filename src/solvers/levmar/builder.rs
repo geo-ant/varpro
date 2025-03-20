@@ -9,7 +9,10 @@ use thiserror::Error as ThisError;
 
 #[cfg(feature = "parallel")]
 use super::PARALLEL_YES;
-use super::{MultiRhs, Parallel, Parallelism, RhsType, Sequential, SingleRhs};
+use super::{
+    MatrixDecomposition, MultiRhs, Parallel, Parallelism, RhsType, Sequential, SingleRhs,
+    SingularValueDecomposition,
+};
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
@@ -76,8 +79,14 @@ pub enum LevMarBuilderError {
 /// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemBuilder<Model, Rhs: RhsType, Par: Parallelism>
-where
+pub struct LevMarProblemBuilder<
+    Model,
+    Rhs: RhsType,
+    Par: Parallelism,
+    Decomp: MatrixDecomposition<Model::ScalarType> = SingularValueDecomposition<
+        <Model as SeparableNonlinearModel>::ScalarType,
+    >,
+> where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
     Model: SeparableNonlinearModel,
@@ -96,7 +105,7 @@ where
     /// all weights were 1.
     /// Must have the same length as x and y.
     weights: Weights<Model::ScalarType, Dyn>,
-    phantom: PhantomData<(Rhs, Par)>,
+    phantom: PhantomData<(Rhs, Par, Decomp)>,
 }
 
 impl<Model> LevMarProblemBuilder<Model, SingleRhs, Sequential>
@@ -112,7 +121,7 @@ where
     /// where the data is a vector that is fitted by the model. Calculations
     /// are run in a _single threaded_ fashion, see also [`LevMarProblemBuilder::new_parallel`].
     ///
-    pub fn new(model: Model) -> Self {
+    pub fn new(model: Model) -> LevMarProblemBuilder<Model, SingleRhs, Sequential> {
         Self {
             Y: None,
             separable_model: model,
@@ -330,16 +339,22 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblem<Model, Rhs, Par>, LevMarBuilderError>
+    pub fn build(
+        self,
+    ) -> Result<
+        LevMarProblem<Model, Rhs, Par, SingularValueDecomposition<Model::ScalarType>>,
+        LevMarBuilderError,
+    >
     //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
     // but the trait solver cannot figure that out without this extra hint.
     where
-        LevMarProblem<Model, Rhs, Par>: LeastSquaresProblem<
-            Model::ScalarType,
-            Dyn,
-            Dyn,
-            ParameterStorage = Owned<Model::ScalarType, Dyn>,
-        >,
+        LevMarProblem<Model, Rhs, Par, SingularValueDecomposition<Model::ScalarType>>:
+            LeastSquaresProblem<
+                Model::ScalarType,
+                Dyn,
+                Dyn,
+                ParameterStorage = Owned<Model::ScalarType, Dyn>,
+            >,
     {
         // and assign the defaults to the values we don't have
         let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
