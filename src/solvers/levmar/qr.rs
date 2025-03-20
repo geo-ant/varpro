@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, ops::Mul};
 
-use super::{copy_matrix_to_column, to_vector, SeparableNonlinearModel, PARALLEL_NO};
+use super::{copy_matrix_to_column, to_vector, SeparableNonlinearModel};
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{

@@ -9,7 +9,7 @@ use thiserror::Error as ThisError;
 
 #[cfg(feature = "parallel")]
 use super::PARALLEL_YES;
-use super::{MultiRhs, Parallel, Parallelism, RhsType, Sequential, SingleRhs, PARALLEL_NO};
+use super::{MultiRhs, Parallel, Parallelism, RhsType, Sequential, SingleRhs};
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]

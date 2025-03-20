@@ -408,7 +408,6 @@ where
 
 #[allow(unused)]
 pub(crate) const PARALLEL_YES: bool = true;
-pub(crate) const PARALLEL_NO: bool = false;
 
 impl<Model, Rhs: RhsType, Par: Parallelism> std::fmt::Debug for LevMarProblem<Model, Rhs, Par>
 where
