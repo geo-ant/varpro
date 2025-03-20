@@ -180,8 +180,10 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_parallel_c
         &DVector::from(vec![c1, c2, c3]),
     );
 
-    let problem = LevMarProblemBuilder::new_parallel(model)
-        .observations(y.clone())
+    let problem = LevMarProblemBuilder::new(model)
+        .rhs(y.clone())
+        .svd()
+        .parallelism::<Parallel>()
         .build()
         .expect("Building valid problem should not panic");
     _ = format!("{:?}", problem);
@@ -321,8 +323,10 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         &OVector::from_vec_generic(Dyn(base_func_count), U1, vec![c1, c2, c3]),
     );
 
-    let problem = LevMarProblemBuilder::new_parallel(model)
-        .observations(y.clone())
+    let problem = LevMarProblemBuilder::new(model)
+        .parallelism::<Parallel>()
+        .rhs(y.clone())
+        .svd()
         .build()
         .expect("Building valid problem should not panic");
 
@@ -633,8 +637,10 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     );
 
     let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
-    let problem = LevMarProblemBuilder::mrhs_parallel(model)
-        .observations(Y.clone())
+    let problem = LevMarProblemBuilder::new(model)
+        .mrhs(Y.clone())
+        .svd()
+        .parallelism::<Parallel>()
         .build()
         .expect("building the lev mar problem must not fail");
 
