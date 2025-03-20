@@ -13,8 +13,8 @@ use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
+use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
-use varpro::solvers::levmar::LevMarProblemSvd;
 use varpro::solvers::levmar::LevMarSolver;
 use varpro::solvers::levmar::Parallelism;
 use varpro::solvers::levmar::Sequential;
@@ -33,7 +33,7 @@ struct DoubleExponentialParameters {
 fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblemSvd<Model, SingleRhs, Sequential>
+) -> LevMarProblem<Model, SingleRhs, Sequential>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
@@ -65,11 +65,11 @@ where
 }
 
 fn run_minimization<Model, Par: Parallelism>(
-    problem: LevMarProblemSvd<Model, SingleRhs, Par>,
+    problem: LevMarProblem<Model, SingleRhs, Par>,
 ) -> (DVector<f64>, DVector<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-    LevMarProblemSvd<Model, SingleRhs, Par>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+    LevMarProblem<Model, SingleRhs, Par>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()
         .fit(problem)

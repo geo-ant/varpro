@@ -21,7 +21,7 @@ mod builder;
 #[cfg(any(test, doctest))]
 mod test;
 
-pub trait RhsType: std::fmt::Debug + Copy + Clone + PartialEq + Eq {}
+pub trait RhsType: std::fmt::Debug + Copy + Clone + PartialEq + Eq + Sync + Send {}
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct SingleRhs;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -30,7 +30,7 @@ pub struct MultiRhs;
 impl RhsType for SingleRhs {}
 impl RhsType for MultiRhs {}
 
-pub trait Parallelism: std::fmt::Debug + Copy + Clone + PartialEq + Eq {}
+pub trait Parallelism: std::fmt::Debug + Copy + Clone + PartialEq + Eq + Sync + Send {}
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Parallel {}
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -64,7 +64,7 @@ where
 {
     /// the final state of the fitting problem after the
     /// minimization finished (regardless of whether fitting was successful or not)
-    pub problem: LevMarProblemSvd<Model, Rhs, Sequential>,
+    pub problem: LevMarProblem<Model, Rhs, Sequential>,
 
     /// the minimization report of the underlying solver.
     /// It contains information about the minimization process
@@ -142,7 +142,7 @@ where
 {
     /// internal helper for constructing an instance
     fn new(
-        problem: LevMarProblemSvd<Model, Rhs, Sequential>,
+        problem: LevMarProblem<Model, Rhs, Sequential>,
         minimization_report: MinimizationReport<Model::ScalarType>,
     ) -> Self {
         Self {
@@ -193,11 +193,11 @@ where
     #[allow(clippy::result_large_err)]
     pub fn fit<Par: Parallelism>(
         &self,
-        problem: LevMarProblemSvd<Model, Rhs, Par>,
+        problem: LevMarProblem<Model, Rhs, Par>,
     ) -> Result<FitResult<Model, Rhs>, FitResult<Model, Rhs>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblemSvd<Model, Rhs, Par>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, Rhs, Par>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
     {
         #[allow(deprecated)]
@@ -231,11 +231,11 @@ where
     #[allow(clippy::result_large_err)]
     pub fn fit_with_statistics<Par: Parallelism>(
         &self,
-        problem: LevMarProblemSvd<Model, SingleRhs, Par>,
+        problem: LevMarProblem<Model, SingleRhs, Par>,
     ) -> Result<(FitResult<Model, SingleRhs>, FitStatistics<Model>), FitResult<Model, SingleRhs>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblemSvd<Model, SingleRhs, Par>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, SingleRhs, Par>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float,
     {
         let FitResult {
@@ -300,11 +300,6 @@ where
     linear_coefficients: DMatrix<ScalarType>,
 }
 
-/// An alias for the [`LevMarProblemSvd`] type for backwards compatibility.
-/// It's better to explicitly use the problem variants with Svd or Qr directly.
-#[deprecated = "This is an alias for LevMarProblemSvd, use this type explicitly or use the Qr variant"]
-pub type LevMarProblem<M, Rhs, Par> = LevMarProblemSvd<M, Rhs, Par>;
-
 /// This is a the problem of fitting the separable model to data in a form that the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate can use it to
 /// perform the least squares fit.
@@ -333,7 +328,7 @@ pub type LevMarProblem<M, Rhs, Par> = LevMarProblemSvd<M, Rhs, Par>;
 /// coefficient vectors and data vectors respectively.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemSvd<Model, Rhs: RhsType, Par: Parallelism>
+pub struct LevMarProblem<Model, Rhs: RhsType, Par: Parallelism>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -363,7 +358,7 @@ where
     phantom: PhantomData<(Rhs, Par)>,
 }
 
-impl<Model, Rhs: RhsType, Par: Parallelism> LevMarProblemSvd<Model, Rhs, Par>
+impl<Model, Rhs: RhsType, Par: Parallelism> LevMarProblem<Model, Rhs, Par>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -371,8 +366,8 @@ where
     /// convert from parallel problem to sequential one. Useful for funnelling the results
     /// of the parallel calculations to downstream tasks that only take sequential models
     /// for simplicity.
-    pub fn into_sequential(self) -> LevMarProblemSvd<Model, Rhs, Sequential> {
-        let LevMarProblemSvd {
+    pub fn into_sequential(self) -> LevMarProblem<Model, Rhs, Sequential> {
+        let LevMarProblem {
             Y_w,
             model,
             svd_epsilon,
@@ -380,7 +375,7 @@ where
             cached,
             phantom: _,
         } = self;
-        LevMarProblemSvd {
+        LevMarProblem {
             Y_w,
             model,
             svd_epsilon,
@@ -391,8 +386,8 @@ where
     }
 
     /// convert from sequential problem to a parallel one
-    pub fn into_parallel(self) -> LevMarProblemSvd<Model, MultiRhs, Sequential> {
-        let LevMarProblemSvd {
+    pub fn into_parallel(self) -> LevMarProblem<Model, MultiRhs, Sequential> {
+        let LevMarProblem {
             Y_w,
             model,
             svd_epsilon,
@@ -400,7 +395,7 @@ where
             cached,
             phantom: _,
         } = self;
-        LevMarProblemSvd {
+        LevMarProblem {
             Y_w,
             model,
             svd_epsilon,
@@ -415,7 +410,7 @@ where
 pub(crate) const PARALLEL_YES: bool = true;
 pub(crate) const PARALLEL_NO: bool = false;
 
-impl<Model, Rhs: RhsType, Par: Parallelism> std::fmt::Debug for LevMarProblemSvd<Model, Rhs, Par>
+impl<Model, Rhs: RhsType, Par: Parallelism> std::fmt::Debug for LevMarProblem<Model, Rhs, Par>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -431,7 +426,7 @@ where
     }
 }
 
-impl<Model, Par: Parallelism> LevMarProblemSvd<Model, MultiRhs, Par>
+impl<Model, Par: Parallelism> LevMarProblem<Model, MultiRhs, Par>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -464,7 +459,7 @@ where
     }
 }
 
-impl<Model, Par: Parallelism> LevMarProblemSvd<Model, SingleRhs, Par>
+impl<Model, Par: Parallelism> LevMarProblem<Model, SingleRhs, Par>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -502,7 +497,7 @@ where
     }
 }
 
-impl<Model, Rhs: RhsType, Par: Parallelism> LevMarProblemSvd<Model, Rhs, Par>
+impl<Model, Rhs: RhsType, Par: Parallelism> LevMarProblem<Model, Rhs, Par>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -519,7 +514,7 @@ where
 }
 
 impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblemSvd<Model, Rhs, Sequential>
+    for LevMarProblem<Model, Rhs, Sequential>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
@@ -656,8 +651,8 @@ where
 }
 
 #[cfg(feature = "parallel")]
-impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblemSvd<Model, MRHS, PARALLEL_YES>
+impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
+    for LevMarProblem<Model, Rhs, Parallel>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:

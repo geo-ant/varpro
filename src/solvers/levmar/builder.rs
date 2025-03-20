@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::solvers::levmar::LevMarProblemSvd;
+use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Owned, Scalar};
@@ -146,6 +146,7 @@ where
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
+            phantom: PhantomData,
         }
     }
 }
@@ -229,7 +230,7 @@ where
 }
 
 #[cfg(feature = "parallel")]
-impl<Model> LevMarProblemBuilder<Model, MultiRhs, true>
+impl<Model> LevMarProblemBuilder<Model, MultiRhs, Parallel>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -251,6 +252,7 @@ where
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
+            phantom: PhantomData,
         }
     }
 }
@@ -328,11 +330,11 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblemSvd<Model, Rhs, Par>, LevMarBuilderError>
+    pub fn build(self) -> Result<LevMarProblem<Model, Rhs, Par>, LevMarBuilderError>
     //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
     // but the trait solver cannot figure that out without this extra hint.
     where
-        LevMarProblemSvd<Model, Rhs, Par>: LeastSquaresProblem<
+        LevMarProblem<Model, Rhs, Par>: LeastSquaresProblem<
             Model::ScalarType,
             Dyn,
             Dyn,
@@ -372,7 +374,7 @@ where
         let params = model.params();
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
-        let mut problem = LevMarProblemSvd {
+        let mut problem = LevMarProblem {
             // these parameters all come from the builder
             Y_w,
             model,

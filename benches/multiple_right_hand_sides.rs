@@ -9,9 +9,12 @@ use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
+use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
-use varpro::solvers::levmar::LevMarProblemSvd;
 use varpro::solvers::levmar::LevMarSolver;
+use varpro::solvers::levmar::MultiRhs;
+use varpro::solvers::levmar::Parallelism;
+use varpro::solvers::levmar::Sequential;
 
 /// helper struct for the parameters of the double exponential
 #[derive(Clone, PartialEq, Debug)]
@@ -24,7 +27,7 @@ struct DoubleExponentialParameters {
 fn build_problem_mrhs<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblemSvd<Model, true, false>
+) -> LevMarProblem<Model, MultiRhs, Sequential>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
 {
@@ -38,12 +41,12 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization_mrhs<Model, const PAR: bool>(
-    problem: LevMarProblemSvd<Model, true, PAR>,
+fn run_minimization_mrhs<Model, Par: Parallelism>(
+    problem: LevMarProblem<Model, MultiRhs, Par>,
 ) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-    LevMarProblemSvd<Model, true, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+    LevMarProblem<Model, MultiRhs, Par>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()
         .fit(problem)
