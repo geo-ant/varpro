@@ -42,6 +42,8 @@ pub struct LevMarProblemBuilder<Model: SeparableNonlinearModel, Rhs, Par, Decomp
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     model: Model,
     phantom: PhantomData<(Rhs, Par, Decomp)>,
@@ -56,6 +58,8 @@ impl<Model: SeparableNonlinearModel> LevMarProblemBuilder<Model, (), (), ()>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     pub fn new(model: Model) -> LevMarProblemBuilder<Model, (), (), ()> {
         LevMarProblemBuilder {
@@ -72,6 +76,8 @@ impl<Model: SeparableNonlinearModel, P, D> LevMarProblemBuilder<Model, (), P, D>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     pub fn rhs(
         self,
@@ -92,6 +98,8 @@ impl<Model: SeparableNonlinearModel, P, D> LevMarProblemBuilder<Model, (), P, D>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     pub fn mrhs(
         self,
@@ -111,6 +119,8 @@ impl<Model: SeparableNonlinearModel, R, P, D> LevMarProblemBuilder<Model, R, P, 
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     pub fn weights(self, weights: DVector<Model::ScalarType>) -> Self {
         Self {
@@ -124,6 +134,8 @@ impl<Model: SeparableNonlinearModel, R, P, D> LevMarProblemBuilder<Model, R, P, 
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     pub fn epsilon(self, eps: <Model::ScalarType as ComplexField>::RealField) -> Self {
         Self {
@@ -137,6 +149,8 @@ impl<Model: SeparableNonlinearModel, R, P> LevMarProblemBuilder<Model, R, P, ()>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     pub fn decomposition<Decomp: MatrixDecomposition<Model::ScalarType>>(
         self,
@@ -165,6 +179,8 @@ impl<Model: SeparableNonlinearModel, R, D> LevMarProblemBuilder<Model, R, (), D>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     pub fn parallelism<Par: Parallelism>(self) -> LevMarProblemBuilder<Model, R, Par, D> {
         LevMarProblemBuilder {
@@ -185,21 +201,17 @@ impl<
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
-    pub fn build(
-        self,
-    ) -> Result<
-        LevMarProblem<Model, Rhs, Sequential, SingularValueDecomposition<Model::ScalarType>>,
-        LevMarBuilderError,
-    >
+    pub fn build(self) -> Result<LevMarProblem<Model, Rhs, Sequential, Decomp>, LevMarBuilderError>
     where
-        LevMarProblem<Model, Rhs, Sequential, SingularValueDecomposition<Model::ScalarType>>:
-            LeastSquaresProblem<
-                Model::ScalarType,
-                Dyn,
-                Dyn,
-                ParameterStorage = Owned<Model::ScalarType, Dyn>,
-            >,
+        LevMarProblem<Model, Rhs, Sequential, Decomp>: LeastSquaresProblem<
+            Model::ScalarType,
+            Dyn,
+            Dyn,
+            ParameterStorage = Owned<Model::ScalarType, Dyn>,
+        >,
     {
         self.parallelism::<Sequential>().build()
     }
@@ -214,24 +226,20 @@ impl<
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
+    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
+        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
 {
     #[allow(non_snake_case)]
-    pub fn build(
-        self,
-    ) -> Result<
-        LevMarProblem<Model, Rhs, Par, SingularValueDecomposition<Model::ScalarType>>,
-        LevMarBuilderError,
-    >
+    pub fn build(self) -> Result<LevMarProblem<Model, Rhs, Par, Decomp>, LevMarBuilderError>
     //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
     // but the trait solver cannot figure that out without this extra hint.
     where
-        LevMarProblem<Model, Rhs, Par, SingularValueDecomposition<Model::ScalarType>>:
-            LeastSquaresProblem<
-                Model::ScalarType,
-                Dyn,
-                Dyn,
-                ParameterStorage = Owned<Model::ScalarType, Dyn>,
-            >,
+        LevMarProblem<Model, Rhs, Par, Decomp>: LeastSquaresProblem<
+            Model::ScalarType,
+            Dyn,
+            Dyn,
+            ParameterStorage = Owned<Model::ScalarType, Dyn>,
+        >,
     {
         // and assign the defaults to the values we don't have
         let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
