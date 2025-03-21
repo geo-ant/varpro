@@ -4,10 +4,14 @@ use super::{
 };
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, Owned, Scalar, UninitMatrix, Vector,
+    ComplexField, Const, DMatrix, DMatrixView, DefaultAllocator, Dyn, Matrix, Owned, Scalar,
+    UninitMatrix, Vector,
 };
-use num_traits::Float;
+use num_traits::{Float, FloatConst};
 use std::ops::Mul;
+
+#[cfg(test)]
+mod test;
 
 /// a wrapper around the QR decomposition without column pivoting of a matrix.
 /// The matrix to be decomposed is assumed to have full rank.
@@ -179,4 +183,72 @@ where
             None
         }
     }
+}
+
+#[allow(non_snake_case)]
+/// solve the system R X = B for X, where R **must** be a square, upper triangular matrix.
+/// The result is nonsense if R is not upper triangular.
+/// R must not be singular, which means that the diagonal elements must not be
+/// zero. If that is the case, None is returned.
+// see https://uol-soc-teachingrepos.github.io/COMP2421-Numerical-Computation/lec/lec05a.html
+fn solve_upper_triangular<ScalarType: Scalar + ComplexField + Float>(
+    R: DMatrixView<ScalarType>,
+    B: DMatrixView<ScalarType>,
+) -> Option<DMatrix<ScalarType>> {
+    assert!(
+        R.is_square(),
+        "Upper triangular matrix must be square to solve a linear system"
+    );
+    // R in n x n
+    let n = R.ncols();
+    // B in n x c
+    assert_eq!(B.nrows(), n, "Wrong dimensions for RHS of linear system");
+    let c = B.ncols();
+
+    let eps = Float::epsilon();
+    let mut X = DMatrix::<ScalarType>::zeros(n, c);
+    // unsafe { UninitMatrix::<ScalarType, Dyn, Dyn>::uninit(Dyn(n), Dyn(s)).assume_init() };
+
+    // start with the lowest element in the bottom right of R
+    let Rnn = R[(n - 1, n - 1)];
+    if Float::abs(Rnn) < eps {
+        // matrix is singular or near singular
+        return None;
+    }
+    // 1/R_{n,n}
+    let Rnn_inv = Float::recip(Rnn);
+
+    // now we've set the bottom elements of B
+    for col_idx in 0..c {
+        X[(n - 1, col_idx)] = B[(n - 1, col_idx)] * Rnn_inv;
+    }
+
+    for row_idx in (0..n - 1).rev() {
+        let Rii = R[(row_idx, row_idx)];
+        if Float::abs(Rii) < eps {
+            // matrix is singular or near singular
+            return None;
+        }
+        let Rii_inv = Float::recip(Rii);
+        let r_row = R.generic_view((row_idx, row_idx + 1), (Const::<1>, Dyn(n - row_idx - 1)));
+        println!("row =");
+        for r in r_row.iter() {
+            print!("{},", r);
+        }
+        println!("\n");
+        for col_idx in 0..c {
+            let x_col = X.generic_view((row_idx + 1, col_idx), (Dyn(n - row_idx - 1), Const::<1>));
+            println!("xcol =");
+            for x in x_col.iter() {
+                print!("{},", x);
+            }
+            println!("\n");
+            // we calculate the product of a row vector and a column vector here
+            // this should have one element.
+            let dotprod = r_row * x_col;
+            debug_assert!(dotprod.is_square() && dotprod.nrows() == 1);
+            X[(row_idx, col_idx)] = Rii_inv * (B[(row_idx, col_idx)] - dotprod[(0, 0)]);
+        }
+    }
+    Some(X)
 }
