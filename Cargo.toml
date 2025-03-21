@@ -20,8 +20,6 @@ levenberg-marquardt = "0.14"
 nalgebra = { version = "0.33", features = []}
 num-traits = "0.2"
 distrs = "0.2"
-faer = "0.21"
-faer-ext = {version = "0.5", features=["nalgebra"]}
 
 [dev-dependencies]
 approx = "0.5"
