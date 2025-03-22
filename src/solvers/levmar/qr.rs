@@ -2,6 +2,10 @@ use super::{
     copy_matrix_to_column, to_vector, LevMarProblem, MatrixDecomposition, RhsType,
     SeparableNonlinearModel,
 };
+use faer::{
+    linalg::solvers::SolveLstsqCore,
+    mat::{AsMatMut, AsMatRef},
+};
 use faer_ext::{IntoFaer, IntoNalgebra};
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{
@@ -19,7 +23,7 @@ pub struct QrDecomposition<ScalarType: Scalar + ComplexField + faer_traits::Real
     /// number of columns of the original matrix
     n: usize,
     qr_decomp: faer::linalg::solvers::Qr<ScalarType>,
-    Q2: faer::Mat<ScalarType>,
+    Q2_t: faer::Mat<ScalarType>,
 }
 
 impl<ScalarType: Scalar + ComplexField + faer_traits::RealField> MatrixDecomposition<ScalarType>
@@ -76,27 +80,25 @@ impl<ScalarType: Scalar + ComplexField + faer_traits::RealField> QrExt<ScalarTyp
 
         Some(Self {
             n,
-            Q2: Q2.to_owned(),
+            Q2_t: Q2.transpose().to_owned(),
             qr_decomp,
         })
     }
 
     #[allow(non_snake_case)]
     fn solve(&self, B: DMatrixView<ScalarType>) -> Option<DMatrix<ScalarType>> {
-        // self.current_qr.solve(B)
-        todo!()
+        let faer_view = B.into_faer();
+        let mut X = faer_view.to_owned();
+        self.qr_decomp
+            .solve_lstsq_in_place_with_conj(faer::Conj::No, X.as_mat_mut());
+        Some(X.as_mat_ref().into_nalgebra().into())
     }
 
     #[allow(non_snake_case)]
     fn q2_tr_mul(&self, mut M: DMatrix<ScalarType>) -> DMatrix<ScalarType> {
-        // // after this, M contains Q^T M
-        // self.current_qr.q_tr_mul(&mut M);
-        // // illegal dimensions for matrix M
-        // assert!(M.nrows() >= self.n, "illegal dimensions for matrix M");
-        // // this clipping corresponds to the product Q_2^T M
-        // let Q2M = M.view_range(self.n..M.nrows(), 0..);
-        // Q2M.into()
-        todo!()
+        let faer_view = <DMatrixView<_> as IntoFaer>::into_faer(M.as_view());
+        let prod = self.Q2_t.as_mat_ref() * faer_view;
+        prod.as_mat_ref().into_nalgebra().into()
     }
 }
 
