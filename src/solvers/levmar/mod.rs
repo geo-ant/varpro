@@ -8,8 +8,8 @@ use levenberg_marquardt::LevenbergMarquardt;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    linalg, ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView,
-    OMatrix, OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
+    ComplexField, DMatrix, DVector, DefaultAllocator, Dyn, Matrix, MatrixView, OMatrix, OVector,
+    RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
 };
 use num_traits::{Float, FromPrimitive};
 use std::marker::PhantomData;
@@ -294,30 +294,6 @@ where
     }
 }
 
-/// helper structure that stores the cached calculations,
-/// which are carried out by the LevMarProblem on setting the parameters
-#[derive(Debug, Clone)]
-struct CachedCalculationsSvd<ScalarType, ModelDim, OutputDim>
-where
-    ScalarType: Scalar + ComplexField,
-    ModelDim: Dim,
-    OutputDim: Dim + nalgebra::DimMin<ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<OutputDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<<OutputDim as DimMin<ModelDim>>::Output, ModelDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<OutputDim, <OutputDim as DimMin<ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<<OutputDim as DimMin<ModelDim>>::Output>,
-{
-    /// The current residual matrix of model function values belonging to the current parameters
-    current_residuals: DMatrix<ScalarType>,
-    /// Singular value decomposition of the current function value matrix
-    current_svd: SVD<ScalarType, OutputDim, ModelDim>,
-    /// the linear coefficients `$\boldsymbol C$` providing the current best fit
-    linear_coefficients: DMatrix<ScalarType>,
-}
-
 /// This is a the problem of fitting the separable model to data in a form that the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate can use it to
 /// perform the least squares fit.
@@ -587,11 +563,6 @@ where
 
             let U = current_svd.u.as_ref()?; // will return None if this was not calculated
             let U_t = U.transpose();
-
-            let one = Model::ScalarType::from_u8(1).unwrap();
-            //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
-
-            //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
             // we use a functional style calculation here that is more easy to
             // parallelize with rayon later on. The only disadvantage is that

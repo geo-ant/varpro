@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use super::{
     copy_matrix_to_column, to_vector, LevMarProblem, MatrixDecomposition, RhsType,
     SeparableNonlinearModel,
@@ -21,7 +23,6 @@ use std::ops::Mul;
 #[allow(non_snake_case)]
 pub struct QrDecomposition<ScalarType: Scalar + ComplexField + faer_traits::RealField> {
     /// number of columns of the original matrix
-    n: usize,
     qr_decomp: faer::linalg::solvers::Qr<ScalarType>,
     Q2_t: faer::Mat<ScalarType>,
 }
@@ -79,7 +80,6 @@ impl<ScalarType: Scalar + ComplexField + faer_traits::RealField> QrExt<ScalarTyp
         debug_assert_eq!(Q2.ncols(), m - n);
 
         Some(Self {
-            n,
             Q2_t: Q2.transpose().to_owned(),
             qr_decomp,
         })
@@ -98,7 +98,7 @@ impl<ScalarType: Scalar + ComplexField + faer_traits::RealField> QrExt<ScalarTyp
     }
 
     #[allow(non_snake_case)]
-    fn q2_tr_mul(&self, mut M: DMatrix<ScalarType>) -> DMatrix<ScalarType> {
+    fn q2_tr_mul(&self, M: DMatrix<ScalarType>) -> DMatrix<ScalarType> {
         let faer_view = <DMatrixView<_> as IntoFaer>::into_faer(M.as_view());
         let prod = self.Q2_t.as_mat_ref() * faer_view;
         prod.as_mat_ref().into_nalgebra().into()

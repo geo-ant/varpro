@@ -1,9 +1,10 @@
+#![allow(non_snake_case)]
 use crate::prelude::*;
 use crate::solvers::levmar::LevMarProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DMatrix, DVector, Dyn, OMatrix, OVector, Owned, Scalar};
-use num_traits::{Float, Zero};
+use nalgebra::{ComplexField, DMatrix, DVector, Dyn, OVector, Owned, Scalar};
+use num_traits::Float;
 use std::{marker::PhantomData, ops::Mul};
 use thiserror::Error as ThisError;
 
