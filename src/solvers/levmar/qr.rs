@@ -3,7 +3,7 @@ use super::{
     SeparableNonlinearModel,
 };
 use faer::{
-    linalg::solvers::SolveLstsqCore,
+    linalg::solvers::{ShapeCore, SolveLstsqCore},
     mat::{AsMatMut, AsMatRef},
 };
 use faer_ext::{IntoFaer, IntoNalgebra};
@@ -87,10 +87,13 @@ impl<ScalarType: Scalar + ComplexField + faer_traits::RealField> QrExt<ScalarTyp
 
     #[allow(non_snake_case)]
     fn solve(&self, B: DMatrixView<ScalarType>) -> Option<DMatrix<ScalarType>> {
+        let rows_to_crop = self.qr_decomp.ncols();
         let faer_view = B.into_faer();
         let mut X = faer_view.to_owned();
         self.qr_decomp
             .solve_lstsq_in_place_with_conj(faer::Conj::No, X.as_mat_mut());
+        let (X, _) = X.split_at_row(rows_to_crop);
+        debug_assert_eq!(X.nrows(), rows_to_crop);
         Some(X.as_mat_ref().into_nalgebra().into())
     }
 
@@ -165,7 +168,10 @@ where
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
                 UninitMatrix::uninit(
-                    Dyn(self.model.output_len() * self.Y_w.ncols()),
+                    //@note(geo) this is different than in the SVD since we are
+                    // using Q2^T * Y_W as the residuals which has a different shape
+                    Dyn((self.model.output_len() - self.model.base_function_count())
+                        * self.Y_w.ncols()),
                     Dyn(self.model.parameter_count()),
                 )
                 .assume_init()
@@ -186,10 +192,10 @@ where
                 .map(|(k, mut jacobian_col)| {
                     // weighted derivative matrix
                     let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
-
+                    let Dk_C = Dk * &C;
                     //@todo(geo) the order of matrix operations should be evaluated based on
                     // the size of the C matrix
-                    let minus_ak = current_qr.q2_tr_mul(Dk * &C);
+                    let minus_ak = -current_qr.q2_tr_mul(Dk_C);
                     //@todo CAUTION this relies on the fact that the
                     //elements are ordered in column major order but it avoids a copy
                     copy_matrix_to_column(minus_ak, &mut jacobian_col);
