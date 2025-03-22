@@ -22,6 +22,7 @@ num-traits = "0.2"
 distrs = "0.2"
 faer = "0.21"
 faer-ext = {version = "0.5", features=["nalgebra"]}
+faer-traits = "0.21"
 
 [dev-dependencies]
 approx = "0.5"

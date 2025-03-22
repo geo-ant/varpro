@@ -2,9 +2,11 @@ use super::{
     copy_matrix_to_column, to_vector, LevMarProblem, MatrixDecomposition, RhsType,
     SeparableNonlinearModel,
 };
+use faer_ext::{IntoFaer, IntoNalgebra};
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, Owned, Scalar, UninitMatrix, Vector,
+    ComplexField, DMatrix, DMatrixView, DefaultAllocator, Dyn, Matrix, Owned, Scalar, UninitMatrix,
+    Vector,
 };
 use num_traits::Float;
 use std::ops::Mul;
@@ -12,18 +14,20 @@ use std::ops::Mul;
 /// a wrapper around the QR decomposition without column pivoting of a matrix.
 /// The matrix to be decomposed is assumed to have full rank.
 #[derive(Debug)]
-pub struct QrDecomposition<ScalarType: Scalar + ComplexField> {
+#[allow(non_snake_case)]
+pub struct QrDecomposition<ScalarType: Scalar + ComplexField + faer_traits::RealField> {
     /// number of columns of the original matrix
     n: usize,
-    current_qr: nalgebra::linalg::QR<ScalarType, Dyn, Dyn>,
+    qr_decomp: faer::linalg::solvers::Qr<ScalarType>,
+    Q2: faer::Mat<ScalarType>,
 }
 
-impl<ScalarType: Scalar + ComplexField> MatrixDecomposition<ScalarType>
+impl<ScalarType: Scalar + ComplexField + faer_traits::RealField> MatrixDecomposition<ScalarType>
     for QrDecomposition<ScalarType>
 {
     #[allow(non_snake_case)]
     fn linear_coefficients(&self, Y_w: &DMatrix<ScalarType>) -> Option<DMatrix<ScalarType>> {
-        self.solve(Y_w)
+        self.solve(Y_w.as_view())
     }
 }
 
@@ -32,14 +36,14 @@ impl<ScalarType: Scalar + ComplexField> MatrixDecomposition<ScalarType>
 /// is implied to have full rank, whereas in the case of the
 trait QrExt<ScalarType>: Sized + MatrixDecomposition<ScalarType>
 where
-    ScalarType: Scalar + ComplexField,
+    ScalarType: Scalar + ComplexField + faer_traits::RealField,
 {
     /// calculate the decomposition, return None in case of failure
-    fn new(matrix: DMatrix<ScalarType>) -> Option<Self>;
+    fn new(matrix: DMatrixView<ScalarType>) -> Option<Self>;
     /// solve the equation `$A x = B$` for `$x$`, where `A` is the original
     /// matrix that was decomposed. Return None if solving failed.
     #[allow(non_snake_case)]
-    fn solve(&self, B: &DMatrix<ScalarType>) -> Option<DMatrix<ScalarType>>;
+    fn solve(&self, B: DMatrixView<ScalarType>) -> Option<DMatrix<ScalarType>>;
     /// This calculates the matrix product `$Q_2^T * M$`, where `$M$` is a suitably
     /// shaped matrix and `$Q_2$` is part of the matrix `$Q$`, defined as follows:
     /// `$Q = \left[ Q_1 \vert Q_2\right]$`, where `$Q_1$` contains the first
@@ -51,27 +55,48 @@ where
     fn q2_tr_mul(&self, M: DMatrix<ScalarType>) -> DMatrix<ScalarType>;
 }
 
-impl<ScalarType: Scalar + ComplexField> QrExt<ScalarType> for QrDecomposition<ScalarType> {
-    fn new(matrix: DMatrix<ScalarType>) -> Option<Self> {
+impl<ScalarType: Scalar + ComplexField + faer_traits::RealField> QrExt<ScalarType>
+    for QrDecomposition<ScalarType>
+{
+    fn new(matrix: DMatrixView<ScalarType>) -> Option<Self> {
+        let m = matrix.nrows();
         let n = matrix.ncols();
-        let qr = nalgebra::linalg::QR::new(matrix);
-        Some(Self { n, current_qr: qr })
+
+        if matrix.nrows() <= matrix.ncols() {
+            // we only deal with overdetermined systems here
+            return None;
+        }
+
+        let faer_view = matrix.into_faer();
+        let qr_decomp = faer_view.qr();
+        let Q = qr_decomp.compute_Q();
+        let (Q1, Q2) = Q.split_at_col(n);
+        debug_assert_eq!(Q1.ncols(), n);
+        debug_assert_eq!(Q2.ncols(), m - n);
+
+        Some(Self {
+            n,
+            Q2: Q2.to_owned(),
+            qr_decomp,
+        })
     }
 
     #[allow(non_snake_case)]
-    fn solve(&self, B: &DMatrix<ScalarType>) -> Option<DMatrix<ScalarType>> {
-        self.current_qr.solve(B)
+    fn solve(&self, B: DMatrixView<ScalarType>) -> Option<DMatrix<ScalarType>> {
+        // self.current_qr.solve(B)
+        todo!()
     }
 
     #[allow(non_snake_case)]
     fn q2_tr_mul(&self, mut M: DMatrix<ScalarType>) -> DMatrix<ScalarType> {
-        // after this, M contains Q^T M
-        self.current_qr.q_tr_mul(&mut M);
-        // illegal dimensions for matrix M
-        assert!(M.nrows() >= self.n, "illegal dimensions for matrix M");
-        // this clipping corresponds to the product Q_2^T M
-        let Q2M = M.view_range(self.n..M.nrows(), 0..);
-        Q2M.into()
+        // // after this, M contains Q^T M
+        // self.current_qr.q_tr_mul(&mut M);
+        // // illegal dimensions for matrix M
+        // assert!(M.nrows() >= self.n, "illegal dimensions for matrix M");
+        // // this clipping corresponds to the product Q_2^T M
+        // let Q2M = M.view_range(self.n..M.nrows(), 0..);
+        // Q2M.into()
+        todo!()
     }
 }
 
@@ -81,7 +106,7 @@ impl<ScalarType: Scalar + ComplexField> QrExt<ScalarType> for QrDecomposition<Sc
 impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
     for LevMarProblem<Model, Rhs, QrDecomposition<Model::ScalarType>>
 where
-    Model::ScalarType: Scalar + ComplexField + Copy,
+    Model::ScalarType: Scalar + ComplexField + Copy + faer_traits::RealField,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
@@ -102,7 +127,7 @@ where
         }
         // matrix of weighted model function values
         let Phi_w = self.model.eval().ok().map(|Phi| &self.weights * Phi);
-        let current_qr = Phi_w.and_then(|mat| QrDecomposition::new(mat));
+        let current_qr = Phi_w.and_then(|mat| QrDecomposition::new(mat.as_view()));
         self.cached = current_qr;
     }
 
@@ -133,7 +158,7 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
-        if let Some(QrDecomposition { current_qr, .. }) = self.cached.as_ref() {
+        if let Some(current_qr) = self.cached.as_ref() {
             // this is not a great pattern, but the trait bounds on copy_from
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
@@ -145,7 +170,7 @@ where
             };
 
             // matrix C of linear coefficients
-            let C = current_qr.solve(&self.Y_w)?;
+            let C = current_qr.solve(self.Y_w.as_view())?;
 
             let current_qr = self.cached.as_ref()?;
             // we use a functional style calculation here that is more easy to
