@@ -192,10 +192,12 @@ where
                 .map(|(k, mut jacobian_col)| {
                     // weighted derivative matrix
                     let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
-                    let Dk_C = Dk * &C;
-                    //@todo(geo) the order of matrix operations should be evaluated based on
-                    // the size of the C matrix
-                    let minus_ak = -current_qr.q2_tr_mul(Dk_C);
+                                                                                // let Dk_C = Dk * &C;
+                                                                                // //@todo(geo) the order of matrix operations should be evaluated based on
+                                                                                // // the size of the C matrix
+                                                                                // let minus_ak = -current_qr.q2_tr_mul(Dk_C);
+                    let Q2_t_Dk = -current_qr.q2_tr_mul(Dk);
+                    let minus_ak = Q2_t_Dk * &C;
                     //@todo CAUTION this relies on the fact that the
                     //elements are ordered in column major order but it avoids a copy
                     copy_matrix_to_column(minus_ak, &mut jacobian_col);

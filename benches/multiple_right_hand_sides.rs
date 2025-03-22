@@ -10,6 +10,7 @@ use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
+use varpro::solvers::levmar::qr::QrDecomposition;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
@@ -95,10 +96,39 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
         )
     });
 
-    group.bench_function("Using Model Builder (MRHS)", |bencher| {
+    group.bench_function("Using Model Builder (MRHS, SVD)", |bencher| {
         bencher.iter_batched(
             || {
                 build_problem_mrhs::<_, SingularValueDecomposition<_>>(
+                    true_parameters.clone(),
+                    get_double_exponential_model_with_constant_offset(
+                        x.clone(),
+                        vec![tau_guess.0, tau_guess.1],
+                    ),
+                )
+            },
+            run_minimization_mrhs,
+            criterion::BatchSize::SmallInput,
+        )
+    });
+
+    group.bench_function("Handcrafted Model (MRHS, QR)", |bencher| {
+        bencher.iter_batched(
+            || {
+                build_problem_mrhs::<_, QrDecomposition<_>>(
+                    true_parameters.clone(),
+                    DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
+                )
+            },
+            run_minimization_mrhs,
+            criterion::BatchSize::SmallInput,
+        )
+    });
+
+    group.bench_function("Using Model Builder (MRHS, QR)", |bencher| {
+        bencher.iter_batched(
+            || {
+                build_problem_mrhs::<_, QrDecomposition<_>>(
                     true_parameters.clone(),
                     get_double_exponential_model_with_constant_offset(
                         x.clone(),
