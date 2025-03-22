@@ -12,6 +12,7 @@ use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
+use varpro::solvers::levmar::MatrixDecomposition;
 use varpro::solvers::levmar::MultiRhs;
 use varpro::solvers::levmar::SingularValueDecomposition;
 
@@ -23,7 +24,7 @@ struct DoubleExponentialParameters {
     coeffs: DMatrix<f64>,
 }
 
-fn build_problem_mrhs<Model>(
+fn build_problem_mrhs_svd<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
 ) -> LevMarProblem<Model, MultiRhs, SingularValueDecomposition<Model::ScalarType>>
@@ -41,13 +42,12 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization_mrhs<Model>(
-    problem: LevMarProblem<Model, MultiRhs, SingularValueDecomposition<Model::ScalarType>>,
+fn run_minimization_mrhs<Model, Decomp: MatrixDecomposition<Model::ScalarType>>(
+    problem: LevMarProblem<Model, MultiRhs, Decomp>,
 ) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-    LevMarProblem<Model, MultiRhs, SingularValueDecomposition<Model::ScalarType>>:
-        LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+    LevMarProblem<Model, MultiRhs, Decomp>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()
         .fit(problem)
@@ -78,7 +78,7 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
     group.bench_function("Handcrafted Model (MRHS)", |bencher| {
         bencher.iter_batched(
             || {
-                build_problem_mrhs(
+                build_problem_mrhs_svd(
                     true_parameters.clone(),
                     DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
                 )
@@ -91,7 +91,7 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
     group.bench_function("Using Model Builder (MRHS)", |bencher| {
         bencher.iter_batched(
             || {
-                build_problem_mrhs(
+                build_problem_mrhs_svd(
                     true_parameters.clone(),
                     get_double_exponential_model_with_constant_offset(
                         x.clone(),
