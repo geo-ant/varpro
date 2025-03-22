@@ -4,6 +4,7 @@ use nalgebra::DMatrix;
 use nalgebra::DVector;
 use nalgebra::Dyn;
 use nalgebra::OVector;
+use nalgebra::Owned;
 use nalgebra::U1;
 use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
@@ -24,12 +25,18 @@ struct DoubleExponentialParameters {
     coeffs: DMatrix<f64>,
 }
 
-fn build_problem_mrhs_svd<Model>(
+fn build_problem_mrhs<Model, Decomp: MatrixDecomposition<Model::ScalarType>>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model, MultiRhs, SingularValueDecomposition<Model::ScalarType>>
+) -> LevMarProblem<Model, MultiRhs, Decomp>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
+    LevMarProblem<Model, MultiRhs, Decomp>: LeastSquaresProblem<
+        Model::ScalarType,
+        Dyn,
+        Dyn,
+        ParameterStorage = Owned<Model::ScalarType, Dyn>,
+    >,
 {
     let DoubleExponentialParameters { tau1, tau2, coeffs } = true_parameters.clone();
     // save the initial guess so that we can reset the model to those
@@ -37,7 +44,7 @@ where
     let y = evaluate_complete_model_at_params_mrhs(&mut model, params, &coeffs);
     LevMarProblemBuilder::new(model)
         .mrhs(y)
-        .svd()
+        .decomposition::<Decomp>()
         .build()
         .expect("Building valid problem should not panic")
 }
@@ -75,10 +82,10 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
         coeffs: linear_coeffs,
     };
 
-    group.bench_function("Handcrafted Model (MRHS)", |bencher| {
+    group.bench_function("Handcrafted Model (MRHS, SVD)", |bencher| {
         bencher.iter_batched(
             || {
-                build_problem_mrhs_svd(
+                build_problem_mrhs::<_, SingularValueDecomposition<_>>(
                     true_parameters.clone(),
                     DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
                 )
@@ -91,7 +98,7 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
     group.bench_function("Using Model Builder (MRHS)", |bencher| {
         bencher.iter_batched(
             || {
-                build_problem_mrhs_svd(
+                build_problem_mrhs::<_, SingularValueDecomposition<_>>(
                     true_parameters.clone(),
                     get_double_exponential_model_with_constant_offset(
                         x.clone(),
