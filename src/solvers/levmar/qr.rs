@@ -16,13 +16,14 @@ mod test;
 /// a wrapper around the QR decomposition without column pivoting of a matrix.
 /// The matrix to be decomposed is assumed to have full rank.
 #[derive(Debug)]
-pub struct QrDecomposition<ScalarType: Scalar + ComplexField> {
-    /// number of columns of the original matrix
-    n: usize,
-    current_qr: nalgebra::linalg::QR<ScalarType, Dyn, Dyn>,
+#[allow(non_snake_case)]
+pub struct QrDecomposition<ScalarType: Scalar + ComplexField + Float> {
+    Q1_t: DMatrix<ScalarType>,
+    Q2_t: DMatrix<ScalarType>,
+    R1: DMatrix<ScalarType>,
 }
 
-impl<ScalarType: Scalar + ComplexField> MatrixDecomposition<ScalarType>
+impl<ScalarType: Scalar + ComplexField + Float> MatrixDecomposition<ScalarType>
     for QrDecomposition<ScalarType>
 {
     #[allow(non_snake_case)]
@@ -36,7 +37,7 @@ impl<ScalarType: Scalar + ComplexField> MatrixDecomposition<ScalarType>
 /// is implied to have full rank, whereas in the case of the
 trait QrExt<ScalarType>: Sized + MatrixDecomposition<ScalarType>
 where
-    ScalarType: Scalar + ComplexField,
+    ScalarType: Scalar + ComplexField + Float,
 {
     /// calculate the decomposition, return None in case of failure
     fn new(matrix: DMatrix<ScalarType>) -> Option<Self>;
@@ -52,30 +53,46 @@ where
     /// For a QR decomposition without column pivoting, is is assumed that
     /// `$A$` has full rank and thus `$r = n$`.
     #[allow(non_snake_case)]
-    fn q2_tr_mul(&self, M: DMatrix<ScalarType>) -> DMatrix<ScalarType>;
+    fn q2_tr_mul(&self, M: &DMatrix<ScalarType>) -> DMatrix<ScalarType>;
 }
 
-impl<ScalarType: Scalar + ComplexField> QrExt<ScalarType> for QrDecomposition<ScalarType> {
+impl<ScalarType: Scalar + ComplexField + Float> QrExt<ScalarType> for QrDecomposition<ScalarType> {
     fn new(matrix: DMatrix<ScalarType>) -> Option<Self> {
+        let m = matrix.nrows();
         let n = matrix.ncols();
+
+        // only works for overdetermined systems
+        if m <= n {
+            return None;
+        }
+
+        // QR decomposition of matrix A
+        //
+        // A = [Q1 Q2]  [ R1]
+        //              [ 0 ]
+        // this assumes that A has full rank!
         let qr = nalgebra::linalg::QR::new(matrix);
-        Some(Self { n, current_qr: qr })
+
+        let (q, r) = qr.unpack();
+        debug_assert_eq!(q.nrows(), m, "unexpected number of rows for factor Q");
+        debug_assert_eq!(q.ncols(), m, "unexpected number of cols for factor Q");
+        let R1 = r.view((0, 0), (n, n)).into();
+
+        let Q1_t = q.view((0, 0), (m, n)).transpose();
+        let Q2_t = q.view((0, n), (m, m - n)).transpose();
+        todo!("okay");
+        Some(Self { Q1_t, Q2_t, R1 })
     }
 
     #[allow(non_snake_case)]
     fn solve(&self, B: &DMatrix<ScalarType>) -> Option<DMatrix<ScalarType>> {
-        self.current_qr.solve(B)
+        solve_upper_triangular(self.R1.as_view(), (&self.Q2_t * B).as_view())
     }
 
     #[allow(non_snake_case)]
-    fn q2_tr_mul(&self, mut M: DMatrix<ScalarType>) -> DMatrix<ScalarType> {
+    fn q2_tr_mul(&self, M: &DMatrix<ScalarType>) -> DMatrix<ScalarType> {
         // after this, M contains Q^T M
-        self.current_qr.q_tr_mul(&mut M);
-        // illegal dimensions for matrix M
-        assert!(M.nrows() >= self.n, "illegal dimensions for matrix M");
-        // this clipping corresponds to the product Q_2^T M
-        let Q2M = M.view_range(self.n..M.nrows(), 0..);
-        Q2M.into()
+        (&self.Q2_t) * M
     }
 }
 
@@ -85,7 +102,7 @@ impl<ScalarType: Scalar + ComplexField> QrExt<ScalarType> for QrDecomposition<Sc
 impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
     for LevMarProblem<Model, Rhs, QrDecomposition<Model::ScalarType>>
 where
-    Model::ScalarType: Scalar + ComplexField + Copy,
+    Model::ScalarType: Scalar + ComplexField + Copy + Float,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
@@ -128,7 +145,7 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn residuals(&self) -> Option<Vector<Model::ScalarType, Dyn, Self::ResidualStorage>> {
         let qr = &self.cached.as_ref()?;
-        Some(to_vector(qr.q2_tr_mul(self.Y_w.clone())))
+        Some(to_vector(qr.q2_tr_mul(&self.Y_w)))
     }
 
     #[allow(non_snake_case)]
@@ -137,7 +154,7 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
-        if let Some(QrDecomposition { current_qr, .. }) = self.cached.as_ref() {
+        if let Some(decomp) = self.cached.as_ref() {
             // this is not a great pattern, but the trait bounds on copy_from
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
@@ -149,7 +166,7 @@ where
             };
 
             // matrix C of linear coefficients
-            let C = current_qr.solve(&self.Y_w)?;
+            let C = decomp.solve(&self.Y_w)?;
 
             let current_qr = self.cached.as_ref()?;
             // we use a functional style calculation here that is more easy to
@@ -166,7 +183,7 @@ where
 
                     //@todo(geo) the order of matrix operations should be evaluated based on
                     // the size of the C matrix
-                    let minus_ak = current_qr.q2_tr_mul(Dk * &C);
+                    let minus_ak = decomp.q2_tr_mul(&(Dk * &C));
                     //@todo CAUTION this relies on the fact that the
                     //elements are ordered in column major order but it avoids a copy
                     copy_matrix_to_column(minus_ak, &mut jacobian_col);

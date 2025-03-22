@@ -165,7 +165,10 @@ where
         Self::decomposition(self)
     }
 
-    pub fn qr(self) -> LevMarProblemBuilder<Model, R, QrDecomposition<Model::ScalarType>> {
+    pub fn qr(self) -> LevMarProblemBuilder<Model, R, QrDecomposition<Model::ScalarType>>
+    where
+        Model::ScalarType: Float,
+    {
         Self::decomposition(self)
     }
 }
