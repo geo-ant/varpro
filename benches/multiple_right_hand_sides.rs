@@ -12,6 +12,8 @@ use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
+use varpro::solvers::levmar::MultiRhs;
+use varpro::solvers::levmar::SingularValueDecomposition;
 
 /// helper struct for the parameters of the double exponential
 #[derive(Clone, PartialEq, Debug)]
@@ -24,7 +26,7 @@ struct DoubleExponentialParameters {
 fn build_problem_mrhs<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model, true, false>
+) -> LevMarProblem<Model, MultiRhs, SingularValueDecomposition<Model::ScalarType>>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
 {
@@ -32,18 +34,20 @@ where
     // save the initial guess so that we can reset the model to those
     let params = OVector::from_vec_generic(Dyn(model.parameter_count()), U1, vec![tau1, tau2]);
     let y = evaluate_complete_model_at_params_mrhs(&mut model, params, &coeffs);
-    LevMarProblemBuilder::mrhs(model)
-        .observations(y)
+    LevMarProblemBuilder::new(model)
+        .mrhs(y)
+        .svd()
         .build()
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization_mrhs<Model, const PAR: bool>(
-    problem: LevMarProblem<Model, true, PAR>,
+fn run_minimization_mrhs<Model>(
+    problem: LevMarProblem<Model, MultiRhs, SingularValueDecomposition<Model::ScalarType>>,
 ) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-    LevMarProblem<Model, true, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+    LevMarProblem<Model, MultiRhs, SingularValueDecomposition<Model::ScalarType>>:
+        LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()
         .fit(problem)
@@ -94,37 +98,6 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
                         vec![tau_guess.0, tau_guess.1],
                     ),
                 )
-            },
-            run_minimization_mrhs,
-            criterion::BatchSize::SmallInput,
-        )
-    });
-
-    group.bench_function("Handcrafted Model (MRHS) [multithreaded]", |bencher| {
-        bencher.iter_batched(
-            || {
-                build_problem_mrhs(
-                    true_parameters.clone(),
-                    DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
-                )
-                .into_parallel()
-            },
-            run_minimization_mrhs,
-            criterion::BatchSize::SmallInput,
-        )
-    });
-
-    group.bench_function("Using Model Builder (MRHS) [multithreaded]", |bencher| {
-        bencher.iter_batched(
-            || {
-                build_problem_mrhs(
-                    true_parameters.clone(),
-                    get_double_exponential_model_with_constant_offset(
-                        x.clone(),
-                        vec![tau_guess.0, tau_guess.1],
-                    ),
-                )
-                .into_parallel()
             },
             run_minimization_mrhs,
             criterion::BatchSize::SmallInput,

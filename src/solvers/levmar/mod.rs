@@ -8,40 +8,77 @@ use levenberg_marquardt::LevenbergMarquardt;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OMatrix,
-    OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
+    ComplexField, DMatrix, DVector, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView,
+    OMatrix, OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
 };
 use num_traits::{Float, FromPrimitive};
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
+use std::marker::PhantomData;
 use std::ops::Mul;
 
 mod builder;
 #[cfg(any(test, doctest))]
 mod test;
 
+pub trait RhsType: std::fmt::Debug + Copy + Clone + PartialEq + Eq + Sync + Send {}
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct SingleRhs;
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct MultiRhs;
+
+impl RhsType for SingleRhs {}
+impl RhsType for MultiRhs {}
+
+pub trait MatrixDecomposition<ScalarType: Scalar + ComplexField>: std::fmt::Debug {
+    #[allow(non_snake_case)]
+    fn linear_coefficients(&self, Y_w: &DMatrix<ScalarType>) -> Option<DMatrix<ScalarType>>;
+}
+
+#[derive(Debug, Clone)]
+pub struct SingularValueDecomposition<ScalarType: Scalar + ComplexField> {
+    /// The current residual matrix of model function values belonging to the current parameters
+    current_residuals: DMatrix<ScalarType>,
+    /// Singular value decomposition of the current function value matrix
+    current_svd: SVD<ScalarType, Dyn, Dyn>,
+    /// the linear coefficients `$\boldsymbol C$` providing the current best fit
+    linear_coefficients: DMatrix<ScalarType>,
+}
+
+impl<ScalarType: Scalar + ComplexField> MatrixDecomposition<ScalarType>
+    for SingularValueDecomposition<ScalarType>
+{
+    #[allow(non_snake_case)]
+    fn linear_coefficients(&self, Y_w: &DMatrix<ScalarType>) -> Option<DMatrix<ScalarType>> {
+        let _ = Y_w;
+        Some(self.linear_coefficients.clone())
+    }
+}
+
+// /// contains levmar solvers based on QR decomposition
+// pub mod qr;
+
 /// A thin wrapper around the
 /// [`LevenbergMarquardt`](https://docs.rs/levenberg-marquardt/latest/levenberg_marquardt/struct.LevenbergMarquardt.html)
 /// solver from the `levenberg_marquardt` crate. The core benefit of this
 /// wrapper is that we can also use it to calculate statistics.
-pub struct LevMarSolver<Model, const MRHS: bool>
+pub struct LevMarSolver<Model, Rhs: RhsType>
 where
     Model: SeparableNonlinearModel,
 {
     solver: LevenbergMarquardt<Model::ScalarType>,
+    phantom: PhantomData<Rhs>,
 }
 
 /// A helper type that contains the fitting problem after the
 /// minimization, as well as a report and some convenience functions
 #[derive(Debug)]
-pub struct FitResult<Model, const MRHS: bool>
+pub struct FitResult<Model, Rhs: RhsType, Decomp: MatrixDecomposition<Model::ScalarType>>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
 {
     /// the final state of the fitting problem after the
     /// minimization finished (regardless of whether fitting was successful or not)
-    pub problem: LevMarProblem<Model, MRHS, PARALLEL_NO>,
+    pub problem: LevMarProblem<Model, Rhs, Decomp>,
 
     /// the minimization report of the underlying solver.
     /// It contains information about the minimization process
@@ -50,7 +87,7 @@ where
     pub minimization_report: MinimizationReport<Model::ScalarType>,
 }
 
-impl<Model> FitResult<Model, true>
+impl<Model, Decomp: MatrixDecomposition<Model::ScalarType>> FitResult<Model, MultiRhs, Decomp>
 // take trait bounds from above:
 where
     Model: SeparableNonlinearModel,
@@ -64,16 +101,16 @@ where
     /// The coefficients vectors for the individual
     /// members of the datasets are the colums of the returned matrix. That means
     /// one coefficient vector for each right hand side.
-    pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
-        Some(self.problem.cached.as_ref()?.linear_coefficients.as_view())
+    pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
+        self.problem.linear_coefficients()
     }
 
-    /// **Note** This implementation is for fitting problems with a single right hand side.
+    /// **Note** This implementation is for fitting problems with multiple right hand sides
     ///
     /// Calculate the values of the model at the best fit parameters.
     /// Returns None if there was an error during fitting.
     /// Since this is for single right hand sides, the output is
-    /// a column vector.
+    /// a matrix containing composed of column vectors for the right hand sides.
     pub fn best_fit(&self) -> Option<OMatrix<Model::ScalarType, Dyn, Dyn>> {
         let coeff = self.linear_coefficients()?;
         let eval = self.problem.model().eval().ok()?;
@@ -81,7 +118,7 @@ where
     }
 }
 
-impl<Model> FitResult<Model, false>
+impl<Model, Decomp: MatrixDecomposition<Model::ScalarType>> FitResult<Model, SingleRhs, Decomp>
 // take trait bounds from above:
 where
     Model: SeparableNonlinearModel,
@@ -92,18 +129,18 @@ where
     /// Convenience function to get the linear coefficients after the fit has
     /// finished. Will return None if there was an error during fitting.
     /// The coefficients are given as a single vector.
-    pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
-        let coeff = &self.problem.cached.as_ref()?.linear_coefficients;
+    pub fn linear_coefficients(&self) -> Option<DVector<Model::ScalarType>> {
+        let coeff = self.problem.linear_coefficients()?;
         debug_assert_eq!(coeff.ncols(),1,
             "Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!");
-        Some(self.problem.cached.as_ref()?.linear_coefficients.column(0))
+        Some(coeff)
     }
-    /// **Note** This implementation is for fitting problems with multiple right hand sides
+    /// **Note** This implementation is for fitting problems with a single right hand side.
     ///
     /// Calculate the values of the model at the best fit parameters.
     /// Returns None if there was an error during fitting.
     /// Since this is for single right hand sides, the output is
-    /// a matrix containing composed of column vectors for the right hand sides.
+    /// a column vector.
     pub fn best_fit(&self) -> Option<OVector<Model::ScalarType, Dyn>> {
         let coeff = self.linear_coefficients()?;
         let eval = self.problem.model().eval().ok()?;
@@ -111,7 +148,8 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> FitResult<Model, MRHS>
+impl<Model, Rhs: RhsType, Decomp: MatrixDecomposition<Model::ScalarType>>
+    FitResult<Model, Rhs, Decomp>
 // take trait bounds from above:
 where
     Model: SeparableNonlinearModel,
@@ -119,7 +157,7 @@ where
 {
     /// internal helper for constructing an instance
     fn new(
-        problem: LevMarProblem<Model, MRHS, PARALLEL_NO>,
+        problem: LevMarProblem<Model, Rhs, Decomp>,
         minimization_report: MinimizationReport<Model::ScalarType>,
     ) -> Self {
         Self {
@@ -142,14 +180,17 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> LevMarSolver<Model, MRHS>
+impl<Model, Rhs: RhsType> LevMarSolver<Model, Rhs>
 where
     Model: SeparableNonlinearModel,
 {
     /// creata a new solver using the given underlying solver. This allows
     /// us to configure the underlying solver with non-default parameters
     pub fn with_solver(solver: LevenbergMarquardt<Model::ScalarType>) -> Self {
-        Self { solver }
+        Self {
+            solver,
+            phantom: PhantomData,
+        }
     }
 
     /// Try to solve the given varpro minimization problem. The parameters of
@@ -165,18 +206,18 @@ where
     /// On failure (when the minimization was not deemeed successful), returns
     /// an error with the same information as in the success case.
     #[allow(clippy::result_large_err)]
-    pub fn fit<const PAR: bool>(
+    pub fn fit<Decomp: MatrixDecomposition<Model::ScalarType>>(
         &self,
-        problem: LevMarProblem<Model, MRHS, PAR>,
-    ) -> Result<FitResult<Model, MRHS>, FitResult<Model, MRHS>>
+        problem: LevMarProblem<Model, Rhs, Decomp>,
+    ) -> Result<FitResult<Model, Rhs, Decomp>, FitResult<Model, Rhs, Decomp>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model, MRHS, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, Rhs, Decomp>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
     {
         #[allow(deprecated)]
         let (problem, report) = self.solver.minimize(problem);
-        let result = FitResult::new(problem.into_sequential(), report);
+        let result = FitResult::new(problem, report);
         if result.was_successful() {
             Ok(result)
         } else {
@@ -185,7 +226,7 @@ where
     }
 }
 
-impl<Model> LevMarSolver<Model, false>
+impl<Model> LevMarSolver<Model, SingleRhs>
 where
     Model: SeparableNonlinearModel,
 {
@@ -203,13 +244,16 @@ where
     /// with a single right hand side. If this function is invoked on a problem
     /// with multiple right hand sides, an error is returned.
     #[allow(clippy::result_large_err)]
-    pub fn fit_with_statistics<const PAR: bool>(
+    pub fn fit_with_statistics<Decomp: MatrixDecomposition<Model::ScalarType>>(
         &self,
-        problem: LevMarProblem<Model, false, PAR>,
-    ) -> Result<(FitResult<Model, false>, FitStatistics<Model>), FitResult<Model, false>>
+        problem: LevMarProblem<Model, SingleRhs, Decomp>,
+    ) -> Result<
+        (FitResult<Model, SingleRhs, Decomp>, FitStatistics<Model>),
+        FitResult<Model, SingleRhs, Decomp>,
+    >
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model, false, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, SingleRhs, Decomp>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float,
     {
         let FitResult {
@@ -228,7 +272,7 @@ where
             problem.model(),
             problem.weighted_data(),
             problem.weights(),
-            coefficients,
+            coefficients.as_view(),
         ) {
             Ok((FitResult::new(problem, minimization_report), statistics))
         } else {
@@ -237,7 +281,7 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> Default for LevMarSolver<Model, MRHS>
+impl<Model, Rhs: RhsType> Default for LevMarSolver<Model, Rhs>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Float,
@@ -245,6 +289,7 @@ where
     fn default() -> Self {
         Self {
             solver: LevenbergMarquardt::default(),
+            phantom: PhantomData,
         }
     }
 }
@@ -252,7 +297,7 @@ where
 /// helper structure that stores the cached calculations,
 /// which are carried out by the LevMarProblem on setting the parameters
 #[derive(Debug, Clone)]
-struct CachedCalculations<ScalarType, ModelDim, OutputDim>
+struct CachedCalculationsSvd<ScalarType, ModelDim, OutputDim>
 where
     ScalarType: Scalar + ComplexField,
     ModelDim: Dim,
@@ -301,10 +346,11 @@ where
 /// coefficient vectors and data vectors respectively.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblem<Model, const MRHS: bool, const PARALLEL: bool>
+pub struct LevMarProblem<Model, Rhs: RhsType, Decomp: MatrixDecomposition<Model::ScalarType>>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
+    Rhs: RhsType,
 {
     /// the *weighted* data matrix to which to fit the model `$\boldsymbol{Y}_w$`.
     /// It is a matrix so it can accomodate multiple right hand sides. If
@@ -315,8 +361,9 @@ where
     Y_w: DMatrix<Model::ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
     model: Model,
-    /// truncation epsilon for SVD below which all singular values are assumed zero
-    svd_epsilon: <Model::ScalarType as ComplexField>::RealField,
+    /// truncation epsilon for decompositions (QR/SVD) below which (absolute)
+    /// values are considered zero
+    epsilon: <Model::ScalarType as ComplexField>::RealField,
     /// the weights of the data. If none are given, the data is not weighted
     /// If weights were provided, the builder has checked that the weights have the
     /// correct dimension for the data
@@ -325,58 +372,16 @@ where
     /// those are updated on set_params. If this is None, then it indicates some error that
     /// is propagated on to the levenberg-marquardt crate by also returning None results
     /// by residuals() and/or jacobian()
-    cached: Option<CachedCalculations<Model::ScalarType, Dyn, Dyn>>,
-}
-
-impl<Model, const MRHS: bool, const PAR: bool> LevMarProblem<Model, MRHS, PAR>
-where
-    Model: SeparableNonlinearModel,
-    Model::ScalarType: Scalar + ComplexField + Copy,
-{
-    /// convert from parallel problem to sequential one. Useful for funnelling the results
-    /// of the parallel calculations to downstream tasks that only take sequential models
-    /// for simplicity.
-    pub fn into_sequential(self) -> LevMarProblem<Model, MRHS, PARALLEL_NO> {
-        let LevMarProblem {
-            Y_w,
-            model,
-            svd_epsilon,
-            weights,
-            cached,
-        } = self;
-        LevMarProblem {
-            Y_w,
-            model,
-            svd_epsilon,
-            weights,
-            cached,
-        }
-    }
-
-    /// convert from sequential problem to a parallel one
-    pub fn into_parallel(self) -> LevMarProblem<Model, MRHS, PARALLEL_NO> {
-        let LevMarProblem {
-            Y_w,
-            model,
-            svd_epsilon,
-            weights,
-            cached,
-        } = self;
-        LevMarProblem {
-            Y_w,
-            model,
-            svd_epsilon,
-            weights,
-            cached,
-        }
-    }
+    cached: Option<Decomp>,
+    /// phantom data for the right hand sidedness of the problem
+    phantom: PhantomData<Rhs>,
 }
 
 #[allow(unused)]
 pub(crate) const PARALLEL_YES: bool = true;
-pub(crate) const PARALLEL_NO: bool = false;
 
-impl<Model, const MRHS: bool, const PAR: bool> std::fmt::Debug for LevMarProblem<Model, MRHS, PAR>
+impl<Model, Rhs: RhsType, Decomp: MatrixDecomposition<Model::ScalarType>> std::fmt::Debug
+    for LevMarProblem<Model, Rhs, Decomp>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -385,14 +390,14 @@ where
         f.debug_struct("LevMarProblem")
             .field("y_w", &self.Y_w)
             .field("model", &"/* omitted */")
-            .field("svd_epsilon", &self.svd_epsilon)
+            .field("svd_epsilon", &self.epsilon)
             .field("weights", &self.weights)
             .field("cached", &self.cached)
             .finish()
     }
 }
 
-impl<Model, const PAR: bool> LevMarProblem<Model, true, PAR>
+impl<Model, Decomp: MatrixDecomposition<Model::ScalarType>> LevMarProblem<Model, MultiRhs, Decomp>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -408,10 +413,12 @@ where
     ///
     /// Since this method is for fitting a single right hand side, the coefficients
     /// are a single column vector.
-    pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
-        self.cached
-            .as_ref()
-            .map(|cache| cache.linear_coefficients.as_view())
+    pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
+        Some(
+            self.cached
+                .as_ref()
+                .and_then(|cache| cache.linear_coefficients(&self.Y_w))?,
+        )
     }
 
     /// the weighted data matrix`$\boldsymbol{Y}_w$` to which to fit the model. Note
@@ -425,7 +432,7 @@ where
     }
 }
 
-impl<Model, const PAR: bool> LevMarProblem<Model, false, PAR>
+impl<Model, Decomp: MatrixDecomposition<Model::ScalarType>> LevMarProblem<Model, SingleRhs, Decomp>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -440,14 +447,15 @@ where
     /// The linear coefficients are column vectors that are ordered
     /// into a matrix, where the column at index $$s$$ are the best linear
     /// coefficients for the member at index $$s$$ of the dataset.
-    pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
-        self.cached
+    pub fn linear_coefficients(&self) -> Option<DVector<Model::ScalarType>> {
+        let coeffs = self
+            .cached
             .as_ref()
-            .map(|cache|{
-                debug_assert_eq!(cache.linear_coefficients.ncols(),1,
+            .and_then(|cache| cache.linear_coefficients(&self.Y_w))?;
+        debug_assert_eq!(coeffs.ncols(),1,
                     "coefficient matrix must have exactly one column for single right hand side. This indicates a programming error in the library.");
-                cache.linear_coefficients.as_view()
-            })
+
+        Some(to_vector(coeffs))
     }
 
     /// the weighted data vector `$\vec{y}_w$` to which to fit the model. Note
@@ -463,7 +471,8 @@ where
     }
 }
 
-impl<Model, const MRHS: bool, const PAR: bool> LevMarProblem<Model, MRHS, PAR>
+impl<Model, Rhs: RhsType, Decomp: MatrixDecomposition<Model::ScalarType>>
+    LevMarProblem<Model, Rhs, Decomp>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -479,8 +488,8 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblem<Model, MRHS, PARALLEL_NO>
+impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
+    for LevMarProblem<Model, Rhs, SingularValueDecomposition<Model::ScalarType>>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
@@ -505,7 +514,7 @@ where
         let Phi_w = self.model.eval().ok().map(|Phi| &self.weights * Phi);
 
         // calculate the svd
-        let svd_epsilon = self.svd_epsilon;
+        let svd_epsilon = self.epsilon;
         let current_svd = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
         let linear_coefficients = current_svd
             .as_ref()
@@ -520,7 +529,7 @@ where
         if let (Some(current_residuals), Some(current_svd), Some(linear_coefficients)) =
             (current_residuals, current_svd, linear_coefficients)
         {
-            self.cached = Some(CachedCalculations {
+            self.cached = Some(SingularValueDecomposition {
                 current_residuals,
                 current_svd,
                 linear_coefficients,
@@ -558,18 +567,20 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
-        if let Some(CachedCalculations {
+        if let Some(SingularValueDecomposition {
             current_residuals: _,
             current_svd,
             linear_coefficients,
         }) = self.cached.as_ref()
         {
+            let data_cols = self.Y_w.ncols();
+            let parameter_count = self.model.parameter_count();
             // this is not a great pattern, but the trait bounds on copy_from
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
                 UninitMatrix::uninit(
-                    Dyn(self.model.output_len() * self.Y_w.ncols()),
-                    Dyn(self.model.parameter_count()),
+                    Dyn(self.model.output_len() * data_cols),
+                    Dyn(parameter_count),
                 )
                 .assume_init()
             };
@@ -591,146 +602,15 @@ where
                 .map(|(k, mut jacobian_col)| {
                     // weighted derivative matrix
                     let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
-                    let Dk_C = Dk * linear_coefficients;
-                    let minus_ak = U * (&U_t * (&Dk_C)) - Dk_C;
 
-                    //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
-                    //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
-                    //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
-
-                    //@todo CAUTION this relies on the fact that the
-                    //elements are ordered in column major order but it avoids a copy
-                    copy_matrix_to_column(minus_ak, &mut jacobian_col);
-                    Ok(())
-                })
-                .collect::<Result<_, _>>();
-
-            // we need this check to make sure the jacobian is returned
-            // as None on error.
-            result.ok()?;
-
-            Some(jacobian_matrix)
-        } else {
-            None
-        }
-    }
-}
-
-#[cfg(feature = "parallel")]
-impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblem<Model, MRHS, PARALLEL_YES>
-where
-    Model::ScalarType: Scalar + ComplexField + Copy,
-    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
-        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
-    Model: SeparableNonlinearModel + std::marker::Sync,
-    DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
-{
-    type ResidualStorage = Owned<Model::ScalarType, Dyn>;
-    type JacobianStorage = Owned<Model::ScalarType, Dyn, Dyn>;
-    type ParameterStorage = Owned<Model::ScalarType, Dyn>;
-
-    #[allow(non_snake_case)]
-    /// Set the (nonlinear) model parameters `$\vec{\alpha}$` and update the internal state of the
-    /// problem accordingly. The parameters are expected in the same order that the parameter
-    /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
-    /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
-    fn set_params(&mut self, params: &Vector<Model::ScalarType, Dyn, Self::ParameterStorage>) {
-        if self.model.set_params(params.clone()).is_err() {
-            self.cached = None;
-        }
-        // matrix of weighted model function values
-        let Phi_w = self.model.eval().ok().map(|Phi| &self.weights * Phi);
-
-        // calculate the svd
-        let svd_epsilon = self.svd_epsilon;
-        let current_svd = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
-        let linear_coefficients = current_svd
-            .as_ref()
-            .and_then(|svd| svd.solve(&self.Y_w, svd_epsilon).ok());
-
-        // calculate the residuals
-        let current_residuals = Phi_w
-            .zip(linear_coefficients.as_ref())
-            .map(|(Phi_w, coeff)| &self.Y_w - &Phi_w * coeff);
-
-        // if everything was successful, update the cached calculations, otherwise set the cache to none
-        if let (Some(current_residuals), Some(current_svd), Some(linear_coefficients)) =
-            (current_residuals, current_svd, linear_coefficients)
-        {
-            self.cached = Some(CachedCalculations {
-                current_residuals,
-                current_svd,
-                linear_coefficients,
-            })
-        } else {
-            self.cached = None;
-        }
-    }
-
-    /// Retrieve the (nonlinear) model parameters as a vector `$\vec{\alpha}$`.
-    /// The order of the parameters in the vector is the same as the order of the parameter
-    /// names given on model creation. E.g. if the parameters at model creation where given as
-    /// `&["tau","beta"]`, then the returned vector is `$\vec{\alpha} = (\tau,\beta)^T$`, i.e.
-    /// the value of parameter `$\tau$` is at index `0` and the value of `$\beta$` at index `1`.
-    fn params(&self) -> Vector<Model::ScalarType, Dyn, Self::ParameterStorage> {
-        self.model.params()
-    }
-
-    /// Calculate the residual vector `$\vec{r}_w$` of *weighted* residuals at every location `$\vec{x}$`.
-    /// The residual is calculated from the data `\vec{y}` as `$\vec{r}_w(\vec{\alpha}) = W\cdot(\vec{y}-\vec{f}(\vec{x},\vec{\alpha},\vec{c}(\vec{\alpha}))$`,
-    /// where `$\vec{f}(\vec{x},\vec{\alpha},\vec{c})$` is the model function evaluated at the currently
-    /// set nonlinear parameters `$\vec{\alpha}$` and the linear coefficients `$\vec{c}(\vec{\alpha})$`. The VarPro
-    /// algorithm calculates `$\vec{c}(\vec{\alpha})$` as the coefficients that provide the best linear least squares
-    /// fit, given the current `$\vec{\alpha}$`. For more info on the math of VarPro, see
-    /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
-    fn residuals(&self) -> Option<Vector<Model::ScalarType, Dyn, Self::ResidualStorage>> {
-        self.cached
-            .as_ref()
-            .map(|cached| to_vector(cached.current_residuals.clone()))
-    }
-
-    #[allow(non_snake_case)]
-    /// Calculate the Jacobian matrix of the *weighted* residuals `$\vec{r}_w(\vec{\alpha})$`.
-    /// For more info on how the Jacobian is calculated in the VarPro algorithm, see
-    /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
-    fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
-        // TODO (Performance): make this more efficient by parallelizing
-        if let Some(CachedCalculations {
-            current_residuals: _,
-            current_svd,
-            linear_coefficients,
-        }) = self.cached.as_ref()
-        {
-            // this is not a great pattern, but the trait bounds on copy_from
-            // as of now prevent us from doing something more idiomatic
-            let mut jacobian_matrix = unsafe {
-                UninitMatrix::uninit(
-                    Dyn(self.model.output_len() * self.Y_w.ncols()),
-                    Dyn(self.model.parameter_count()),
-                )
-                .assume_init()
-            };
-
-            let U = current_svd.u.as_ref()?; // will return None if this was not calculated
-            let U_t = U.transpose();
-
-            //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
-            //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
-
-            // we use a functional style calculation here that is more easy to
-            // parallelize with rayon later on. The only disadvantage is that
-            // we don't short circuit anymore if there is an error in calculation,
-            // but since that is the sad path anyways, we don't care about a
-            // performance hit in the sad path.
-            let result: Result<Vec<()>, Model::Error> = jacobian_matrix
-                .par_column_iter_mut()
-                .enumerate()
-                .map(|(k, mut jacobian_col)| {
-                    // weighted derivative matrix
-                    let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
-                    let Dk_C = Dk * linear_coefficients;
-                    let minus_ak = U * (&U_t * (&Dk_C)) - Dk_C;
+                    let minus_ak = if data_cols <= parameter_count {
+                        let Dk_C = Dk * linear_coefficients;
+                        U * (&U_t * (&Dk_C)) - Dk_C
+                    } else {
+                        // this version is
+                        // 23-30% faster computations for MRHS benchmark
+                        (U * (&U_t * (&Dk)) - Dk) * linear_coefficients
+                    };
 
                     //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
                     //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
