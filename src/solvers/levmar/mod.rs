@@ -573,12 +573,14 @@ where
             linear_coefficients,
         }) = self.cached.as_ref()
         {
+            let data_cols = self.Y_w.ncols();
+            let parameter_count = self.model.parameter_count();
             // this is not a great pattern, but the trait bounds on copy_from
             // as of now prevent us from doing something more idiomatic
             let mut jacobian_matrix = unsafe {
                 UninitMatrix::uninit(
-                    Dyn(self.model.output_len() * self.Y_w.ncols()),
-                    Dyn(self.model.parameter_count()),
+                    Dyn(self.model.output_len() * data_cols),
+                    Dyn(parameter_count),
                 )
                 .assume_init()
             };
@@ -600,8 +602,15 @@ where
                 .map(|(k, mut jacobian_col)| {
                     // weighted derivative matrix
                     let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
-                    let Dk_C = Dk * linear_coefficients;
-                    let minus_ak = U * (&U_t * (&Dk_C)) - Dk_C;
+
+                    let minus_ak = if data_cols <= parameter_count {
+                        let Dk_C = Dk * linear_coefficients;
+                        U * (&U_t * (&Dk_C)) - Dk_C
+                    } else {
+                        // this version is
+                        // 23-30% faster computations for MRHS benchmark
+                        (U * (&U_t * (&Dk)) - Dk) * linear_coefficients
+                    };
 
                     //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
                     //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
