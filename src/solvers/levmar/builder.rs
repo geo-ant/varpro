@@ -7,10 +7,7 @@ use num_traits::{Float, Zero};
 use std::{marker::PhantomData, ops::Mul};
 use thiserror::Error as ThisError;
 
-use super::{
-    qr::QrDecomposition, MatrixDecomposition, MultiRhs, RhsType, SingleRhs,
-    SingularValueDecomposition,
-};
+use super::{MatrixDecomposition, MultiRhs, RhsType, SingleRhs, SingularValueDecomposition};
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
@@ -165,12 +162,12 @@ where
         Self::decomposition(self)
     }
 
-    pub fn qr(self) -> LevMarProblemBuilder<Model, R, QrDecomposition<Model::ScalarType>>
-    where
-        Model::ScalarType: Float,
-    {
-        Self::decomposition(self)
-    }
+    // pub fn qr(self) -> LevMarProblemBuilder<Model, R, QrDecomposition<Model::ScalarType>>
+    // where
+    //     Model::ScalarType: Float,
+    // {
+    //     Self::decomposition(self)
+    // }
 }
 
 impl<

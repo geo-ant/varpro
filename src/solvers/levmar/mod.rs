@@ -53,8 +53,8 @@ impl<ScalarType: Scalar + ComplexField> MatrixDecomposition<ScalarType>
     }
 }
 
-/// contains levmar solvers based on QR decomposition
-pub mod qr;
+// /// contains levmar solvers based on QR decomposition
+// pub mod qr;
 
 /// A thin wrapper around the
 /// [`LevenbergMarquardt`](https://docs.rs/levenberg-marquardt/latest/levenberg_marquardt/struct.LevenbergMarquardt.html)
