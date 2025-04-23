@@ -24,7 +24,7 @@ struct DoubleExponentialParameters {
 fn build_problem_mrhs<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model, true, false>
+) -> LevMarProblem<Model, true>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
 {
@@ -38,12 +38,10 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization_mrhs<Model, const PAR: bool>(
-    problem: LevMarProblem<Model, true, PAR>,
-) -> (DVector<f64>, DMatrix<f64>)
+fn run_minimization_mrhs<Model>(problem: LevMarProblem<Model, true>) -> (DVector<f64>, DMatrix<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-    LevMarProblem<Model, true, PAR>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+    LevMarProblem<Model, true>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()
         .fit(problem)
@@ -94,37 +92,6 @@ fn bench_double_exp_no_noise_mrhs(c: &mut Criterion) {
                         vec![tau_guess.0, tau_guess.1],
                     ),
                 )
-            },
-            run_minimization_mrhs,
-            criterion::BatchSize::SmallInput,
-        )
-    });
-
-    group.bench_function("Handcrafted Model (MRHS) [multithreaded]", |bencher| {
-        bencher.iter_batched(
-            || {
-                build_problem_mrhs(
-                    true_parameters.clone(),
-                    DoubleExpModelWithConstantOffsetSepModel::new(x.clone(), tau_guess),
-                )
-                .into_parallel()
-            },
-            run_minimization_mrhs,
-            criterion::BatchSize::SmallInput,
-        )
-    });
-
-    group.bench_function("Using Model Builder (MRHS) [multithreaded]", |bencher| {
-        bencher.iter_batched(
-            || {
-                build_problem_mrhs(
-                    true_parameters.clone(),
-                    get_double_exponential_model_with_constant_offset(
-                        x.clone(),
-                        vec![tau_guess.0, tau_guess.1],
-                    ),
-                )
-                .into_parallel()
             },
             run_minimization_mrhs,
             criterion::BatchSize::SmallInput,
