@@ -72,7 +72,7 @@ pub enum LevMarBuilderError {
 /// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemBuilder<Model, const MRHS: bool>
+pub struct SeparableProblemBuilder<Model, const MRHS: bool>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -94,7 +94,7 @@ where
     weights: Weights<Model::ScalarType, Dyn>,
 }
 
-impl<Model> LevMarProblemBuilder<Model, false>
+impl<Model> SeparableProblemBuilder<Model, false>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -115,7 +115,7 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, false>
+impl<Model> SeparableProblemBuilder<Model, false>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -139,7 +139,7 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, true>
+impl<Model> SeparableProblemBuilder<Model, true>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -192,7 +192,7 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, true>
+impl<Model> SeparableProblemBuilder<Model, true>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -215,7 +215,7 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> LevMarProblemBuilder<Model, MRHS>
+impl<Model, const MRHS: bool> SeparableProblemBuilder<Model, MRHS>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,

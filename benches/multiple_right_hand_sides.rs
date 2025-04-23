@@ -10,8 +10,8 @@ use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
-use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
+use varpro::solvers::levmar::SeparableProblemBuilder;
 
 /// helper struct for the parameters of the double exponential
 #[derive(Clone, PartialEq, Debug)]
@@ -32,7 +32,7 @@ where
     // save the initial guess so that we can reset the model to those
     let params = OVector::from_vec_generic(Dyn(model.parameter_count()), U1, vec![tau1, tau2]);
     let y = evaluate_complete_model_at_params_mrhs(&mut model, params, &coeffs);
-    LevMarProblemBuilder::mrhs(model)
+    SeparableProblemBuilder::mrhs(model)
         .observations(y)
         .build()
         .expect("Building valid problem should not panic")

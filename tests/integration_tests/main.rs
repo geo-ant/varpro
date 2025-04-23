@@ -110,7 +110,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         &DVector::from(vec![c1, c2, c3]),
     );
 
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
@@ -178,7 +178,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         &OVector::from_vec_generic(Dyn(base_func_count), U1, vec![c1, c2, c3]),
     );
 
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
@@ -420,7 +420,7 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     );
 
     let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
-    let problem = LevMarProblemBuilder::mrhs(model)
+    let problem = SeparableProblemBuilder::mrhs(model)
         .observations(Y.clone())
         .build()
         .expect("building the lev mar problem must not fail");
@@ -478,7 +478,7 @@ fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit()
     let conf_radius = read_vec_f64("test_assets/multiexp_decay/conf_1000_64bit.raw", Some(1000));
     let covmat = read_vec_f64("test_assets/multiexp_decay/covmat_5x5_64bit.raw", Some(25));
     let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(DVector::from_vec(y))
         .build()
         .expect("building the lev mar problem must not fail");
@@ -546,7 +546,7 @@ fn weighted_double_exponential_model_with_noise_gives_same_confidence_interval_a
         Some(25),
     );
     let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         // in the python script we also apply these weights
         .weights(y.map(|v| 1. / v.sqrt()))
@@ -636,7 +636,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
 
     let model = OLearyExampleModel::new(t, initial_guess);
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         .weights(w)
         .build()
@@ -751,7 +751,7 @@ fn test_oleary_example_with_separable_model() {
     let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
 
     let model = o_leary_example_model(t, initial_guess);
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         .weights(w)
         .build()

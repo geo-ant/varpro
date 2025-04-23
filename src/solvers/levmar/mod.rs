@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::statistics::FitStatistics;
 use crate::util::{to_vector, Weights};
-pub use builder::LevMarProblemBuilder;
+pub use builder::SeparableProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;

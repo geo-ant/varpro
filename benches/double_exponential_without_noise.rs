@@ -14,8 +14,8 @@ use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
 use varpro::solvers::levmar::LevMarProblem;
-use varpro::solvers::levmar::LevMarProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
+use varpro::solvers::levmar::SeparableProblemBuilder;
 
 /// helper struct for the parameters of the double exponential
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -55,7 +55,7 @@ where
         params,
         &OVector::from_vec_generic(Dyn(base_function_count), U1, vec![c1, c2, c3]),
     );
-    LevMarProblemBuilder::new(model)
+    SeparableProblemBuilder::new(model)
         .observations(y)
         .build()
         .expect("Building valid problem should not panic")
