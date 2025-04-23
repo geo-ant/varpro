@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use crate::solvers::levmar::SeparableProblem;
+use crate::problem::SeparableProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Owned, Scalar};

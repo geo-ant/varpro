@@ -9,8 +9,8 @@ use pprof::criterion::{Output, PProfProfiler};
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
+use varpro::problem::SeparableProblem;
 use varpro::solvers::levmar::LevMarSolver;
-use varpro::solvers::levmar::SeparableProblem;
 use varpro::solvers::levmar::SeparableProblemBuilder;
 
 /// helper struct for the parameters of the double exponential

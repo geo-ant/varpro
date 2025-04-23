@@ -444,15 +444,16 @@
 
 /// helper implementation to make working with basis functions more seamless
 pub mod basis_function;
-/// code pertaining to building and working with separable models
+/// defining separable models
 pub mod model;
 /// commonly useful imports
 pub mod prelude;
+/// defining the separable fitting problem
+pub mod problem;
 /// solvers for the nonlinear minimization problem
 pub mod solvers;
 /// statistics of the fit
 pub mod statistics;
-
 /// helper module containing some commonly useful types
 /// implemented in the nalgebra crate
 pub mod util;
