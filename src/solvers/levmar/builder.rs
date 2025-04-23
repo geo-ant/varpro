@@ -104,37 +104,8 @@ where
 {
     /// Create a new builder based on the given model for a problem
     /// with a **single right hand side**. This is the standard use case,
-    /// where the data is a vector that is fitted by the model. Calculations
-    /// are run in a _single threaded_ fashion, see also [`LevMarProblemBuilder::new_parallel`].
-    ///
+    /// where the data is a vector that is fitted by the model.
     pub fn new(model: Model) -> Self {
-        Self {
-            Y: None,
-            separable_model: model,
-            epsilon: None,
-            weights: Weights::default(),
-        }
-    }
-}
-
-#[cfg(feature = "parallel")]
-impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_YES>
-where
-    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
-    <Model::ScalarType as ComplexField>::RealField: Float,
-    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
-        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
-    Model: SeparableNonlinearModel,
-{
-    /// Create a new builder based on the given model for a problem
-    /// with a **single right hand side**, that tries to make use
-    /// of parallelism in the calculations.
-    ///
-    /// # Attention: Parallel calculations might actually be slower!
-    ///
-    /// Requesting parallelism can slow down the calculations significantly.
-    /// As always with performance questions, try it out and *measure*!
-    pub fn new_parallel(model: Model) -> Self {
         Self {
             Y: None,
             separable_model: model,
@@ -212,33 +183,6 @@ where
     /// The (column) vector of linear coefficients `$\vec{c}_j$` is for the observation
     /// `$\vec{y}_j$` in the same column.
     pub fn mrhs(model: Model) -> Self {
-        Self {
-            Y: None,
-            separable_model: model,
-            epsilon: None,
-            weights: Weights::default(),
-        }
-    }
-}
-
-#[cfg(feature = "parallel")]
-impl<Model> LevMarProblemBuilder<Model, true, true>
-where
-    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
-    <Model::ScalarType as ComplexField>::RealField: Float,
-    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
-        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
-    Model: SeparableNonlinearModel,
-{
-    /// Create a new builder based on the given model
-    /// for a problem with **multiple right hand sides** and perform a global
-    /// fit, see also [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
-    /// for an explanation how to order the observations into a matrix.
-    ///
-    /// This approach tries to increase the speed by using multithreaded calculations.
-    /// **Attention**: using multithreading might actually be slower,
-    /// so always try it for your usecase and measure!
-    pub fn mrhs_parallel(model: Model) -> Self {
         Self {
             Y: None,
             separable_model: model,

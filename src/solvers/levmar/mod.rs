@@ -331,10 +331,6 @@ where
     cached: Option<CachedCalculations<Model::ScalarType, Dyn, Dyn>>,
 }
 
-#[allow(unused)]
-pub(crate) const PARALLEL_YES: bool = true;
-pub(crate) const PARALLEL_NO: bool = false;
-
 impl<Model, const MRHS: bool> std::fmt::Debug for LevMarProblem<Model, MRHS>
 where
     Model: SeparableNonlinearModel,

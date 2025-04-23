@@ -3,6 +3,10 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.12.0
+
+* Removed parallel computations as they were always slower.
+
 ## 0.11.0
 
 * Removed `new` and `minimize` associated functions of the `LevMarSolver`
