@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::DVector;
@@ -13,8 +13,8 @@ use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
-use varpro::solvers::levmar::LevMarProblem;
 use varpro::solvers::levmar::LevMarSolver;
+use varpro::solvers::levmar::SeparableProblem;
 use varpro::solvers::levmar::SeparableProblemBuilder;
 
 /// helper struct for the parameters of the double exponential
@@ -30,7 +30,7 @@ struct DoubleExponentialParameters {
 fn build_problem<Model>(
     true_parameters: DoubleExponentialParameters,
     mut model: Model,
-) -> LevMarProblem<Model, false>
+) -> SeparableProblem<Model, false>
 where
     Model: SeparableNonlinearModel<ScalarType = f64>,
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
@@ -61,10 +61,10 @@ where
         .expect("Building valid problem should not panic")
 }
 
-fn run_minimization<Model>(problem: LevMarProblem<Model, false>) -> (DVector<f64>, DVector<f64>)
+fn run_minimization<Model>(problem: SeparableProblem<Model, false>) -> (DVector<f64>, DVector<f64>)
 where
     Model: SeparableNonlinearModel<ScalarType = f64> + std::fmt::Debug,
-    LevMarProblem<Model, false>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+    SeparableProblem<Model, false>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
 {
     let result = LevMarSolver::default()
         .fit(problem)

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::statistics::FitStatistics;
-use crate::util::{to_vector, Weights};
+use crate::util::{Weights, to_vector};
 pub use builder::SeparableProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
@@ -9,7 +9,7 @@ use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
     ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OMatrix,
-    OVector, RawStorageMut, RealField, Scalar, UninitMatrix, Vector, VectorView, SVD, U1,
+    OVector, RawStorageMut, RealField, SVD, Scalar, U1, UninitMatrix, Vector, VectorView,
 };
 use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;
@@ -39,7 +39,7 @@ where
 {
     /// the final state of the fitting problem after the
     /// minimization finished (regardless of whether fitting was successful or not)
-    pub problem: LevMarProblem<Model, MRHS>,
+    pub problem: SeparableProblem<Model, MRHS>,
 
     /// the minimization report of the underlying solver.
     /// It contains information about the minimization process
@@ -92,8 +92,11 @@ where
     /// The coefficients are given as a single vector.
     pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
         let coeff = &self.problem.cached.as_ref()?.linear_coefficients;
-        debug_assert_eq!(coeff.ncols(),1,
-            "Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!");
+        debug_assert_eq!(
+            coeff.ncols(),
+            1,
+            "Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!"
+        );
         Some(self.problem.cached.as_ref()?.linear_coefficients.column(0))
     }
     /// **Note** This implementation is for fitting problems with multiple right hand sides
@@ -117,7 +120,7 @@ where
 {
     /// internal helper for constructing an instance
     fn new(
-        problem: LevMarProblem<Model, MRHS>,
+        problem: SeparableProblem<Model, MRHS>,
         minimization_report: MinimizationReport<Model::ScalarType>,
     ) -> Self {
         Self {
@@ -165,11 +168,11 @@ where
     #[allow(clippy::result_large_err)]
     pub fn fit(
         &self,
-        problem: LevMarProblem<Model, MRHS>,
+        problem: SeparableProblem<Model, MRHS>,
     ) -> Result<FitResult<Model, MRHS>, FitResult<Model, MRHS>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model, MRHS>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        SeparableProblem<Model, MRHS>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
     {
         #[allow(deprecated)]
@@ -203,11 +206,11 @@ where
     #[allow(clippy::result_large_err)]
     pub fn fit_with_statistics(
         &self,
-        problem: LevMarProblem<Model, false>,
+        problem: SeparableProblem<Model, false>,
     ) -> Result<(FitResult<Model, false>, FitStatistics<Model>), FitResult<Model, false>>
     where
         Model: SeparableNonlinearModel,
-        LevMarProblem<Model, false>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        SeparableProblem<Model, false>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
         Model::ScalarType: Scalar + ComplexField + RealField + Float,
     {
         let FitResult {
@@ -304,7 +307,7 @@ where
 
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblem<Model, const MRHS: bool>
+pub struct SeparableProblem<Model, const MRHS: bool>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -331,7 +334,7 @@ where
     cached: Option<CachedCalculations<Model::ScalarType, Dyn, Dyn>>,
 }
 
-impl<Model, const MRHS: bool> std::fmt::Debug for LevMarProblem<Model, MRHS>
+impl<Model, const MRHS: bool> std::fmt::Debug for SeparableProblem<Model, MRHS>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -347,7 +350,7 @@ where
     }
 }
 
-impl<Model> LevMarProblem<Model, true>
+impl<Model> SeparableProblem<Model, true>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -380,7 +383,7 @@ where
     }
 }
 
-impl<Model> LevMarProblem<Model, false>
+impl<Model> SeparableProblem<Model, false>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -412,13 +415,16 @@ where
     /// This method is for fitting a single right hand side, hence the data
     /// is a single column vector.
     pub fn weighted_data(&self) -> VectorView<Model::ScalarType, Dyn> {
-        debug_assert_eq!(self.Y_w.ncols(),1,
-                    "data matrix must have exactly one column for single right hand side. This indicates a programming error in the library.");
+        debug_assert_eq!(
+            self.Y_w.ncols(),
+            1,
+            "data matrix must have exactly one column for single right hand side. This indicates a programming error in the library."
+        );
         self.Y_w.as_view()
     }
 }
 
-impl<Model, const MRHS: bool> LevMarProblem<Model, MRHS>
+impl<Model, const MRHS: bool> SeparableProblem<Model, MRHS>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -435,7 +441,7 @@ where
 }
 
 impl<Model, const MRHS: bool> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblem<Model, MRHS>
+    for SeparableProblem<Model, MRHS>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
