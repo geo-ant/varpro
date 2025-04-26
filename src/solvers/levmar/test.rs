@@ -1,5 +1,6 @@
 use super::*;
 use crate::model::test::MockSeparableNonlinearModel;
+use crate::problem::SeparableProblemBuilder;
 use crate::test_helpers::differentiation::numerical_derivative;
 use crate::test_helpers::get_double_exponential_model_with_constant_offset;
 #[cfg(test)]
@@ -222,7 +223,7 @@ fn levmar_problem_set_params_sets_the_model_parameters_when_built() {
     model
         .expect_eval()
         .returning(move || Ok(nalgebra::DMatrix::zeros(y_len, y_len))); // the returned matrix eval is not used in this test
-                                                                        // actually nonsense, but we don't care about that here
+    // actually nonsense, but we don't care about that here
     let _problem = SeparableProblemBuilder::new(model)
         .observations(y)
         .build()

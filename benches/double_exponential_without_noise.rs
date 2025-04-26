@@ -14,8 +14,8 @@ use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::*;
 use varpro::prelude::SeparableNonlinearModel;
 use varpro::problem::SeparableProblem;
+use varpro::problem::SeparableProblemBuilder;
 use varpro::solvers::levmar::LevMarSolver;
-use varpro::solvers::levmar::SeparableProblemBuilder;
 
 /// helper struct for the parameters of the double exponential
 #[derive(Copy, Clone, PartialEq, Debug)]

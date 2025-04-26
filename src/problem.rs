@@ -5,6 +5,11 @@ use nalgebra::{
 };
 use nalgebra::{Dim, Dyn};
 
+mod builder;
+
+pub use builder::LevMarBuilderError;
+pub use builder::SeparableProblemBuilder;
+
 /// This is a the problem of fitting the separable model to data in a form that the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate can use it to
 /// perform the least squares fit.

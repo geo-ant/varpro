@@ -1,6 +1,6 @@
 use crate::model::test::MockSeparableNonlinearModel;
-use crate::solvers::levmar::builder::LevMarBuilderError;
-use crate::solvers::levmar::SeparableProblemBuilder;
+use crate::problem::LevMarBuilderError;
+use crate::problem::SeparableProblemBuilder;
 use crate::util::DiagMatrix;
 use crate::util::Weights;
 use assert_matches::assert_matches;
@@ -79,8 +79,8 @@ fn builder_assigns_fields_correctly_with_weights_and_epsilon() {
     model
         .expect_eval()
         .returning(move || Ok(DMatrix::zeros(y_len, y_len))); // the returned matrix eval is not used in this test
-                                                              // now check that the given epsilon is also passed correctly to the model
-                                                              // and also that the weights are correctly passed and used to weigh the original data
+    // now check that the given epsilon is also passed correctly to the model
+    // and also that the weights are correctly passed and used to weigh the original data
     let weights = 2. * &y;
     let W = DMatrix::from_diagonal(&weights);
 

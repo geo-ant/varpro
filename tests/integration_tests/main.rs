@@ -9,11 +9,12 @@ use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::levmar_mrhs::DoubleExponentialModelWithConstantOffsetLevmarMrhs;
 use shared_test_code::linspace;
-use shared_test_code::models::o_leary_example_model;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::models::OLearyExampleModel;
+use shared_test_code::models::o_leary_example_model;
 use varpro::prelude::*;
+use varpro::problem::SeparableProblemBuilder;
 use varpro::solvers::levmar::*;
 
 #[test]
@@ -103,7 +104,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let c1 = 4.;
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
-                 // generate some data without noise
+    // generate some data without noise
     let y = evaluate_complete_model_at_params(
         &mut model,
         DVector::from_vec(vec![tau1, tau2]),
@@ -163,7 +164,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let c1 = 4.;
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
-                 // the independent variable
+    // the independent variable
     let x = linspace(0., 12.5, 1024);
     // guess for nonlinear params
     let tau1_guess = 2.;
@@ -238,7 +239,7 @@ fn double_check_to_make_sure_we_can_rely_on_the_model_to_generate_ground_truth()
     let c1 = 4.;
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
-                 // generate some data without noise
+    // generate some data without noise
     let y = evaluate_complete_model_at_params(
         &mut model,
         DVector::from_vec(vec![tau1, tau2]),
@@ -263,7 +264,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_leven
     let c1 = 4.;
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
-                 // generate some data without noise
+    // generate some data without noise
     let y = evaluate_complete_model_at_params(
         &mut model,
         DVector::from_vec(vec![tau1, tau2]),

@@ -2,7 +2,6 @@ use crate::prelude::*;
 use crate::problem::{CachedCalculations, SeparableProblem};
 use crate::statistics::FitStatistics;
 use crate::util::{Weights, to_vector};
-pub use builder::SeparableProblemBuilder;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
@@ -15,7 +14,6 @@ use nalgebra::{
 use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;
 
-mod builder;
 #[cfg(any(test, doctest))]
 mod test;
 
