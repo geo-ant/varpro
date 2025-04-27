@@ -9,6 +9,7 @@ use thiserror::Error as ThisError;
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub enum LevMarBuilderError {
     /// the data for y variable was not given to the builder
     #[error("Right hand side(s) not provided")]

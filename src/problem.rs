@@ -10,6 +10,21 @@ mod builder;
 pub use builder::LevMarBuilderError;
 pub use builder::SeparableProblemBuilder;
 
+/// trait describing the type of right hand side for the problem, meaning either
+/// a single right hand side or multiple right hand sides. The latter implies
+/// global fitting.
+pub trait RhsType {}
+
+/// This type indicates that the associated problem has a single (vector) right hand side.
+pub struct SingleRhs;
+
+/// This type indicates that the associated problem has multiple right hand sides
+/// and thus performs global fitting for the nonlinear parameters.
+pub struct MultiRhs;
+
+impl RhsType for MultiRhs {}
+impl RhsType for SingleRhs {}
+
 /// This is a the problem of fitting the separable model to data in a form that the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate can use it to
 /// perform the least squares fit.
