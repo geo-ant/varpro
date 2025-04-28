@@ -16,10 +16,12 @@ pub use builder::SeparableProblemBuilder;
 pub trait RhsType {}
 
 /// This type indicates that the associated problem has a single (vector) right hand side.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SingleRhs;
 
 /// This type indicates that the associated problem has multiple right hand sides
 /// and thus performs global fitting for the nonlinear parameters.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct MultiRhs;
 
 impl RhsType for MultiRhs {}

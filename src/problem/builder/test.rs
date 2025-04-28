@@ -15,6 +15,7 @@ fn new_builder_starts_with_empty_fields() {
         separable_model: _model,
         epsilon,
         weights,
+        ..
     } = builder;
     assert!(y.is_none());
     assert!(epsilon.is_none());
