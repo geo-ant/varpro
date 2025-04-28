@@ -4,13 +4,13 @@
 //!  
 //! `varpro` is a crate for least squares fitting nonlinear models to observations. It works
 //! for a large class of so called _separable_ nonlinear least squares problems.
-//! It's fast, flexible, and it is simple to use.
+//! It's fast, flexible, and it is easy to use.
 //!
 //! ## Multiple Right Hand Sides
 //!
 //! Since version 0.8.0, support for _global fitting_ with multiple right hand
 //! sides has been added to this library. This is a powerful technique for suitable
-//! problems and is explained at the end of this introductory chapter.
+//! problems and is explained at the end of this introduction.
 //!
 //! ## Overview
 //!
@@ -18,27 +18,29 @@
 //! parameters. These are called *separable models* and can be written as a linear combination
 //! of `$N_{basis}$` nonlinear model basis functions.
 //!
-//! The purpose of this crate is to provide least
-//! squares fitting of nonlinear separable models to observations. We also aim to provide excellent usability
-//! because all too often it is overly hard to even formulate a fitting
-//! problem in code. That is why this libary provides a prototyping API that allows to
-//! formulate a fitting problem in a few lines of code using the
+//! The purpose of this crate is to provide least squares fitting of nonlinear
+//! separable models to observations. We also aim to provide excellent usability
+//! because all too often it hard to even formulate a fitting
+//! problem in code. Thus, this libary provides an API that allows to
+//! formulate a separable model in a few lines of code using the
 //! [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). For
-//! suitable problems this is likely already many times faster than just using nonlinear
-//! least squares solvers directly. This is because this crates takes advantage of the Variable Projection
-//! (VarPro) algorithm for fitting, which utilizes the separable structure
-//! of the model.
+//! separable problems, this is likely already many times faster than just using nonlinear
+//! least squares solvers directly. This is because this crates takes advantage
+//! of the Variable Projection (VarPro) algorithm for fitting, which makes use
+//! of the separable structure of the model.
 //!
-//! To shave off the last couple hundreds of microseconds,
-//! you can manually implement the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait directly.
+//! To shave off the last couple hundreds of microseconds, you can manually implement
+//! the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait directly
+//! to describe your model function.
+//!
 //! The test and benchmark suite of this crate should give you a good idea of how fast
-//! the fitting can be and how to e.g. take advantage of caching intermediate results.
+//! the fitting can be, and how to e.g. take advantage of caching intermediate results.
 //!
 //! ## The Fitting Problem
 //!
 //! Consider a data vector of observations `$\vec{y}= (y_1,\dots,y_{N_{data}})^T$`.
 //! Our goal is to fit a nonlinear, separable model `$f$` to the data.
-//! Because the model is separable we can write it as
+//! Because the model is separable, we can write it as
 //!
 //! ```math
 //! \vec{f}(\vec{\alpha},\vec{c}) = \sum_{j=1}^{N_{basis}} c_j \vec{f}_j(S_j(\vec{\alpha}))
@@ -64,11 +66,12 @@
 //! ## Model Parameters and Basis Functions
 //!
 //! The model itself is given as a linear combination of *nonlinear* basis functions `$\vec{f}_j$` with
-//! expansion coefficient `$c_j$`. The basis functions themselves only depend on
+//! linear coefficients `$c_j$`. The basis functions themselves only depend on
 //! a subset `$S_j(\vec{\alpha})$` of the nonlinear model parameters `$\vec{\alpha}$`.
 //! Each basis function can depend on a different subset, but there is no restriction on which
-//! parameters a function can depend on. Arbitrary functions might share none of, some of, or all of the parameters.
-//! It's also fine for functions to depend on parameters that are exclusive to them.
+//! parameters a function can depend on. Arbitrary functions might share none of, some of,
+//! or all of the nonlinear parameters. It's also fine for functions to depend on
+//! parameters that are exclusive to them.
 //!
 //! ## What VarPro Computes
 //!
@@ -79,23 +82,31 @@
 //! ```math
 //! \arg\min_{\vec{\alpha},\vec{c}} ||\mathbf{W}(\vec{y}-\vec{f}(\vec{\alpha},\vec{c}))||_2^2,
 //! ```
-//! where `$\mathbf{W}$` is a weight matrix that can be set to the identity matrix for unweighted
-//! least squares.
+//! where `$\mathbf{W}$` is a weight matrix. It can be set to the identity matrix for
+//! _unweighted_ least squares.
 //!
 //! ## What Makes VarPro Special
+//!
 //! The Variable Projection algorithm takes advantage of the fact that the model is a mix of linear
 //! and nonlinear parts. VarPro uses a [clever algorithmic trick](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/)
 //! to cast the minimization into a problem that only depends on the nonlinear model parameters
-//! `$\vec{\alpha}$` and lets a nonlinear optimization backend handle this reduced problem. This crate
-//! uses the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate as it's optimization backend. Other
-//! optimization backends are planned for future releases.
+//! `$\vec{\alpha}$`. It then lets a nonlinear optimization backend handle this reduced problem.
+//! Currently, this crate uses the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/)
+//! crate as it's optimization backend. Other optimization backends are planned
+//! for future releases.
 //!
 //! The VarPro algorithm implemented here follows (O'Leary2013), but uses use the Kaufman approximation
 //! to calculate the Jacobian.
 //!
 //! # Usage and Examples
 //!
-//! The first step in using this crate is to formulate the fitting problem.
+//! Using this crate is a step-by-step process:
+//!
+//! 1. Describe the separable model.
+//! 2. Describe the fitting problem.
+//! 3. Fit the problem with a model using a solver.
+//!
+//! The first step in using this crate is to formulate the separable model.
 //! This is done by either creating a type that implements the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait
 //! or by using the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder) to create a model
 //! in a few lines of code. See the examples for the trait and the builder how to
@@ -110,15 +121,12 @@
 //! # ();
 //! ```
 //!
-//! The second step is to use a nonlinear minimization backend to find the parameters that fit the model to the data.
-//! Right now the available backend is the [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
-//! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate.
-//! Thus, cast the fitting problem into a [SeparableProblem](crate::problem::SeparableProblem) using
-//! the [SeparableProblemBuilder](crate::problem::SeparableProblemBuilder).
-//!
+//! The second step is to describe the fitting problem by creating a
+//! [`SeparableProblem`](crate::problem::SeparableProblem) using the
+//! [`SeparableProblemBuilder`](crate::problem::SeparableProblemBuilder).
 //! To build the fitting problem, we need to provide the model, and the observations.
 //! The initial guess for the nonlinear parameters `$\vec{\alpha}$` is a property
-//! of the model.
+//! of the model. We can additionally configure some other properties to influence the fit.
 //!
 //! ```no_run
 //! # let model : varpro::model::SeparableModel<f64> = unimplemented!();
@@ -130,12 +138,12 @@
 //!               .unwrap();
 //! ```
 //!
-//! Next, solve the fitting problem using the [LevMarSolver](crate::solvers::levmar::LevMarSolver), which
-//! is an alias for the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt) struct and allows to set
-//! additional parameters of the algorithm before performing the minimization.
-//!
-//! The simplest way of performing the minimization (without setting any additional
-//! parameters for the minimization is like so:
+//! The third step is to use a solver, to fit the model to the problem.
+//! Currently, the only the available solver is the
+//! [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
+//! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate.
+//! It is provided via the [`LevMarSolver`](crate::solver::levmar::LevMarSolver)
+//! type, which allows to make additional configurations to the solver.
 //!
 //! ```no_run
 //! # use varpro::model::*;
@@ -213,6 +221,7 @@
 //! of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder).
 //!
 //! ## Example Code
+//!
 //! Using the functions above our example code of fitting a linear model to a vector of data `y` obtained
 //! at grid points `x` looks like this:
 //!
@@ -251,12 +260,14 @@
 //!     // build the model
 //!     .build()
 //!     .unwrap();
-//! // 2.,3: Cast the fitting problem as a nonlinear least squares minimization problem
+//!
+//! // 2. Cast the fitting problem as a nonlinear least squares minimization problem
 //! let problem = SeparableProblemBuilder::new(model)
 //!     .observations(y)
 //!     .build()
 //!     .unwrap();
-//! // 4. Solve using the fitting problem
+//!
+//! // 3. Solve using the fitting problem
 //! let fit_result = LevMarSolver::default()
 //!     .fit(problem)
 //!     .expect("fit must succeed");
@@ -397,6 +408,7 @@
 //! for a more detailed explanation.
 //!
 //! ## Example
+//!
 //! ```no_run
 //! # use varpro::prelude::*;
 //! # use varpro::solvers::levmar::LevMarSolver;
