@@ -1,15 +1,15 @@
 use crate::prelude::*;
 use crate::problem::{CachedCalculations, MultiRhs, RhsType, SeparableProblem, SingleRhs};
 use crate::statistics::FitStatistics;
-use crate::util::{Weights, to_vector};
+use crate::util::to_vector;
 /// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
 use levenberg_marquardt::{LeastSquaresProblem, MinimizationReport};
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dim, DimMin, Dyn, Matrix, MatrixView, OMatrix,
-    OVector, RawStorageMut, RealField, SVD, Scalar, U1, UninitMatrix, Vector, VectorView,
+    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, MatrixView, OMatrix, OVector,
+    RawStorageMut, RealField, Scalar, U1, UninitMatrix, Vector, VectorView,
 };
 use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;
