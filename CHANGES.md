@@ -6,19 +6,29 @@ See also here for a [version history](https://crates.io/crates/varpro/versions).
 ## 0.12.0
 
 This release has lots of breaking changes, because it refactors the structure
-to be cleaner. It also contains performance improvements.
+to be cleaner.It also contains performance improvements.
 
+* Significant performance gains for problems with multiple right hand sides (20%-30%)
 * Reworked generics to use typestates (`Rhs: RhsType`) for right-hand-sidedness
   of the problem, rather than const generics (`const MRHS: bool`). 
 * Refactored the high level logic to make the problem independent of the levenberg-
   marquardt backend. Replace `LevMarProblem` by `SeparableProblem` from the
   `vapro::problem` module. Also replaced `LevMarProblemBuilder` by
   `SeparableProblemBuilder`.
-* Significant performance gains for problems with multiple right hand sides (20%-30%)
   in benchmarks with multi right hand sides.
 * Removed parallel computations as they didn't prove to be faster. I'll revisit
   this some time in the future.
-* Updates to documentation.
+* Factor out `FitResult` into own module (was previouly in the
+  `crate::solvers::levmar` module).
+* Updates and improvements in documentation.
+
+### Migrating
+
+Since most of the breaking changes are refactorings, it should be easy to fix
+compilation errors by using auto-import features of the LSP implementation of
+your choice. The refactorings on the generics should actually not be noticeable
+since they would have been inferred for most usecases anyways, rather than explicitly
+spelled out.
 
 ## 0.11.0
 

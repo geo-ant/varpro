@@ -154,8 +154,8 @@
 //! ```
 //!
 //! If successful, retrieve the nonlinear parameters `$\alpha$` using the
-//! [`FitResult::nonlinear_params`](crate::solvers::levmar::FitResult) and the linear
-//! coefficients `$\vec{c}$` using [FitResult::linear_coefficients](crate::solvers::levmar::FitResult::linear_coefficients)
+//! [`FitResult::nonlinear_params`](crate::fit::FitResult::nonlinear_params) and the linear
+//! coefficients `$\vec{c}$` using [FitResult::linear_coefficients](crate::fit::FitResult::linear_coefficients)
 //!
 //! **Fit Statistics:** To get additional statistical information after the fit
 //! has finished, use the [LevMarSolver::fit_with_statistics](crate::solvers::levmar::LevMarSolver::fit_with_statistics)
