@@ -245,9 +245,9 @@ where
     /// ```no_run
     /// # let model : varpro::model::SeparableModel<f64> = unimplemented!();
     /// # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
-    /// use varpro::solvers::levmar::LevMarProblemBuilder;
+    /// use varpro::problem::*;
     /// use varpro::solvers::levmar::LevMarSolver;
-    /// let problem = LevMarProblemBuilder::new(model)
+    /// let problem = SeparableProblemBuilder::new(model)
     ///               .observations(y)
     ///               .build()
     ///               .unwrap();

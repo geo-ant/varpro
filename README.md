@@ -55,7 +55,8 @@ with constant offset to a data vector `y` obtained at time points `t`.
 
 ```rust
 use varpro::prelude::*;
-use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+use varpro::solvers::levmar::LevMarSolver;
+use varpro::problem::SeparableProblemBuilder;
 use nalgebra::{dvector,DVector};
 
 // Define the exponential decay e^(-t/tau).
@@ -103,7 +104,7 @@ let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
   .build()
   .unwrap();
 // 2. Cast the fitting problem as a nonlinear least squares minimization problem
-let problem = LevMarProblemBuilder::new(model)
+let problem = SeparableProblemBuilder::new(model)
   .observations(y)
   .build()
   .unwrap();
@@ -121,7 +122,7 @@ For more in depth examples, please refer to the crate documentation.
 
 ### Fit Statistics
 
-Additionally to the `fit` member function, the `LevMarSolver` provides a 
+Additionally to the `[fit](crate::solvers::LevMarSolver::fit)` member function, the `[crate::solvers::levmar::LevMarSolver]` provides a 
 `fit_with_statistics` function that calculates quite a bit of useful additional statistical
 information.
 

@@ -55,9 +55,9 @@ pub enum LevMarBuilderError {
 /// ```rust
 /// # use nalgebra::{DVector, Scalar};
 /// # use varpro::model::SeparableModel;
-/// # use varpro::solvers::levmar::{LevMarProblem, LevMarProblemBuilder};
+/// # use varpro::problem::*;
 /// # fn model(model : SeparableModel<f64>,y: DVector<f64>) {
-///   let problem = LevMarProblemBuilder::new(model)
+///   let problem = SeparableProblemBuilder::new(model)
 ///                 .observations(y)
 ///                 .build()
 ///                 .unwrap();

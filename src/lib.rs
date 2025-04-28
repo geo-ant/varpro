@@ -123,8 +123,8 @@
 //! ```no_run
 //! # let model : varpro::model::SeparableModel<f64> = unimplemented!();
 //! # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
-//! use varpro::solvers::levmar::LevMarProblemBuilder;
-//! let problem = LevMarProblemBuilder::new(model)
+//! use varpro::problem::*;
+//! let problem = SeparableProblemBuilder::new(model)
 //!               .observations(y)
 //!               .build()
 //!               .unwrap();
@@ -139,14 +139,15 @@
 //!
 //! ```no_run
 //! # use varpro::model::*;
-//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
+//! # use varpro::problem::*;
+//! # let problem : varpro::problem::SeparableProblem<SeparableModel<f64>, SingleRhs> = unimplemented!();
 //! use varpro::solvers::levmar::LevMarSolver;
 //! let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! ```
 //!
 //! If successful, retrieve the nonlinear parameters `$\alpha$` using the
 //! [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
-//! coefficients `$\vec{c}$` using [LevMarProblem::linear_coefficients](crate::solvers::levmar::LevMarProblem::linear_coefficients)
+//! coefficients `$\vec{c}$` using [SeparableProblem::linear_coefficients](crate::problem::SeparableProblem::linear_coefficients)
 //!
 //! **Fit Statistics:** To get additional statistical information after the fit
 //! has finished, use the [LevMarSolver::fit_with_statistics](crate::solvers::levmar::LevMarSolver::fit_with_statistics)
@@ -155,7 +156,8 @@
 //! ```no_run
 //! # use varpro::model::SeparableModel;
 //! # use varpro::prelude::*;
-//! # let problem : varpro::solvers::levmar::LevMarProblem<SeparableModel<f64>,false> = unimplemented!();
+//! # use varpro::problem::*;
+//! # let problem : varpro::problem::SeparableProblem<SeparableModel<f64>, SingleRhs> = unimplemented!();
 //! # use varpro::solvers::levmar::LevMarSolver;
 //! # let fit_result = LevMarSolver::default().fit(problem).unwrap();
 //! let alpha = fit_result.nonlinear_parameters();
@@ -217,7 +219,8 @@
 //! ```rust
 //! use nalgebra::DVector;
 //! use varpro::prelude::*;
-//! use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+//! use varpro::solvers::levmar::LevMarSolver;
+//! use varpro::problem::*;
 //! # fn exp_decay(x :&DVector<f64>, tau : f64) -> DVector<f64> {
 //! #     x.map(|x|(-x/tau).exp())
 //! # }
@@ -285,7 +288,8 @@
 //! ```rust
 //! use nalgebra::DVector;
 //! use varpro::prelude::*;
-//! use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+//! use varpro::solvers::levmar::LevMarSolver;
+//! use varpro::problem::*;
 //!
 //! // build the model
 //! fn phi1(t: &DVector<f64>, alpha2: f64, alpha3: f64) -> DVector<f64> {
@@ -327,7 +331,7 @@
 //!     .unwrap();
 //!
 //! // describe the fitting problem
-//! let problem = LevMarProblemBuilder::new(model)
+//! let problem = SeparableProblemBuilder::new(model)
 //!     .observations(y)
 //!     .weights(w)
 //!     .build()
@@ -395,14 +399,15 @@
 //! ## Example
 //! ```no_run
 //! # use varpro::prelude::*;
-//! # use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+//! # use varpro::solvers::levmar::LevMarSolver;
+//! # use vapro::problem::*;
 //! # let model : varpro::model::SeparableModel::<f64> = unimplemented!();
 //! # let Y : nalgebra::DMatrix::<f64> = unimplemented!();
 //! # let w : nalgebra::DVector::<f64> = unimplemented!();
 //!
 //! // use the model as before but now invoke the `mrhs`
 //! // constructor for the fitting problem
-//! let problem = LevMarProblemBuilder::mrhs(model)
+//! let problem = SeparableProblemBuilder::mrhs(model)
 //! // the observations is a matrix where each column vector represents
 //! // a single observation
 //!     .observations(Y)
