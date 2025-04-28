@@ -48,7 +48,7 @@ where
     /// # Arguments
     /// * `x`: the vector `$\vec{x}$`
     /// * `params`: The parameters `$(\alpha_1,...,\alpha_N)$` as a slice. The slice must have
-    ///    the correct number of arguments for calling the function (no more, no less).
+    ///   the correct number of arguments for calling the function (no more, no less).
     ///
     /// # Effect and Panics
     ///

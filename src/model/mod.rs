@@ -264,7 +264,7 @@ where
 
     /// Set the nonlinear parameters `$\vec{\alpha}$` of the model to the given vector .
     fn set_params(&mut self, parameters: OVector<Self::ScalarType, Dyn>)
-        -> Result<(), Self::Error>;
+    -> Result<(), Self::Error>;
 
     /// Get the currently set nonlinear parameters of the model, i.e.
     /// the vector `$\vec{\alpha}$`.
@@ -313,11 +313,11 @@ where
     /// # Arguments
     ///
     /// * `derivative_index`: The index of the nonlinear parameter with respect to which
-    ///    partial derivative should be evaluated. We use _zero based indexing_
-    ///    here! Put in more simple terms, say your model has three nonlinear parameters
-    ///    `a,b,c`, so your vector of nonlinear parameters is `$\vec{\alpha} = (a,b,c)$`.
-    ///    Then index 0 requests `$\partial/\partial_a$`, index 1 requests `$\partial/\partial_b$`
-    ///    and index 2 requests `$\partial/\partial_c$`.
+    ///   partial derivative should be evaluated. We use _zero based indexing_
+    ///   here! Put in more simple terms, say your model has three nonlinear parameters
+    ///   `a,b,c`, so your vector of nonlinear parameters is `$\vec{\alpha} = (a,b,c)$`.
+    ///   Then index 0 requests `$\partial/\partial_a$`, index 1 requests `$\partial/\partial_b$`
+    ///   and index 2 requests `$\partial/\partial_c$`.
     ///
     /// # Result
     ///

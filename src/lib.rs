@@ -49,9 +49,9 @@
 //! two vector valued parameters:
 //!
 //! * `$\vec{\alpha}=(\alpha_1,\dots,\alpha_{N_{params}})^T$` is the vector of nonlinear model parameters.
-//!    We will get back to these later.
+//!   We will get back to these later.
 //! * `$\vec{c}=(c_1,\dots,c_{N_{basis}})^T$` is the vector of coefficients for the basis functions.
-//!    Those are the linear model parameters.
+//!   Those are the linear model parameters.
 //!
 //! Note that we call `$\vec{\alpha}$` the _nonlinear parameters_ and `$\vec{c}$` the _coefficients_ of the model
 //! just to make the distinction between the two types of parameters clear. The coefficients are

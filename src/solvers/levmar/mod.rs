@@ -349,7 +349,7 @@ where
     /// **Note** For now, fitting with statistics is only supported for problems
     /// with a single right hand side. If this function is invoked on a problem
     /// with multiple right hand sides, an error is returned.
-    #[allow(clippy::result_large_err)]
+    #[allow(clippy::result_large_err, clippy::type_complexity)]
     pub fn fit_with_statistics(
         &self,
         problem: SeparableProblem<Model, SingleRhs>,
