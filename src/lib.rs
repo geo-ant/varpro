@@ -2,9 +2,9 @@
 //!
 //! # Introduction
 //!  
-//! `varpro` is a crate for least squares fitting nonlinear models to observations. It works
-//! for a large class of so called _separable_ nonlinear least squares problems.
-//! It's fast, flexible, and it is easy to use.
+//! `varpro` is a crate for least squares fitting nonlinear models to observations.
+//! It works for so-called _separable_ models, which is a large class of models.
+//! It's fast, flexible, well-tested, and it's easy to use.
 //!
 //! ## Multiple Right Hand Sides
 //!
@@ -16,16 +16,17 @@
 //!
 //! Many nonlinear models consist of a mixture of both truly nonlinear and _linear_ model
 //! parameters. These are called *separable models* and can be written as a linear combination
-//! of `$N_{basis}$` nonlinear model basis functions.
+//! of `$N_{basis}$` nonlinear model basis functions. Think e.g. sums of exponential
+//! decays, which make for a notoriously ill-conditioned fitting problem.
 //!
 //! The purpose of this crate is to provide least squares fitting of nonlinear
 //! separable models to observations. We also aim to provide excellent usability
 //! because all too often it hard to even formulate a fitting
 //! problem in code. Thus, this libary provides an API that allows to
 //! formulate a separable model in a few lines of code using the
-//! [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder). For
-//! separable problems, this is likely already many times faster than just using nonlinear
-//! least squares solvers directly. This is because this crates takes advantage
+//! [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder).
+//! This is typically already many times faster than using nonlinear
+//! least squares solvers directly. That's because this crates takes advantage
 //! of the Variable Projection (VarPro) algorithm for fitting, which makes use
 //! of the separable structure of the model.
 //!
@@ -82,7 +83,7 @@
 //! ```math
 //! \arg\min_{\vec{\alpha},\vec{c}} ||\mathbf{W}(\vec{y}-\vec{f}(\vec{\alpha},\vec{c}))||_2^2,
 //! ```
-//! where `$\mathbf{W}$` is a weight matrix. It can be set to the identity matrix for
+//! where `$\mathbf{W}$` is a weight matrix. Set it to the identity matrix for
 //! _unweighted_ least squares.
 //!
 //! ## What Makes VarPro Special
@@ -92,8 +93,7 @@
 //! to cast the minimization into a problem that only depends on the nonlinear model parameters
 //! `$\vec{\alpha}$`. It then lets a nonlinear optimization backend handle this reduced problem.
 //! Currently, this crate uses the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/)
-//! crate as it's optimization backend. Other optimization backends are planned
-//! for future releases.
+//! crate as it's optimization backend. Other optimization backends are planned.
 //!
 //! The VarPro algorithm implemented here follows (O'Leary2013), but uses use the Kaufman approximation
 //! to calculate the Jacobian.
@@ -138,12 +138,12 @@
 //!               .unwrap();
 //! ```
 //!
-//! The third step is to use a solver, to fit the model to the problem.
+//! The third step is to use a solver to fit the model to the problem.
 //! Currently, the only the available solver is the
 //! [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
 //! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate.
 //! It is provided via the [`LevMarSolver`](crate::solver::levmar::LevMarSolver)
-//! type, which allows to make additional configurations to the solver.
+//! type, which allows us to make additional configurations to the solver.
 //!
 //! ```no_run
 //! # use varpro::model::*;
@@ -203,6 +203,7 @@
 //! For our separable model we also need the partial derivatives of the basis functions with
 //! respect to all the parameters that each basis function depends on. Thus, in
 //! this case we have to provide `$\partial/\partial\tau\,\vec{f}_j(\vec{x},\tau)$`.
+//!
 //! ```rust
 //! use nalgebra::DVector;
 //! fn exp_decay_dtau(tvec: &DVector<f64>,tau: f64) -> DVector<f64> {
