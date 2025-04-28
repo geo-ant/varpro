@@ -5,7 +5,20 @@ See also here for a [version history](https://crates.io/crates/varpro/versions).
 
 ## 0.12.0
 
-* Removed parallel computations as they were always slower.
+This release has lots of breaking changes, because it refactors the structure
+to be cleaner. It also contains performance improvements.
+
+* Reworked generics to use typestates (`Rhs: RhsType`) for right-hand-sidedness
+  of the problem, rather than const generics (`const MRHS: bool`). 
+* Refactored the high level logic to make the problem independent of the levenberg-
+  marquardt backend. Replace `LevMarProblem` by `SeparableProblem` from the
+  `vapro::problem` module. Also replaced `LevMarProblemBuilder` by
+  `SeparableProblemBuilder`.
+* Significant performance gains for problems with multiple right hand sides (20%-30%)
+  in benchmarks with multi right hand sides.
+* Removed parallel computations as they didn't prove to be faster. I'll revisit
+  this some time in the future.
+* Updates to documentation.
 
 ## 0.11.0
 

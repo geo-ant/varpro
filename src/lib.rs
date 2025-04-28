@@ -154,8 +154,8 @@
 //! ```
 //!
 //! If successful, retrieve the nonlinear parameters `$\alpha$` using the
-//! [SeparableProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
-//! coefficients `$\vec{c}$` using [SeparableProblem::linear_coefficients](crate::problem::SeparableProblem::linear_coefficients)
+//! [`FitResult::nonlinear_params`](crate::solvers::levmar::FitResult) and the linear
+//! coefficients `$\vec{c}$` using [FitResult::linear_coefficients](crate::solvers::levmar::FitResult::linear_coefficients)
 //!
 //! **Fit Statistics:** To get additional statistical information after the fit
 //! has finished, use the [LevMarSolver::fit_with_statistics](crate::solvers::levmar::LevMarSolver::fit_with_statistics)
@@ -475,7 +475,8 @@ pub mod statistics;
 /// implemented in the nalgebra crate
 pub mod util;
 
-/// a helper module for doctesting code in my readme
+/// a helper module for doctesting code in the readme, so that
+/// we know it doesn't go out of sync with the code.
 #[cfg(doctest)]
 mod readme;
 
