@@ -130,7 +130,7 @@ information.
 
 In the example above, we have passed a single column vector as the observations.
 The library also allows fitting multiple right hand sides, by constructing a
-problem via `LevMarProblemBuilder::mrhs`. When fitting multiple right hand sides,
+problem via [crate::problem::SeparableProblem::mrhs]. When fitting multiple right hand sides,
 `vapro` will performa a _global fit_, in which the nonlinear parameters are optimized
 across all right hand sides, but linear coefficients of the fit are optimized for
 each right hand side individually.

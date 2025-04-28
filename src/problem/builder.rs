@@ -45,7 +45,7 @@ pub enum LevMarBuilderError {
     InvalidLengthOfWeights,
 }
 
-/// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
+/// A builder structure to create a [SeparableProblem](super::SeparableProblem), which can be used for
 /// fitting a separable model to data.
 /// # Example
 /// The following code shows how to create an unweighted least squares problem to fit the separable model
@@ -66,16 +66,16 @@ pub enum LevMarBuilderError {
 ///
 /// # Building a Model
 ///
-/// A new builder is constructed with the [new](LevMarProblemBuilder::new) constructor. It must be filled with
+/// A new builder is constructed with the [new](SeparableProblemBuilder::new) constructor. It must be filled with
 /// content using the methods described in the following. After all mandatory fields have been filled,
-/// the [build](LevMarProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
+/// the [build](SeparableProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
 /// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
 /// it contains an error variant.
 ///
 /// ## Multiple Right Hand Sides
 ///
 /// We can also construct a problem with multiple right hand sides, using the
-/// [mrhs](LevMarProblemBuilder::mrhs) constructor, see [LevMarProblem] for
+/// [mrhs](SeparableProblemBuilder::mrhs) constructor, see [SeparableProblem] for
 /// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
@@ -272,7 +272,7 @@ where
     /// * `$\vec{x}$` and `$\vec{y}$` have a nonzero number of elements
     /// * the length of the initial guesses vector is the same as the number of model parameters
     /// # Returns
-    /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
+    /// If all prerequisites are fulfilled, returns a [SeparableProblem](super::SeparableProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
     pub fn build(self) -> Result<SeparableProblem<Model, Rhs>, LevMarBuilderError> {

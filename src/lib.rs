@@ -113,8 +113,8 @@
 //! The second step is to use a nonlinear minimization backend to find the parameters that fit the model to the data.
 //! Right now the available backend is the [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
 //! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate.
-//! Thus, cast the fitting problem into a [LevMarProblem](crate::solvers::levmar::LevMarProblem) using
-//! the [LevMarProblemBuilder](crate::solvers::levmar::LevMarProblemBuilder).
+//! Thus, cast the fitting problem into a [SeparableProblem](crate::problem::SeparableProblem) using
+//! the [SeparableProblemBuilder](crate::problem::SeparableProblemBuilder).
 //!
 //! To build the fitting problem, we need to provide the model, and the observations.
 //! The initial guess for the nonlinear parameters `$\vec{\alpha}$` is a property
@@ -146,7 +146,7 @@
 //! ```
 //!
 //! If successful, retrieve the nonlinear parameters `$\alpha$` using the
-//! [LevMarProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
+//! [SeparableProblem::params](levenberg_marquardt::LeastSquaresProblem::params) and the linear
 //! coefficients `$\vec{c}$` using [SeparableProblem::linear_coefficients](crate::problem::SeparableProblem::linear_coefficients)
 //!
 //! **Fit Statistics:** To get additional statistical information after the fit
@@ -372,7 +372,7 @@
 //! model, we just have to make a slight modification to the way we build a problem.
 //! The crucial differences to the single right hand side case are:
 //!
-//! 1. We have to use the [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
+//! 1. We have to use the [`SeparableProblemBuilder::mrhs`](crate::problem::SeparableProblemBuilder::mrhs)
 //!    constructor rather than `new`.
 //! 2. We have to sort the right hand sides into a matrix, where each right
 //!    hand side, which is a column-vector on its own, will become a column
@@ -393,7 +393,7 @@
 //!
 //! The order of the vectors in the matrix doesn't matter, but it will determine
 //! the order of the linear coefficients, see
-//! [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
+//! [`SeparableProblemBuilder::mrhs`](crate::problem::SeparableProblem::mrhs)
 //! for a more detailed explanation.
 //!
 //! ## Example

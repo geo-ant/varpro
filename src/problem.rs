@@ -33,12 +33,12 @@ impl RhsType for SingleRhs {}
 ///
 /// # Construction
 ///
-/// Use the [LevMarProblemBuilder](self::builder::LevMarProblemBuilder) to create an instance of a
+/// Use the [SeparableProblemBuilder](self::builder::SeparableProblemBuilder) to create an instance of a
 /// levmar problem.
 ///
 /// # Usage
 ///
-/// After obtaining an instance of `LevMarProblem` we can pass it to the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
+/// After obtaining an instance of `SeparableProblem` we can pass it to the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
 /// structure of the levenberg_marquardt crate for minimization. Refer to the documentation of the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) for an overview. A usage example
 /// is provided in this crate documentation as well. The [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
@@ -84,7 +84,7 @@ where
 }
 
 /// helper structure that stores the cached calculations,
-/// which are carried out by the LevMarProblem on setting the parameters
+/// which are carried out by the SeparableProblem on setting the parameters
 #[derive(Debug, Clone)]
 pub(crate) struct CachedCalculations<ScalarType, ModelDim, OutputDim>
 where
@@ -113,7 +113,7 @@ where
     Model::ScalarType: Scalar + ComplexField + Copy,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("LevMarProblem")
+        f.debug_struct("SeparableProblem")
             .field("y_w", &self.Y_w)
             .field("model", &"/* omitted */")
             .field("svd_epsilon", &self.svd_epsilon)

@@ -1,10 +1,10 @@
 use nalgebra::{DVector, Scalar};
 
 use crate::basis_function::BasisFunction;
+use crate::model::SeparableModel;
 use crate::model::builder::modelfunction_builder::ModelBasisFunctionBuilder;
 use crate::model::detail::check_parameter_names;
 use crate::model::model_basis_function::ModelBasisFunction;
-use crate::model::SeparableModel;
 use error::ModelBuildError;
 
 mod modelfunction_builder;
@@ -82,7 +82,7 @@ pub mod error;
 /// For some models, e.g. sums of exponential decays it might happen that the basis functions become
 /// linearly dependent *for some combinations* of nonlinear model parameters. This isn't great but it is
 /// okay, since the VarPro algorithm in this crate exhibits a degree of robustness against basis functions
-/// becoming collinear (see [LevMarProblemBuilder::epsilon](crate::solvers::levmar::LevMarProblemBuilder::epsilon)).
+/// becoming collinear (see [SeparableProblemBuilder::epsilon](crate::problem::SeparableProblemBuilder::epsilon)).
 ///
 /// ### Invariant Basis Functions
 ///

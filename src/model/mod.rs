@@ -51,7 +51,7 @@ pub mod test;
 /// at least not for all possible choices of `$\vec{alpha}$`. It is sometimes unavoidable that
 /// that model functions become linearly
 /// dependent for *some* combinations of model parameters. See also
-/// [LevMarProblemBuilder::epsilon](crate::solvers::levmar::LevMarProblemBuilder::epsilon).
+/// [SeparableProblemBuilder::epsilon](crate::problem::SeparableProblemBuilder::epsilon).
 ///
 /// It perfectly fine for a base function to depend on all or none of the model parameters or any
 /// subset of the model parameters. There is also no restrictions on which base functions
