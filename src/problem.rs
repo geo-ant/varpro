@@ -53,7 +53,7 @@ impl RhsType for SingleRhs {}
 /// coefficient vectors and data vectors respectively.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct SeparableProblem<Model, const MRHS: bool>
+pub struct SeparableProblem<Model, Rhs: RhsType>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -78,6 +78,7 @@ where
     /// is propagated on to the levenberg-marquardt crate by also returning None results
     /// by residuals() and/or jacobian()
     pub(crate) cached: Option<CachedCalculations<Model::ScalarType, Dyn, Dyn>>,
+    phantom: std::marker::PhantomData<Rhs>,
 }
 
 /// helper structure that stores the cached calculations,
@@ -104,7 +105,7 @@ where
     pub(crate) linear_coefficients: DMatrix<ScalarType>,
 }
 
-impl<Model, const MRHS: bool> std::fmt::Debug for SeparableProblem<Model, MRHS>
+impl<Model, Rhs: RhsType> std::fmt::Debug for SeparableProblem<Model, Rhs>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -120,7 +121,7 @@ where
     }
 }
 
-impl<Model> SeparableProblem<Model, true>
+impl<Model> SeparableProblem<Model, MultiRhs>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -153,7 +154,7 @@ where
     }
 }
 
-impl<Model> SeparableProblem<Model, false>
+impl<Model> SeparableProblem<Model, SingleRhs>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
@@ -194,7 +195,7 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> SeparableProblem<Model, MRHS>
+impl<Model, Rhs: RhsType> SeparableProblem<Model, Rhs>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,

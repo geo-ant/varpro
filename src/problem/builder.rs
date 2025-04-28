@@ -2,10 +2,12 @@ use crate::prelude::*;
 use crate::problem::SeparableProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Owned, Scalar};
+use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
+
+use super::{MultiRhs, RhsType, SingleRhs};
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
@@ -77,7 +79,7 @@ pub enum LevMarBuilderError {
 /// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct SeparableProblemBuilder<Model, const MRHS: bool>
+pub struct SeparableProblemBuilder<Model, Rhs: RhsType>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -97,9 +99,10 @@ where
     /// all weights were 1.
     /// Must have the same length as x and y.
     weights: Weights<Model::ScalarType, Dyn>,
+    phantom: std::marker::PhantomData<Rhs>,
 }
 
-impl<Model> SeparableProblemBuilder<Model, false>
+impl<Model> SeparableProblemBuilder<Model, SingleRhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -116,11 +119,12 @@ where
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
+            phantom: Default::default(),
         }
     }
 }
 
-impl<Model> SeparableProblemBuilder<Model, false>
+impl<Model> SeparableProblemBuilder<Model, SingleRhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -144,7 +148,7 @@ where
     }
 }
 
-impl<Model> SeparableProblemBuilder<Model, true>
+impl<Model> SeparableProblemBuilder<Model, MultiRhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -193,11 +197,12 @@ where
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
+            phantom: Default::default(),
         }
     }
 }
 
-impl<Model> SeparableProblemBuilder<Model, true>
+impl<Model> SeparableProblemBuilder<Model, MultiRhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -220,7 +225,7 @@ where
     }
 }
 
-impl<Model, const MRHS: bool> SeparableProblemBuilder<Model, MRHS>
+impl<Model, Rhs: RhsType> SeparableProblemBuilder<Model, Rhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -270,17 +275,7 @@ where
     /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<SeparableProblem<Model, MRHS>, LevMarBuilderError>
-    //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
-    // but the trait solver cannot figure that out without this extra hint.
-    where
-        SeparableProblem<Model, MRHS>: LeastSquaresProblem<
-                Model::ScalarType,
-                Dyn,
-                Dyn,
-                ParameterStorage = Owned<Model::ScalarType, Dyn>,
-            >,
-    {
+    pub fn build(self) -> Result<SeparableProblem<Model, Rhs>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
         let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;
@@ -321,6 +316,7 @@ where
             svd_epsilon: epsilon,
             cached: None,
             weights,
+            phantom: Default::default(),
         };
         problem.set_params(&params);
 
