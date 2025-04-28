@@ -461,6 +461,8 @@
 
 /// helper implementation to make working with basis functions more seamless
 pub mod basis_function;
+/// result of a fit allowing us to query the best parameters and coefficients
+pub mod fit;
 /// defining separable models
 pub mod model;
 /// commonly useful imports
@@ -469,7 +471,7 @@ pub mod prelude;
 pub mod problem;
 /// solvers for the nonlinear minimization problem
 pub mod solvers;
-/// statistics of the fit
+/// statistics for the fit result
 pub mod statistics;
 /// helper module containing some commonly useful types
 /// implemented in the nalgebra crate
