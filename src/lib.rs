@@ -252,7 +252,7 @@
 //!     .build()
 //!     .unwrap();
 //! // 2.,3: Cast the fitting problem as a nonlinear least squares minimization problem
-//! let problem = LevMarProblemBuilder::new(model)
+//! let problem = SeparableProblemBuilder::new(model)
 //!     .observations(y)
 //!     .build()
 //!     .unwrap();
@@ -400,7 +400,7 @@
 //! ```no_run
 //! # use varpro::prelude::*;
 //! # use varpro::solvers::levmar::LevMarSolver;
-//! # use vapro::problem::*;
+//! # use varpro::problem::*;
 //! # let model : varpro::model::SeparableModel::<f64> = unimplemented!();
 //! # let Y : nalgebra::DMatrix::<f64> = unimplemented!();
 //! # let w : nalgebra::DVector::<f64> = unimplemented!();
