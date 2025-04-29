@@ -143,7 +143,14 @@ fn model_function_eval_fails_for_invalid_length_of_return_value_in_base_function
         .build()
         .expect("Model function creation should not fail, although function is bad");
 
-    assert_matches!(model_with_bad_function.eval(),Err(ModelError::UnexpectedFunctionOutput{actual_length:4,..}),"Model must report an error when evaluated with a function that does not return the same length vector as independent variable");
+    assert_matches!(
+        model_with_bad_function.eval(),
+        Err(ModelError::UnexpectedFunctionOutput {
+            actual_length: 4,
+            ..
+        }),
+        "Model must report an error when evaluated with a function that does not return the same length vector as independent variable"
+    );
 }
 
 #[test]

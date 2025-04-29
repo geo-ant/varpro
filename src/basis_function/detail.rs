@@ -18,7 +18,11 @@ where
 {
     fn eval(&self, x: &DVector<ScalarType>, params: &[ScalarType]) -> DVector<ScalarType> {
         if params.len() != Self::ARGUMENT_COUNT {
-            panic!("Basisfunction expected {} arguments but the provided parameter slice has {} elements.",Self::ARGUMENT_COUNT,params.len());
+            panic!(
+                "Basisfunction expected {} arguments but the provided parameter slice has {} elements.",
+                Self::ARGUMENT_COUNT,
+                params.len()
+            );
         }
         (self)(x, params[0].clone())
     }
@@ -112,4 +116,4 @@ basefunction_impl_helper!(
     (8, T),
     (9, T)
 ); //10 parameter arguments
-   //if more are implemented, add tests as well
+//if more are implemented, add tests as well
