@@ -177,7 +177,7 @@ fn builder_gives_errors_for_wrong_length_of_weights() {
             .observations(y)
             .weights(DVector::from_vec(vec! {1.,2.,3.}))
             .build(),
-        Err(LevMarBuilderError::InvalidLengthOfWeights { .. }),
+        Err(LevMarBuilderError::InvalidLengthOfWeights),
         "invalid length of weights"
     );
 }
