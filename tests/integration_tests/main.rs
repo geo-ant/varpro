@@ -462,6 +462,94 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
 }
 
 #[test]
+#[allow(non_snake_case)]
+fn triple_exponential_model_with_mrhs_produces_accurate_results_with_more_data_cols_than_params() {
+    let x = linspace(0., 12.5, 20);
+    let tau1 = 1.;
+    let tau2 = 3.;
+    let tau1_guess = 2.5;
+    let tau2_guess = 6.5;
+    // coefficients for the first dataset
+    let a1 = 2.;
+    let a2 = 4.;
+    let a3 = 0.2;
+    // coefficients for the second dataset
+    let b1 = 10.;
+    let b2 = 12.;
+    let b3 = 18.;
+    // coefficients for third dataset
+    let c1 = 5.;
+    let c2 = 1.;
+    let c3 = 9.;
+
+    let mut Y = DMatrix::zeros(x.len(), 3);
+
+    Y.set_column(
+        0,
+        &x.map(|x: f64| a1 * (-x / tau1).exp() + a2 * (-x / tau2).exp() + a3),
+    );
+    Y.set_column(
+        1,
+        &x.map(|x: f64| b1 * (-x / tau1).exp() + b2 * (-x / tau2).exp() + b3),
+    );
+    Y.set_column(
+        2,
+        &x.map(|x: f64| c1 * (-x / tau1).exp() + c2 * (-x / tau2).exp() + c3),
+    );
+
+    let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
+    let problem = SeparableProblemBuilder::mrhs(model)
+        .observations(Y.clone())
+        .build()
+        .expect("building the lev mar problem must not fail");
+
+    let fit_result = LevMarSolver::default()
+        .fit(problem)
+        .expect("fitting must not fail");
+
+    assert_relative_eq!(fit_result.best_fit().unwrap(), Y, epsilon = 1e-5);
+
+    // extract the calculated paramters, because tau1 and tau2 might switch places here
+    let (tau1_index, tau2_index) =
+        if fit_result.nonlinear_parameters()[0] < fit_result.nonlinear_parameters()[1] {
+            (0, 1)
+        } else {
+            (1, 0)
+        };
+    let tau1_calc = fit_result.nonlinear_parameters()[tau1_index];
+    let tau2_calc = fit_result.nonlinear_parameters()[tau2_index];
+    let coeff = fit_result
+        .linear_coefficients()
+        .expect("linear coefficients must exist");
+    let a1_calc = coeff[tau1_index];
+    let a2_calc = coeff[tau2_index];
+    let a3_calc = coeff[2];
+    let b1_calc = coeff[3 + tau1_index];
+    let b2_calc = coeff[3 + tau2_index];
+    let b3_calc = coeff[5];
+    let c1_calc = coeff[6 + tau1_index];
+    let c2_calc = coeff[6 + tau2_index];
+    let c3_calc = coeff[8];
+
+    println!("true: a = [{a1},{a2},{a3}], b = [{b1},{b2},{b3}], c = [{c1},{c2},{c3}]");
+    println!(
+        "calc: a = [{a1_calc},{a2_calc},{a3_calc}], b = [{b1_calc},{b2_calc},{b3_calc}], c = [{c1_calc},{c2_calc},{c3_calc}]"
+    );
+
+    assert_relative_eq!(a1, a1_calc, epsilon = 1e-8);
+    assert_relative_eq!(a2, a2_calc, epsilon = 1e-8);
+    assert_relative_eq!(a3, a3_calc, epsilon = 1e-8);
+    assert_relative_eq!(b1, b1_calc, epsilon = 1e-8);
+    assert_relative_eq!(b2, b2_calc, epsilon = 1e-8);
+    assert_relative_eq!(b3, b3_calc, epsilon = 1e-8);
+    assert_relative_eq!(c1, c1_calc, epsilon = 1e-8);
+    assert_relative_eq!(c2, c2_calc, epsilon = 1e-8);
+    assert_relative_eq!(c3, c3_calc, epsilon = 1e-8);
+    assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
+    assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
+}
+
+#[test]
 fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit() {
     // I have python scripts using the lmfit package that allow me to test
     // my results.
