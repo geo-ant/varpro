@@ -97,72 +97,71 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn jacobian(&self) -> Option<Matrix<Model::ScalarType, Dyn, Dyn, Self::JacobianStorage>> {
         // TODO (Performance): make this more efficient by parallelizing
-        if let Some(CachedCalculations {
+        // but remember that just slapping rayon on the column_iter DOES NOT
+        // make it more efficient
+        let CachedCalculations {
             current_residuals: _,
             current_svd,
             linear_coefficients,
-        }) = self.cached.as_ref()
-        {
-            let data_cols = self.Y_w.ncols();
-            let parameter_count = self.model.parameter_count();
-            // this is not a great pattern, but the trait bounds on copy_from
-            // as of now prevent us from doing something more idiomatic
-            let mut jacobian_matrix = unsafe {
-                UninitMatrix::uninit(
-                    Dyn(self.model.output_len() * data_cols),
-                    Dyn(parameter_count),
-                )
-                .assume_init()
-            };
+        } = self.cached.as_ref()?;
 
-            let U = current_svd.u.as_ref()?; // will return None if this was not calculated
-            let U_t = U.transpose();
+        let data_cols = self.Y_w.ncols();
+        let parameter_count = self.model.parameter_count();
+        // this is not a great pattern, but the trait bounds on copy_from
+        // as of now prevent us from doing something more idiomatic
+        let mut jacobian_matrix = unsafe {
+            UninitMatrix::uninit(
+                Dyn(self.model.output_len() * data_cols),
+                Dyn(parameter_count),
+            )
+            .assume_init()
+        };
 
-            //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
-            //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
+        let U = current_svd.u.as_ref()?; // will return None if this was not calculated
+        let U_t = U.transpose();
 
-            // we use a functional style calculation here that is more easy to
-            // parallelize with rayon later on. The only disadvantage is that
-            // we don't short circuit anymore if there is an error in calculation,
-            // but since that is the sad path anyways, we don't care about a
-            // performance hit in the sad path.
-            let result: Result<Vec<()>, Model::Error> = jacobian_matrix
-                .column_iter_mut()
-                .enumerate()
-                .map(|(k, mut jacobian_col)| {
-                    // weighted derivative matrix
-                    let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
+        //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
+        //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
-                    // this orders the computations in a more efficient way for problems with multiple right hand sides,
-                    // which gives ~20-30% performance improvements for the benchmark cases
-                    let minus_ak = if data_cols <= parameter_count {
-                        let Dk_C = Dk * linear_coefficients;
-                        U * (&U_t * (&Dk_C)) - Dk_C
-                    } else {
-                        // this version is
-                        // 23-30% faster computations for MRHS benchmark
-                        (U * (&U_t * (&Dk)) - Dk) * linear_coefficients
-                    };
+        // we use a functional style calculation here that is more easy to
+        // parallelize with rayon later on. The only disadvantage is that
+        // we don't short circuit anymore if there is an error in calculation,
+        // but since that is the sad path anyways, we don't care about a
+        // performance hit in the sad path.
+        let result: Result<Vec<()>, Model::Error> = jacobian_matrix
+            .column_iter_mut()
+            .enumerate()
+            .map(|(k, mut jacobian_col)| {
+                // weighted derivative matrix
+                let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
 
-                    //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
-                    //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
-                    //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
+                // this orders the computations in a more efficient way for problems with multiple right hand sides,
+                // which gives ~20-30% performance improvements for the benchmark cases
+                let minus_ak = if data_cols <= parameter_count {
+                    let Dk_C = Dk * linear_coefficients;
+                    U * (&U_t * (&Dk_C)) - Dk_C
+                } else {
+                    // this version is
+                    // 23-30% faster computations for MRHS benchmark
+                    (U * (&U_t * (&Dk)) - Dk) * linear_coefficients
+                };
 
-                    //@todo CAUTION this relies on the fact that the
-                    //elements are ordered in column major order but it avoids a copy
-                    copy_matrix_to_column(minus_ak, &mut jacobian_col);
-                    Ok(())
-                })
-                .collect::<Result<_, _>>();
+                //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
+                //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
+                //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
 
-            // we need this check to make sure the jacobian is returned
-            // as None on error.
-            result.ok()?;
+                //@todo CAUTION this relies on the fact that the
+                //elements are ordered in column major order but it avoids a copy
+                copy_matrix_to_column(minus_ak, &mut jacobian_col);
+                Ok(())
+            })
+            .collect::<Result<_, _>>();
 
-            Some(jacobian_matrix)
-        } else {
-            None
-        }
+        // we need this check to make sure the jacobian is returned
+        // as None on error.
+        result.ok()?;
+
+        Some(jacobian_matrix)
     }
 }
 
@@ -257,15 +256,14 @@ where
             return Err(FitResult::new(problem, minimization_report));
         };
 
-        if let Ok(statistics) = FitStatistics::try_calculate(
+        match FitStatistics::try_calculate(
             problem.model(),
             problem.weighted_data(),
             problem.weights(),
             coefficients,
         ) {
-            Ok((FitResult::new(problem, minimization_report), statistics))
-        } else {
-            Err(FitResult::new(problem, minimization_report))
+            Ok(statistics) => Ok((FitResult::new(problem, minimization_report), statistics)),
+            Err(_) => Err(FitResult::new(problem, minimization_report)),
         }
     }
 }
@@ -276,13 +274,11 @@ where
     Model::ScalarType: RealField + Float,
 {
     fn default() -> Self {
-        Self {
-            solver: LevenbergMarquardt::default(),
-        }
+        Self::with_solver(Default::default())
     }
 }
 
-/// copy the
+/// copy the given matrix to a matrix column by stacking its column on top of each other
 fn copy_matrix_to_column<T: Scalar + std::fmt::Display + Clone, S: RawStorageMut<T, Dyn>>(
     source: DMatrix<T>,
     target: &mut Matrix<T, Dyn, U1, S>,
