@@ -1,8 +1,8 @@
 use self::numeric_traits::CastF64;
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
-    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix,
-    OMatrix, OVector, RealField, Scalar, VectorView, U0, U1,
+    ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix, OMatrix, OVector,
+    RealField, Scalar, U0, U1, VectorView, allocator::Allocator,
 };
 use num_traits::{Float, FromPrimitive, One, Zero};
 use thiserror::Error as ThisError;
@@ -224,11 +224,11 @@ where
     /// # Arguments
     ///
     /// * `probability` the confidence level of the confidence interval, expressed
-    ///    as a probability value between 0 and 1. Note that it can't be 0 or 1, but
-    ///    anything in between. Since least squares fitting assumes Gaussian error
-    ///    distributions, we can use the quantiles of the normal distribution to
-    ///    relate this to often used "number of sigmas". For example the probability
-    ///    `$68.3 \% = 0.683$` corresponds to (approximately) `$1\sigma$`.
+    ///   as a probability value between 0 and 1. Note that it can't be 0 or 1, but
+    ///   anything in between. Since least squares fitting assumes Gaussian error
+    ///   distributions, we can use the quantiles of the normal distribution to
+    ///   relate this to often used "number of sigmas". For example the probability
+    ///   `$68.3 \% = 0.683$` corresponds to (approximately) `$1\sigma$`.
     ///
     /// # Returns
     ///
@@ -245,9 +245,9 @@ where
     /// ```no_run
     /// # let model : varpro::model::SeparableModel<f64> = unimplemented!();
     /// # let y = nalgebra::DVector::from_vec(vec![0.0, 10.0]);
-    /// use varpro::solvers::levmar::LevMarProblemBuilder;
+    /// use varpro::problem::*;
     /// use varpro::solvers::levmar::LevMarSolver;
-    /// let problem = LevMarProblemBuilder::new(model)
+    /// let problem = SeparableProblemBuilder::new(model)
     ///               .observations(y)
     ///               .build()
     ///               .unwrap();
@@ -369,7 +369,8 @@ where
             linear_coefficients.ncols(),
             "Data dims and linear coefficient dims don't match. Indicates logic error in library!"
         );
-        debug_assert_eq!(weighted_data.nrows(),
+        debug_assert_eq!(
+            weighted_data.nrows(),
             model.output_len(),
             "model output dimensions and data dimensions do not match. Indicates a programming error in this library!"
         );

@@ -20,7 +20,7 @@ fn builder_fails_for_invalid_model_parameters() {
     let result = SeparableModelBuilder::<f64>::new(Vec::<String>::default()).build();
     assert_matches!(
         result,
-        Err(ModelBuildError::EmptyParameters { .. }),
+        Err(ModelBuildError::EmptyParameters),
         "Creating model with empty parameters must fail with correct error"
     );
 
@@ -29,7 +29,7 @@ fn builder_fails_for_invalid_model_parameters() {
             .build();
     assert_matches!(
         result,
-        Err(ModelBuildError::EmptyModel { .. }),
+        Err(ModelBuildError::EmptyModel),
         "Creating model without functions must fail with correct error"
     );
 }

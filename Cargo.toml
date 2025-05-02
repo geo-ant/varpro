@@ -1,8 +1,8 @@
 [package]
 name = "varpro"
-version = "0.11.0"
+version = "0.12.0"
 authors = ["geo-ant"]
-edition = "2021"
+edition = "2024"
 license = "MIT"
 homepage = "https://github.com/geo-ant/varpro"
 repository = "https://github.com/geo-ant/varpro"
@@ -20,7 +20,6 @@ levenberg-marquardt = "0.14"
 nalgebra = { version = "0.33", features = []}
 num-traits = "0.2"
 distrs = "0.2"
-rayon = {version = "1.6", optional = true}
 
 [dev-dependencies]
 approx = "0.5"
@@ -33,10 +32,6 @@ mockall = "0.11"
 rand = "0.8"
 byteorder = "1.5"
 
-[features]
-# additional solvers which use multithreading with rayon for some part of the calculations
-parallel = ["rayon", "nalgebra/rayon"]
-
 [[bench]]
 name = "double_exponential_without_noise"
 harness = false
@@ -44,7 +39,6 @@ harness = false
 [[bench]]
 name = "multiple_right_hand_sides"
 harness = false
-required-features = ["parallel"]
 
 [package.metadata.docs.rs]
 # To build locally use

@@ -7,7 +7,7 @@ use crate::{
 
 use super::{calc_correlation_matrix, concat_colwise};
 use approx::assert_relative_eq;
-use nalgebra::{vector, DMatrix, DVector, Dyn, OMatrix, U0, U1, U2, U3, U4, U5, U6, U7};
+use nalgebra::{DMatrix, DVector, Dyn, OMatrix, U0, U1, U2, U3, U4, U5, U6, U7, vector};
 #[test]
 fn matrix_concatenation_for_dynamic_matrices() {
     // two DMatrix instances with the same number of rows but

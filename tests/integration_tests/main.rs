@@ -9,11 +9,12 @@ use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::levmar_mrhs::DoubleExponentialModelWithConstantOffsetLevmarMrhs;
 use shared_test_code::linspace;
-use shared_test_code::models::o_leary_example_model;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
 use shared_test_code::models::DoubleExponentialDecayFittingWithOffsetLevmar;
 use shared_test_code::models::OLearyExampleModel;
+use shared_test_code::models::o_leary_example_model;
 use varpro::prelude::*;
+use varpro::problem::SeparableProblemBuilder;
 use varpro::solvers::levmar::*;
 
 #[test]
@@ -103,82 +104,14 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let c1 = 4.;
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
-                 // generate some data without noise
+    // generate some data without noise
     let y = evaluate_complete_model_at_params(
         &mut model,
         DVector::from_vec(vec![tau1, tau2]),
         &DVector::from(vec![c1, c2, c3]),
     );
 
-    let problem = LevMarProblemBuilder::new(model)
-        .observations(y.clone())
-        .build()
-        .expect("Building valid problem should not panic");
-    _ = format!("{:?}", problem);
-
-    let (fit_result, statistics) = LevMarSolver::default()
-        .fit_with_statistics(problem)
-        .expect("fit must complete succesfully");
-    assert!(
-        fit_result.minimization_report.termination.was_successful(),
-        "Levenberg Marquardt did not converge"
-    );
-    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-5);
-    assert_relative_eq!(
-        fit_result.problem.residuals().unwrap(),
-        statistics.weighted_residuals(),
-        epsilon = 1e-5
-    );
-
-    // extract the calculated paramters, because tau1 and tau2 might switch places here
-    let (tau1_index, tau2_index) =
-        if fit_result.nonlinear_parameters()[0] < fit_result.nonlinear_parameters()[1] {
-            (0usize, 1usize)
-        } else {
-            (1, 0)
-        };
-    let tau1_calc = fit_result.nonlinear_parameters()[tau1_index];
-    let tau2_calc = fit_result.nonlinear_parameters()[tau2_index];
-    let c = fit_result
-        .linear_coefficients()
-        .expect("linear coeffs must exist");
-    let c1_calc = c[tau1_index];
-    let c2_calc = c[tau2_index];
-    let c3_calc = c[2];
-
-    // assert that the calculated coefficients and nonlinear model parameters are correct
-    assert_relative_eq!(c1, c1_calc, epsilon = 1e-8);
-    assert_relative_eq!(c2, c2_calc, epsilon = 1e-8);
-    assert_relative_eq!(c3, c3_calc, epsilon = 1e-8);
-    assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
-    assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
-}
-
-#[test]
-#[cfg(feature = "parallel")]
-fn double_exponential_fitting_without_noise_produces_accurate_results_parallel_computation() {
-    // the independent variable
-    let x = linspace(0., 12.5, 1024);
-    let tau1_guess = 2.;
-    let tau2_guess = 6.5;
-    let mut model =
-        get_double_exponential_model_with_constant_offset(x, vec![tau1_guess, tau2_guess]);
-    _ = format!("{:?}", model);
-    // true parameters
-    let tau1 = 1.;
-    let tau2 = 3.;
-    // true coefficients
-    let c1 = 4.;
-    let c2 = 2.5;
-    let c3 = 1.; //<- coefficient of constant offset
-                 // generate some data without noise
-    let y = evaluate_complete_model_at_params(
-        &mut model,
-        DVector::from_vec(vec![tau1, tau2]),
-        &DVector::from(vec![c1, c2, c3]),
-    );
-
-    let problem = LevMarProblemBuilder::new_parallel(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
@@ -231,7 +164,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
     let c1 = 4.;
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
-                 // the independent variable
+    // the independent variable
     let x = linspace(0., 12.5, 1024);
     // guess for nonlinear params
     let tau1_guess = 2.;
@@ -246,79 +179,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_handr
         &OVector::from_vec_generic(Dyn(base_func_count), U1, vec![c1, c2, c3]),
     );
 
-    let problem = LevMarProblemBuilder::new(model)
-        .observations(y.clone())
-        .build()
-        .expect("Building valid problem should not panic");
-
-    let (fit_result, statistics) = LevMarSolver::default()
-        .fit_with_statistics(problem)
-        .expect("fitting must exit succesfully");
-
-    assert_relative_eq!(
-        fit_result.problem.residuals().unwrap(),
-        statistics.weighted_residuals(),
-        epsilon = 1e-5
-    );
-
-    assert_relative_eq!(fit_result.best_fit().unwrap(), y, epsilon = 1e-5);
-
-    // extract the calculated paramters, because tau1 and tau2 might switch places here
-    let (tau1_index, tau2_index) =
-        if fit_result.nonlinear_parameters()[0] < fit_result.nonlinear_parameters()[1] {
-            (0usize, 1usize)
-        } else {
-            (1, 0)
-        };
-    let tau1_calc = fit_result.nonlinear_parameters()[tau1_index];
-    let tau2_calc = fit_result.nonlinear_parameters()[tau2_index];
-    let c = fit_result
-        .linear_coefficients()
-        .expect("linear coeffs must exist");
-    let c1_calc = c[tau1_index];
-    let c2_calc = c[tau2_index];
-    let c3_calc = c[2];
-
-    // assert that the calculated coefficients and nonlinear model parameters are correct
-    assert_relative_eq!(c1, c1_calc, epsilon = 1e-8);
-    assert_relative_eq!(c2, c2_calc, epsilon = 1e-8);
-    assert_relative_eq!(c3, c3_calc, epsilon = 1e-8);
-    assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
-    assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
-
-    assert!(
-        fit_result.minimization_report.termination.was_successful(),
-        "Termination not successful"
-    );
-}
-
-#[test]
-#[cfg(feature = "parallel")]
-fn double_exponential_fitting_without_noise_produces_accurate_results_with_handrolled_model_parallel(
-) {
-    // true parameters
-    let tau1 = 1.;
-    let tau2 = 3.;
-    // true coefficients
-    let c1 = 4.;
-    let c2 = 2.5;
-    let c3 = 1.; //<- coefficient of constant offset
-                 // the independent variable
-    let x = linspace(0., 12.5, 1024);
-    // guess for nonlinear params
-    let tau1_guess = 2.;
-    let tau2_guess = 6.5;
-
-    let mut model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
-    let base_func_count = model.base_function_count();
-    // generate some data without noise
-    let y = evaluate_complete_model_at_params(
-        &mut model,
-        OVector::from_column_slice_generic(Dyn(2), U1, &[tau1, tau2]),
-        &OVector::from_vec_generic(Dyn(base_func_count), U1, vec![c1, c2, c3]),
-    );
-
-    let problem = LevMarProblemBuilder::new_parallel(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
@@ -378,7 +239,7 @@ fn double_check_to_make_sure_we_can_rely_on_the_model_to_generate_ground_truth()
     let c1 = 4.;
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
-                 // generate some data without noise
+    // generate some data without noise
     let y = evaluate_complete_model_at_params(
         &mut model,
         DVector::from_vec(vec![tau1, tau2]),
@@ -403,7 +264,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results_with_leven
     let c1 = 4.;
     let c2 = 2.5;
     let c3 = 1.; //<- coefficient of constant offset
-                 // generate some data without noise
+    // generate some data without noise
     let y = evaluate_complete_model_at_params(
         &mut model,
         DVector::from_vec(vec![tau1, tau2]),
@@ -560,7 +421,7 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     );
 
     let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
-    let problem = LevMarProblemBuilder::mrhs(model)
+    let problem = SeparableProblemBuilder::mrhs(model)
         .observations(Y.clone())
         .build()
         .expect("building the lev mar problem must not fail");
@@ -602,8 +463,7 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
 
 #[test]
 #[allow(non_snake_case)]
-#[cfg(feature = "parallel")]
-fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results_parallel() {
+fn triple_exponential_model_with_mrhs_produces_accurate_results_with_more_data_cols_than_params() {
     let x = linspace(0., 12.5, 20);
     let tau1 = 1.;
     let tau2 = 3.;
@@ -614,10 +474,15 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     let a2 = 4.;
     let a3 = 0.2;
     // coefficients for the second dataset
-    let b1 = 5.;
-    let b2 = 1.;
-    let b3 = 9.;
-    let mut Y = DMatrix::zeros(x.len(), 2);
+    let b1 = 10.;
+    let b2 = 12.;
+    let b3 = 18.;
+    // coefficients for third dataset
+    let c1 = 5.;
+    let c2 = 1.;
+    let c3 = 9.;
+
+    let mut Y = DMatrix::zeros(x.len(), 3);
 
     Y.set_column(
         0,
@@ -627,9 +492,13 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
         1,
         &x.map(|x: f64| b1 * (-x / tau1).exp() + b2 * (-x / tau2).exp() + b3),
     );
+    Y.set_column(
+        2,
+        &x.map(|x: f64| c1 * (-x / tau1).exp() + c2 * (-x / tau2).exp() + c3),
+    );
 
     let model = DoubleExpModelWithConstantOffsetSepModel::new(x, (tau1_guess, tau2_guess));
-    let problem = LevMarProblemBuilder::mrhs_parallel(model)
+    let problem = SeparableProblemBuilder::mrhs(model)
         .observations(Y.clone())
         .build()
         .expect("building the lev mar problem must not fail");
@@ -658,6 +527,14 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     let b1_calc = coeff[3 + tau1_index];
     let b2_calc = coeff[3 + tau2_index];
     let b3_calc = coeff[5];
+    let c1_calc = coeff[6 + tau1_index];
+    let c2_calc = coeff[6 + tau2_index];
+    let c3_calc = coeff[8];
+
+    println!("true: a = [{a1},{a2},{a3}], b = [{b1},{b2},{b3}], c = [{c1},{c2},{c3}]");
+    println!(
+        "calc: a = [{a1_calc},{a2_calc},{a3_calc}], b = [{b1_calc},{b2_calc},{b3_calc}], c = [{c1_calc},{c2_calc},{c3_calc}]"
+    );
 
     assert_relative_eq!(a1, a1_calc, epsilon = 1e-8);
     assert_relative_eq!(a2, a2_calc, epsilon = 1e-8);
@@ -665,6 +542,9 @@ fn double_exponential_model_with_handrolled_model_mrhs_produces_accurate_results
     assert_relative_eq!(b1, b1_calc, epsilon = 1e-8);
     assert_relative_eq!(b2, b2_calc, epsilon = 1e-8);
     assert_relative_eq!(b3, b3_calc, epsilon = 1e-8);
+    assert_relative_eq!(c1, c1_calc, epsilon = 1e-8);
+    assert_relative_eq!(c2, c2_calc, epsilon = 1e-8);
+    assert_relative_eq!(c3, c3_calc, epsilon = 1e-8);
     assert_relative_eq!(tau1, tau1_calc, epsilon = 1e-8);
     assert_relative_eq!(tau2, tau2_calc, epsilon = 1e-8);
 }
@@ -687,7 +567,7 @@ fn double_exponential_model_with_noise_gives_same_confidence_interval_as_lmfit()
     let conf_radius = read_vec_f64("test_assets/multiexp_decay/conf_1000_64bit.raw", Some(1000));
     let covmat = read_vec_f64("test_assets/multiexp_decay/covmat_5x5_64bit.raw", Some(25));
     let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(DVector::from_vec(y))
         .build()
         .expect("building the lev mar problem must not fail");
@@ -755,7 +635,7 @@ fn weighted_double_exponential_model_with_noise_gives_same_confidence_interval_a
         Some(25),
     );
     let model = DoubleExpModelWithConstantOffsetSepModel::new(DVector::from_vec(x), (1., 7.));
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         // in the python script we also apply these weights
         .weights(y.map(|v| 1. / v.sqrt()))
@@ -845,7 +725,7 @@ fn oleary_example_with_handrolled_model_produces_correct_results() {
     let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
 
     let model = OLearyExampleModel::new(t, initial_guess);
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         .weights(w)
         .build()
@@ -960,7 +840,7 @@ fn test_oleary_example_with_separable_model() {
     let w = DVector::from_vec(vec![1.0, 1.0, 1.0, 0.5, 0.5, 1.0, 0.5, 1.0, 0.5, 0.5]);
 
     let model = o_leary_example_model(t, initial_guess);
-    let problem = LevMarProblemBuilder::new(model)
+    let problem = SeparableProblemBuilder::new(model)
         .observations(y.clone())
         .weights(w)
         .build()

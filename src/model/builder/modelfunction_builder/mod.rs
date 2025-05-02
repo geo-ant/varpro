@@ -42,9 +42,9 @@ where
     /// # Arguments
     ///
     /// * `model_parameters`: the model parameters of the model to which this function belongs. This is important
-    ///    so the builder understands how the parameters of the function relate to the parameters of the model.
+    ///   so the builder understands how the parameters of the function relate to the parameters of the model.
     /// * `function_parameters`: the parameters that the function takes. Those must be in the order
-    ///    of the parameter vector. The paramters must not be empty, nor may they contain duplicates
+    ///   of the parameter vector. The paramters must not be empty, nor may they contain duplicates
     /// * `function`: the actual function.
     ///
     /// # Result
@@ -92,9 +92,9 @@ where
     /// Add a derivative for the function with respect to the given parameter.
     /// # Arguments
     /// * `parameter`: the parameter with respect to which the derivative is taken.
-    ///    The parameter must be inside the set of model parameters. Furthermore the
+    ///   The parameter must be inside the set of model parameters. Furthermore the
     /// * `derivative`: the partial derivative of the function with which the
-    ///    builder was created.
+    ///   builder was created.
     pub fn partial_deriv<FuncType, ArgList>(mut self, parameter: &str, derivative: FuncType) -> Self
     where
         FuncType: BasisFunction<ScalarType, ArgList> + 'static,
@@ -183,7 +183,9 @@ where
                 // this is a sanity check. if this came this far, there should not be an error here
                 if index_mapping.len() != modelfunction.derivatives.len() {
                     // this also should never be the case and indicates a programming error in the library
-                    panic!("Incorrect number of derivatives in set. This indicates a logic error in this library.");
+                    panic!(
+                        "Incorrect number of derivatives in set. This indicates a logic error in this library."
+                    );
                 }
                 // otherwise
                 Ok(())

@@ -8,17 +8,17 @@
 ![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 [![crates](https://raw.githubusercontent.com/geo-ant/user-content/refs/heads/main/ko-fi-support.svg)](https://ko-fi.com/geoant)
 
-Nonlinear function fitting made simple. This library provides robust and fast 
-least-squares fitting of a wide class of model functions to data.
-It uses the VarPro algorithm to achieve this, hence the name.
+**Nonlinear function fitting made simple.**
 
 ## Introduction
 
-This crate implements a powerful algorithm to fit model functions to data, 
-but it is restricted to so called _separable_ models. The lack of formulas on 
-this  site makes it hard to go into detail, but a brief overview is provided in
-the next sections. [Refer to the documentation](https://docs.rs/varpro/) for all
-the meaty details including the math.
+This crate uses a powerful algorithm for fitting so-called _separable_ model
+functions to data. It strives to provides both an easy to use interface with
+great performance, as well as an advanced interface for maximum performance.
+
+The lack of formulas on this  site makes it hard to dive deep, but a brief
+overview is provided in the next sections. [Refer to the documentation](https://docs.rs/varpro/)
+for all the meaty details, including the math.
 
 ### What are Separable Models?
 
@@ -29,12 +29,10 @@ which is a notoriously ill-conditioned problem.
 
 ### What is VarPro?
 
-Variable Projection (VarPro) is an algorithm that tatkes advantage of
-the fact that its fitting problem can be separated into linear and nonlinear parameters.
-First, the linear parameters are eliminated using some clever linear algebra. Then,
-the fitting problem is rewritten so that it depends only on the nonlinear parameters.
-Finally, this reduced problem is solved by using a general purpose nonlinear minimization algorithm,
-such as Levenberg-Marquardt (LM).
+Variable Projection (VarPro) is an algorithm that takes advantage of the separable
+nature of the model to fit. Using clever math, the fitting problem is rewritten so that
+it depends only on the nonlinear parameters of the separable model. This reduced problem
+is solved by using a nonlinear minimization algorithm, such as Levenberg-Marquardt.
 
 ### When Should You Give it a Try?
 
@@ -55,7 +53,8 @@ with constant offset to a data vector `y` obtained at time points `t`.
 
 ```rust
 use varpro::prelude::*;
-use varpro::solvers::levmar::{LevMarProblemBuilder, LevMarSolver};
+use varpro::solvers::levmar::LevMarSolver;
+use varpro::problem::SeparableProblemBuilder;
 use nalgebra::{dvector,DVector};
 
 // Define the exponential decay e^(-t/tau).
@@ -103,7 +102,7 @@ let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
   .build()
   .unwrap();
 // 2. Cast the fitting problem as a nonlinear least squares minimization problem
-let problem = LevMarProblemBuilder::new(model)
+let problem = SeparableProblemBuilder::new(model)
   .observations(y)
   .build()
   .unwrap();
@@ -117,19 +116,20 @@ let alpha = fit_result.nonlinear_parameters();
 let c = fit_result.linear_coefficients().unwrap();
 ```
 
-For more in depth examples, please refer to the crate documentation.
+For more in-depth examples, please refer to the crate documentation.
 
 ### Fit Statistics
 
-Additionally to the `fit` member function, the `LevMarSolver` provides a 
-`fit_with_statistics` function that calculates quite a bit of useful additional statistical
+Additionally to the `[fit](crate::solvers::LevMarSolver::fit)` member function,
+the `[crate::solvers::levmar::LevMarSolver]` provides a `fit_with_statistics`
+function that calculates quite a bit of useful additional statistical
 information.
 
 ### Global Fitting of Multiple Right Hand Sides
 
 In the example above, we have passed a single column vector as the observations.
 The library also allows fitting multiple right hand sides, by constructing a
-problem via `LevMarProblemBuilder::mrhs`. When fitting multiple right hand sides,
+problem via [crate::problem::SeparableProblem::mrhs]. When fitting multiple right hand sides,
 `vapro` will performa a _global fit_, in which the nonlinear parameters are optimized
 across all right hand sides, but linear coefficients of the fit are optimized for
 each right hand side individually.
@@ -137,7 +137,7 @@ each right hand side individually.
 This is another application where varpro really shines, since it can take advantage
 of the separable nature of the problem. It allows us to perform a global fit over thousands,
 or even tens of thousands of right hand sides in reasonable time (fractions of seconds to minutes),
-where conventional purely nonlinear solvers must perform much more work.
+where conventional nonlinear solvers must perform much more work.
 
 ### Maximum Performance and Advanced Use Cases
 

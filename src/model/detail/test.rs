@@ -109,13 +109,15 @@ fn test_create_wrapped_function_gives_error_for_empty_function_parameters_or_dup
         ),
         "creating wrapper function with duplicates in function params should report error"
     );
-    assert!(matches!(
-        create_wrapped_basis_function(
-            &model_parameters,
-            &["a","b","c","d","e"],
-            dummy_unit_function_for_x
+    assert!(
+        matches!(
+            create_wrapped_basis_function(
+                &model_parameters,
+                &["a", "b", "c", "d", "e"],
+                dummy_unit_function_for_x
+            ),
+            Err(ModelBuildError::IncorrectParameterCount { .. })
         ),
-        Err(ModelBuildError::IncorrectParameterCount {..})),
         "creating wrapper function with a different number of function parameters than the argument list of function takes"
     );
 }

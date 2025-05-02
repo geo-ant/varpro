@@ -1,18 +1,17 @@
 use crate::prelude::*;
-use crate::solvers::levmar::LevMarProblem;
+use crate::problem::SeparableProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Owned, Scalar};
+use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Scalar};
 use num_traits::{Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
 
-use super::PARALLEL_NO;
-#[cfg(feature = "parallel")]
-use super::PARALLEL_YES;
+use super::{MultiRhs, RhsType, SingleRhs};
 
 /// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
+#[allow(missing_docs)]
 pub enum LevMarBuilderError {
     /// the data for y variable was not given to the builder
     #[error("Right hand side(s) not provided")]
@@ -31,7 +30,11 @@ pub enum LevMarBuilderError {
     ZeroLengthVector,
 
     /// the model has a different number of parameters than the provided initial guesses
-    #[error("Initial guess vector must have same length as parameters. Model has {} parameters and {} initial guesses were provided.",model_count, provided_count)]
+    #[error(
+        "Initial guess vector must have same length as parameters. Model has {} parameters and {} initial guesses were provided.",
+        model_count,
+        provided_count
+    )]
     InvalidParameterCount {
         model_count: usize,
         provided_count: usize,
@@ -42,7 +45,7 @@ pub enum LevMarBuilderError {
     InvalidLengthOfWeights,
 }
 
-/// A builder structure to create a [LevMarProblem](super::LevMarProblem), which can be used for
+/// A builder structure to create a [SeparableProblem](super::SeparableProblem), which can be used for
 /// fitting a separable model to data.
 /// # Example
 /// The following code shows how to create an unweighted least squares problem to fit the separable model
@@ -52,9 +55,9 @@ pub enum LevMarBuilderError {
 /// ```rust
 /// # use nalgebra::{DVector, Scalar};
 /// # use varpro::model::SeparableModel;
-/// # use varpro::solvers::levmar::{LevMarProblem, LevMarProblemBuilder};
+/// # use varpro::problem::*;
 /// # fn model(model : SeparableModel<f64>,y: DVector<f64>) {
-///   let problem = LevMarProblemBuilder::new(model)
+///   let problem = SeparableProblemBuilder::new(model)
 ///                 .observations(y)
 ///                 .build()
 ///                 .unwrap();
@@ -63,20 +66,20 @@ pub enum LevMarBuilderError {
 ///
 /// # Building a Model
 ///
-/// A new builder is constructed with the [new](LevMarProblemBuilder::new) constructor. It must be filled with
+/// A new builder is constructed with the [new](SeparableProblemBuilder::new) constructor. It must be filled with
 /// content using the methods described in the following. After all mandatory fields have been filled,
-/// the [build](LevMarProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
+/// the [build](SeparableProblemBuilder::build) method can be called. This returns a [Result](std::result::Result)
 /// type that contains the finished model iff all mandatory fields have been set with valid values. Otherwise
 /// it contains an error variant.
 ///
 /// ## Multiple Right Hand Sides
 ///
 /// We can also construct a problem with multiple right hand sides, using the
-/// [mrhs](LevMarProblemBuilder::mrhs) constructor, see [LevMarProblem] for
+/// [mrhs](SeparableProblemBuilder::mrhs) constructor, see [SeparableProblem] for
 /// additional details.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct LevMarProblemBuilder<Model, const MRHS: bool, const PAR: bool>
+pub struct SeparableProblemBuilder<Model, Rhs: RhsType>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -96,9 +99,10 @@ where
     /// all weights were 1.
     /// Must have the same length as x and y.
     weights: Weights<Model::ScalarType, Dyn>,
+    phantom: std::marker::PhantomData<Rhs>,
 }
 
-impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_NO>
+impl<Model> SeparableProblemBuilder<Model, SingleRhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -108,47 +112,19 @@ where
 {
     /// Create a new builder based on the given model for a problem
     /// with a **single right hand side**. This is the standard use case,
-    /// where the data is a vector that is fitted by the model. Calculations
-    /// are run in a _single threaded_ fashion, see also [`LevMarProblemBuilder::new_parallel`].
-    ///
+    /// where the data is a vector that is fitted by the model.
     pub fn new(model: Model) -> Self {
         Self {
             Y: None,
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
+            phantom: Default::default(),
         }
     }
 }
 
-#[cfg(feature = "parallel")]
-impl<Model> LevMarProblemBuilder<Model, false, PARALLEL_YES>
-where
-    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
-    <Model::ScalarType as ComplexField>::RealField: Float,
-    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
-        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
-    Model: SeparableNonlinearModel,
-{
-    /// Create a new builder based on the given model for a problem
-    /// with a **single right hand side**, that tries to make use
-    /// of parallelism in the calculations.
-    ///
-    /// # Attention: Parallel calculations might actually be slower!
-    ///
-    /// Requesting parallelism can slow down the calculations significantly.
-    /// As always with performance questions, try it out and *measure*!
-    pub fn new_parallel(model: Model) -> Self {
-        Self {
-            Y: None,
-            separable_model: model,
-            epsilon: None,
-            weights: Weights::default(),
-        }
-    }
-}
-
-impl<Model, const PAR: bool> LevMarProblemBuilder<Model, false, PAR>
+impl<Model> SeparableProblemBuilder<Model, SingleRhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -172,7 +148,7 @@ where
     }
 }
 
-impl<Model> LevMarProblemBuilder<Model, true, PARALLEL_NO>
+impl<Model> SeparableProblemBuilder<Model, MultiRhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -221,38 +197,12 @@ where
             separable_model: model,
             epsilon: None,
             weights: Weights::default(),
+            phantom: Default::default(),
         }
     }
 }
 
-#[cfg(feature = "parallel")]
-impl<Model> LevMarProblemBuilder<Model, true, true>
-where
-    Model::ScalarType: Scalar + ComplexField + Zero + Copy,
-    <Model::ScalarType as ComplexField>::RealField: Float,
-    <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
-        Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
-    Model: SeparableNonlinearModel,
-{
-    /// Create a new builder based on the given model
-    /// for a problem with **multiple right hand sides** and perform a global
-    /// fit, see also [`LevMarProblemBuilder::mrhs`](crate::solvers::levmar::LevMarProblemBuilder::mrhs)
-    /// for an explanation how to order the observations into a matrix.
-    ///
-    /// This approach tries to increase the speed by using multithreaded calculations.
-    /// **Attention**: using multithreading might actually be slower,
-    /// so always try it for your usecase and measure!
-    pub fn mrhs_parallel(model: Model) -> Self {
-        Self {
-            Y: None,
-            separable_model: model,
-            epsilon: None,
-            weights: Weights::default(),
-        }
-    }
-}
-
-impl<Model, const PAR: bool> LevMarProblemBuilder<Model, true, PAR>
+impl<Model> SeparableProblemBuilder<Model, MultiRhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -275,7 +225,7 @@ where
     }
 }
 
-impl<Model, const MRHS: bool, const PAR: bool> LevMarProblemBuilder<Model, MRHS, PAR>
+impl<Model, Rhs: RhsType> SeparableProblemBuilder<Model, Rhs>
 where
     Model::ScalarType: Scalar + ComplexField + Zero + Copy,
     <Model::ScalarType as ComplexField>::RealField: Float,
@@ -322,20 +272,10 @@ where
     /// * `$\vec{x}$` and `$\vec{y}$` have a nonzero number of elements
     /// * the length of the initial guesses vector is the same as the number of model parameters
     /// # Returns
-    /// If all prerequisites are fulfilled, returns a [LevMarProblem](super::LevMarProblem) with the given
+    /// If all prerequisites are fulfilled, returns a [SeparableProblem](super::SeparableProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<LevMarProblem<Model, MRHS, PAR>, LevMarBuilderError>
-    //@note(geo) both the parallel and non parallel model implement the LeastSquaresProblem trait,
-    // but the trait solver cannot figure that out without this extra hint.
-    where
-        LevMarProblem<Model, MRHS, PAR>: LeastSquaresProblem<
-            Model::ScalarType,
-            Dyn,
-            Dyn,
-            ParameterStorage = Owned<Model::ScalarType, Dyn>,
-        >,
-    {
+    pub fn build(self) -> Result<SeparableProblem<Model, Rhs>, LevMarBuilderError> {
         // and assign the defaults to the values we don't have
         let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
         let model = self.separable_model;
@@ -369,13 +309,14 @@ where
         let params = model.params();
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
-        let mut problem = LevMarProblem {
+        let mut problem = SeparableProblem {
             // these parameters all come from the builder
             Y_w,
             model,
             svd_epsilon: epsilon,
             cached: None,
             weights,
+            phantom: Default::default(),
         };
         problem.set_params(&params);
 

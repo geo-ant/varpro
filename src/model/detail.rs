@@ -82,9 +82,9 @@ where
 /// of model parameters and dispatch them to our model function
 /// # Arguments
 /// * `model_parameters`: the parameters that the complete model that this function belongs to
-///    depends on
+///   depends on
 /// * `function_parameters`: the parameters (in right to left order) that the basisfunction depends
-///    on. Must be a subset of the model parameters.
+///   on. Must be a subset of the model parameters.
 /// * `function` a basis function that depends on a number of parameters
 ///
 /// # Result
