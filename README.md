@@ -13,8 +13,9 @@
 ## Introduction
 
 This crate uses a powerful algorithm for fitting so-called _separable_ model
-functions to data. It strives to provides both an easy to use interface with
-great performance, as well as an advanced interface for maximum performance.
+functions to data. It strives to provide both an easy to use interface with
+great out-of-the-box performance, as well as an advanced interface for maximum
+performance.
 
 The lack of formulas on this  site makes it hard to dive deep, but a brief
 overview is provided in the next sections. [Refer to the documentation](https://docs.rs/varpro/)
@@ -120,17 +121,16 @@ For more in-depth examples, please refer to the crate documentation.
 
 ### Fit Statistics
 
-Additionally to the `[fit](crate::solvers::LevMarSolver::fit)` member function,
-the `[crate::solvers::levmar::LevMarSolver]` provides a `fit_with_statistics`
-function that calculates quite a bit of useful additional statistical
-information.
+Additionally to the `fit` member function,
+the `LevMarSolver` provides a `fit_with_statistics` function that calculates
+an extra bit of useful statistical information.
 
 ### Global Fitting of Multiple Right Hand Sides
 
 In the example above, we have passed a single column vector as the observations.
 The library also allows fitting multiple right hand sides, by constructing a
-problem via [crate::problem::SeparableProblem::mrhs]. When fitting multiple right hand sides,
-`vapro` will performa a _global fit_, in which the nonlinear parameters are optimized
+problem via `SeparableProblem::mrhs`. When fitting multiple right hand sides,
+`varpro` will performa a _global fit_, in which the nonlinear parameters are optimized
 across all right hand sides, but linear coefficients of the fit are optimized for
 each right hand side individually.
 
@@ -157,7 +157,7 @@ was created for ease of use _and_ performance, but it has some limitations by de
 ## Acknowledgements
 
 I am grateful to Professor [Dianne P. O'Leary](http://www.cs.umd.edu/~oleary/)
-and [Bert W. Rust &#10013;](https://math.nist.gov/~BRust/) who published the paper that 
+and [Bert W. Rust &#10013;](https://math.nist.gov/~BRust/), who published the paper that 
 enabled me to understand varpro and come up with this implementation.
 Professor O'Leary also graciously answered my questions on her paper and
 some implementation details.
