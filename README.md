@@ -8,7 +8,7 @@
 ![maintenance-status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)
 [![crates](https://raw.githubusercontent.com/geo-ant/user-content/refs/heads/main/ko-fi-support.svg)](https://ko-fi.com/geoant)
 
-**Nonlinear function fitting made simple.**
+**Nonlinear function fitting made easy.**
 
 ## Introduction
 
@@ -17,7 +17,7 @@ functions to data. It strives to provide both an easy to use interface with
 great out-of-the-box performance, as well as an advanced interface for maximum
 performance.
 
-The lack of formulas on this  site makes it hard to dive deep, but a brief
+The lack of formulas on this site makes it hard to dive deep, but a brief
 overview is provided in the next sections. [Refer to the documentation](https://docs.rs/varpro/)
 for all the meaty details, including the math.
 
@@ -25,7 +25,7 @@ for all the meaty details, including the math.
 
 Put simply, separable models are nonlinear functions which can be 
 written as a *linear combination* of some *nonlinear* basis functions.
-A common use case for VarPro is e.g. fitting sums of exponentials,
+A common use case for `varpro` is e.g. fitting sums of exponentials,
 which is a notoriously ill-conditioned problem.
 
 ### What is VarPro?
@@ -131,12 +131,12 @@ In the example above, we have passed a single column vector as the observations.
 The library also allows fitting multiple right hand sides, by constructing a
 problem via `SeparableProblem::mrhs`. When fitting multiple right hand sides,
 `varpro` will performa a _global fit_, in which the nonlinear parameters are optimized
-across all right hand sides, but linear coefficients of the fit are optimized for
+across all right hand sides, while linear coefficients of the fit are optimized for
 each right hand side individually.
 
 This is another application where varpro really shines, since it can take advantage
 of the separable nature of the problem. It allows us to perform a global fit over thousands,
-or even tens of thousands of right hand sides in reasonable time (fractions of seconds to minutes),
+even tens of thousands of right hand sides in reasonable time (fractions of seconds to minutes),
 where conventional nonlinear solvers must perform much more work.
 
 ### Maximum Performance and Advanced Use Cases
