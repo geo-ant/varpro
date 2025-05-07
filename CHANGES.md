@@ -3,6 +3,10 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.12.1
+
+* Fix some typos
+
 ## 0.12.0
 
 This release has breaking changes, because I've refactored the overall structure
