@@ -2,7 +2,7 @@
 name = "varpro"
 version = "0.12.1"
 authors = ["geo-ant"]
-edition = "2024"
+edition = "2021"
 license = "MIT"
 homepage = "https://github.com/geo-ant/varpro"
 repository = "https://github.com/geo-ant/varpro"
