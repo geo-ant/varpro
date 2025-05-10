@@ -15,7 +15,9 @@ pub enum ModelBuildError {
 
     /// Model or function parameter list is empty. To add functions that are independent of
     /// model parameters, use the interface for adding invariant functions.
-    #[error("A function or model parameter list is empty! It must at least contain one parameter.")]
+    #[error(
+        "A function or model parameter list is empty! It must at least contain one parameter."
+    )]
     EmptyParameters,
 
     /// A function was added to the model which depends on parameters which are not in the model

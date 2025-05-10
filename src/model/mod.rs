@@ -264,7 +264,7 @@ where
 
     /// Set the nonlinear parameters `$\vec{\alpha}$` of the model to the given vector .
     fn set_params(&mut self, parameters: OVector<Self::ScalarType, Dyn>)
-    -> Result<(), Self::Error>;
+        -> Result<(), Self::Error>;
 
     /// Get the currently set nonlinear parameters of the model, i.e.
     /// the vector `$\vec{\alpha}$`.

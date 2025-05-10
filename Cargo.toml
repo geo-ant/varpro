@@ -1,8 +1,8 @@
 [package]
 name = "varpro"
-version = "0.12.1"
+version = "0.13.0"
 authors = ["geo-ant"]
-edition = "2024"
+edition = "2021"
 license = "MIT"
 homepage = "https://github.com/geo-ant/varpro"
 repository = "https://github.com/geo-ant/varpro"

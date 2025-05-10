@@ -154,6 +154,13 @@ This is not only useful for performance, but also for use cases that are difficu
 or impossible to accomodate using only the `SeparableModelBuilder`. The builder
 was created for ease of use _and_ performance, but it has some limitations by design.
 
+## Mininum Supported Rust Version (MSRV)
+
+The minimum supported Rust version is `1.75.0`. Note, that running the tests and
+benchmarks might require a more recent version of the compiler. Testing and
+benchmarking is always performed with the most recent `stable` version of Rust at
+the time of publishing.
+
 ## Acknowledgements
 
 I am grateful to Professor [Dianne P. O'Leary](http://www.cs.umd.edu/~oleary/)
