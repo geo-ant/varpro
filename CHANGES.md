@@ -3,6 +3,12 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.13.0
+
+* Document and implement an MSRV policy, which is set to `1.75.0` for now.
+* Revert crate edition to 2021
+* Add CI tests for MSRV
+
 ## 0.12.1
 
 * Fix some typos
