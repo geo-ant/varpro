@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::util::Weights;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, DimMin, MatrixView, SVD, Scalar, VectorView,
+    ComplexField, DMatrix, DefaultAllocator, DimMin, MatrixView, Scalar, VectorView, SVD,
 };
 use nalgebra::{Dim, Dyn};
 

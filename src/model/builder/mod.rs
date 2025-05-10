@@ -1,10 +1,10 @@
 use nalgebra::{DVector, Scalar};
 
 use crate::basis_function::BasisFunction;
-use crate::model::SeparableModel;
 use crate::model::builder::modelfunction_builder::ModelBasisFunctionBuilder;
 use crate::model::detail::check_parameter_names;
 use crate::model::model_basis_function::ModelBasisFunction;
+use crate::model::SeparableModel;
 use error::ModelBuildError;
 
 mod modelfunction_builder;

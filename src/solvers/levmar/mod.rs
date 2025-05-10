@@ -9,8 +9,8 @@ use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, RawStorageMut, RealField, Scalar, U1,
-    UninitMatrix, Vector,
+    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, RawStorageMut, RealField, Scalar,
+    UninitMatrix, Vector, U1,
 };
 use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;

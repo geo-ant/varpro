@@ -4,8 +4,8 @@ pub mod differentiation;
 use nalgebra::{DVector, Scalar};
 use num_traits::Float;
 
-use crate::model::SeparableModel;
 use crate::model::builder::SeparableModelBuilder;
+use crate::model::SeparableModel;
 
 /// exponential decay f(t,tau) = exp(-t/tau)
 pub fn exp_decay<ScalarType: Float + Scalar>(

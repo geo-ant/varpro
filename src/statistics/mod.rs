@@ -1,8 +1,8 @@
 use self::numeric_traits::CastF64;
 use crate::{prelude::SeparableNonlinearModel, util::Weights};
 use nalgebra::{
-    ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix, OMatrix, OVector,
-    RealField, Scalar, U0, U1, VectorView, allocator::Allocator,
+    allocator::Allocator, ComplexField, DefaultAllocator, Dim, DimAdd, DimMin, DimSub, Dyn, Matrix,
+    OMatrix, OVector, RealField, Scalar, VectorView, U0, U1,
 };
 use num_traits::{Float, FromPrimitive, One, Zero};
 use thiserror::Error as ThisError;
