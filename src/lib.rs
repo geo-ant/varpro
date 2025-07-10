@@ -1,15 +1,15 @@
 #![warn(missing_docs)]
 //!
 //! # Introduction
-//!  
+//!
 //! `varpro` is a crate for least squares fitting nonlinear models to observations.
 //! It works for so-called _separable_ models, which is a large class of models.
 //! It's fast, flexible, well-tested, and it's easy to use.
 //!
 //! ## Multiple Right Hand Sides
 //!
-//! Since version 0.8.0, support for _global fitting_ with multiple right hand
-//! sides has been added to this library. This is a powerful technique for suitable
+//! This library supports _global fitting_ with multiple right hand
+//! sides. This is a powerful technique for suitable
 //! problems and is explained at the end of this introduction.
 //!
 //! ## Overview
@@ -100,6 +100,8 @@
 //!
 //! # Usage and Examples
 //!
+//! Using this crate involves these three steps:
+//!
 //! Using this crate is a step-by-step process:
 //!
 //! 1. Describe the separable model.
@@ -154,7 +156,7 @@
 //! ```
 //!
 //! If successful, retrieve the nonlinear parameters `$\alpha$` using the
-//! [`FitResult::nonlinear_params`](crate::fit::FitResult::nonlinear_params) and the linear
+//! [`FitResult::nonlinear_parameters`](crate::fit::FitResult::nonlinear_parameters) and the linear
 //! coefficients `$\vec{c}$` using [FitResult::linear_coefficients](crate::fit::FitResult::linear_coefficients)
 //!
 //! **Fit Statistics:** To get additional statistical information after the fit
@@ -280,7 +282,7 @@
 //! let c = fit_result.linear_coefficients().unwrap();
 //! ```
 //!
-//! # Example 2: Mixed exponential and trigonometric model
+//! ## Example 2: Mixed Exponential and Trigonometric Model
 //!
 //! This example is taken from the matlab code that is published as part of the
 //! O'Leary 2013 paper and fits a mixed exponential and trigonometric model to
@@ -358,7 +360,7 @@
 //! // the linear coefficients
 //! let c  = fit_result.linear_coefficients().unwrap();
 //! ```
-//! # Global Fitting with Multiple Right Hand Sides
+//! ## Global Fitting with Multiple Right Hand Sides
 //!
 //! Instead of fitting a single data vector (i.e. a single _right hand side_),
 //! this library can also solve a related, but slightly different problem. This
@@ -385,7 +387,7 @@
 //! The crucial differences to the single right hand side case are:
 //!
 //! 1. We have to use the [`SeparableProblemBuilder::mrhs`](crate::problem::SeparableProblemBuilder::mrhs)
-//!    constructor rather than `new`.
+//!    constructor rather than [`SeparableProblemBuilder::new`](crate::problem::SeparableProblemBuilder::new).
 //! 2. We have to sort the right hand sides into a matrix, where each right
 //!    hand side, which is a column-vector on its own, will become a column
 //!    of the resulting matrix.
@@ -454,11 +456,12 @@
 //! the best fit linear coefficients of the observations in the same matrix column.
 //!
 //! # References and Further Reading
-//! (O'Leary2013) O’Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems. *Comput Optim Appl* **54**, 579–593 (2013). DOI: [10.1007/s10589-012-9492-9](https://doi.org/10.1007/s10589-012-9492-9)
 //!
-//! **attention**: the O'Leary paper contains errors that are fixed in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) of mine.
+//! * (O'Leary2013) O'Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems. *Comput Optim Appl* **54**, 579–593 (2013). DOI: [10.1007/s10589-012-9492-9](https://doi.org/10.1007/s10589-012-9492-9)
 //!
-//! (Golub2003) Golub, G. , Pereyra, V Separable nonlinear least squares: the variable projection method and its applications. Inverse Problems **19** R1 (2003) [https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201](https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201)
+//!   **Attention**: The O'Leary paper contains errors that are fixed in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
+//!
+//! * (Golub2003) Golub, G., Pereyra, V. Separable nonlinear least squares: the variable projection method and its applications. Inverse Problems **19** R1 (2003) [https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201](https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201)
 
 /// helper implementation to make working with basis functions more seamless
 pub mod basis_function;

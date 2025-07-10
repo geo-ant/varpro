@@ -38,10 +38,10 @@ is solved by using a nonlinear minimization algorithm, such as Levenberg-Marquar
 ### When Should You Give it a Try?
 
 VarPro can dramatically increase the robustness and speed of the fitting process
-compared to using a general purpose nonlinear least squares fitting algorithm. When
+compared to using a general purpose nonlinear least squares fitting algorithm. When:
 
 * the model function you want to fit is a linear combination of nonlinear functions,
-* _and_ you know the analytical derivatives of all those functions
+* _and_ you know the analytical derivatives of all those functions with respect to their parameters
 
 _then_ you should give it a whirl. Also consider the section on global fitting below,
 which provides another great use case for this crate.
@@ -129,7 +129,7 @@ an extra bit of useful statistical information.
 
 In the example above, we have passed a single column vector as the observations.
 The library also allows fitting multiple right hand sides, by constructing a
-problem via `SeparableProblem::mrhs`. When fitting multiple right hand sides,
+problem via `SeparableProblemBuilder::mrhs`. When fitting multiple right hand sides,
 `varpro` will performa a _global fit_, in which the nonlinear parameters are optimized
 across all right hand sides, while linear coefficients of the fit are optimized for
 each right hand side individually.
@@ -143,7 +143,7 @@ where conventional nonlinear solvers must perform much more work.
 
 The example code above will already run many times faster
 than just using a nonlinear solver without the magic of varpro.
-But this crate offers an additional way to eek out the last bits of performance.
+But this crate offers an additional way to eke out the last bits of performance.
 
 The `SeparableNonlinearModel` trait can be manually implemented to describe a
 model function. This often allows us to shave off the last hundreds of microseconds
@@ -151,7 +151,7 @@ from the computation, e.g. by caching intermediate calculations. The crate docum
 contains detailed examples.
 
 This is not only useful for performance, but also for use cases that are difficult
-or impossible to accomodate using only the `SeparableModelBuilder`. The builder
+or impossible to accommodate using only the `SeparableModelBuilder`. The builder
 was created for ease of use _and_ performance, but it has some limitations by design.
 
 ## Minimum Supported Rust Version (MSRV)

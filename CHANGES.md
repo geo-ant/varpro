@@ -3,6 +3,13 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.13.1 (Unreleased)
+
+* Improved documentation clarity and fixed inconsistencies between code and documentation
+* Fixed typos and grammatical issues throughout documentation
+* Updated examples and references to match current API names
+* Improved mathematical explanations and formatting
+
 ## 0.13.0
 
 * Document and implement an MSRV policy, which is set to `1.75.0` for now.
