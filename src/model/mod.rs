@@ -28,26 +28,26 @@ pub mod test;
 /// model is vector valued, i.e. it returns a vector of `$n$` values.
 ///
 /// *Separable* means that the nonlinear model function can be written as the
-/// linear combination of `$M$` nonlinear base functions , i.e.
+/// linear combination of `$M$` nonlinear basis functions, i.e.
 ///
 /// ```math
 /// \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(S_j(\vec{\alpha})),
 /// ```
 ///
-/// where `$\vec{c}=(c_1,\dots,c_M)$` are the coefficients of the model base functions `$f_j$` and
+/// where `$\vec{c}=(c_1,\dots,c_M)$` are the coefficients of the model basis functions `$f_j$` and
 /// `$S_j(\vec{\alpha})$` is a subset of the nonlinear model parameters that may be different
-/// for each model function. The base functions should depend on the model parameters nonlinearly.
+/// for each model function. The basis functions should depend on the model parameters nonlinearly.
 /// Linear parameters should be in the coefficient vector `$\vec{c}$` only.
 ///
-/// ## Important Considerations for Base Functions
+/// ## Important Considerations for Basis Functions
 ///
-/// We have already stated that the base functions should depend on their parameter subset
+/// We have already stated that the basis functions should depend on their parameter subset
 /// `$S_j(\vec{\alpha})$` in a *non-linear* manner. Linear dependencies should be rewritten in such a
 /// way that we can stick them into the coefficient vector `$\vec{c}$`. It is not strictly necessary
 /// to do that, but it will only make the fitting process slower and less robust. The great strength
 /// of varpro comes from treating the linear and nonlinear parameters differently.
 ///
-/// Another important thing is to ensure that the base functions are not linearly dependent,
+/// Another important thing is to ensure that the basis functions are not linearly dependent,
 /// at least not for all possible choices of `$\vec{alpha}$`. It is sometimes unavoidable that
 /// that model functions become linearly
 /// dependent for *some* combinations of model parameters. See also
@@ -242,7 +242,7 @@ where
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn, Dyn>,
 {
     /// The scalar number type for this model, which should be
-    /// a real or complex number type, commonly either `f64` or `f32`.
+    /// a real or complex number type, commonly either [`f64`] or [`f32`].
     type ScalarType: Scalar;
 
     /// The associated error type that can occur when the
@@ -321,7 +321,7 @@ where
     ///
     /// # Result
     ///
-    /// Like the `eval` method, this method must return a matrix, whose columns
+    /// Like the [`eval`](SeparableNonlinearModel::eval) method, this method must return a matrix, whose columns
     /// correspond to the basis functions evaluated at the given parameters and location.
     ///
     /// More formally, if the model is written as a superposition of `$M$` basis functions like so:

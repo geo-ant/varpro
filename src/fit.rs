@@ -7,21 +7,24 @@ use nalgebra::{Dyn, MatrixView, OMatrix, OVector, RealField, Scalar, VectorView}
 use num_traits::Float;
 
 /// A helper type that contains the fitting problem after the
-/// minimization, as well as a report and some convenience functions
+/// minimization, as well as a report and some convenience functions.
+///
+/// This structure is returned by the [`LevMarSolver::fit`](crate::solvers::levmar::LevMarSolver::fit)
+/// and [`LevMarSolver::fit_with_statistics`](crate::solvers::levmar::LevMarSolver::fit_with_statistics) methods.
 #[derive(Debug)]
 pub struct FitResult<Model, Rhs: RhsType>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: RealField + Scalar + Float,
 {
-    /// the final state of the fitting problem after the
-    /// minimization finished (regardless of whether fitting was successful or not)
+    /// The final state of the fitting problem after the
+    /// minimization finished (regardless of whether fitting was successful or not).
     pub problem: SeparableProblem<Model, Rhs>,
 
-    /// the minimization report of the underlying solver.
+    /// The minimization report of the underlying solver.
     /// It contains information about the minimization process
     /// and should be queried to see whether the minimization
-    /// was considered successful
+    /// was considered successful.
     pub minimization_report: MinimizationReport<Model::ScalarType>,
 }
 
@@ -43,12 +46,12 @@ where
         Some(self.problem.cached.as_ref()?.linear_coefficients.as_view())
     }
 
-    /// **Note** This implementation is for fitting problems with a single right hand side.
+    /// **Note** This implementation is for fitting problems with multiple right hand sides.
     ///
     /// Calculate the values of the model at the best fit parameters.
     /// Returns None if there was an error during fitting.
-    /// Since this is for single right hand sides, the output is
-    /// a column vector.
+    /// Since this is for multiple right hand sides, the output is a matrix
+    /// where each column corresponds to one right hand side.
     pub fn best_fit(&self) -> Option<OMatrix<Model::ScalarType, Dyn, Dyn>> {
         let coeff = self.linear_coefficients()?;
         let eval = self.problem.model().eval().ok()?;
@@ -80,8 +83,7 @@ where
     ///
     /// Calculate the values of the model at the best fit parameters.
     /// Returns None if there was an error during fitting.
-    /// Since this is for single right hand sides, the output is
-    /// a matrix containing composed of column vectors for the right hand sides.
+    /// Since this is for a single right hand side, the output is a vector.
     pub fn best_fit(&self) -> Option<OVector<Model::ScalarType, Dyn>> {
         let coeff = self.linear_coefficients()?;
         let eval = self.problem.model().eval().ok()?;

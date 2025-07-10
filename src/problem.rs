@@ -33,12 +33,12 @@ impl RhsType for SingleRhs {}
 ///
 /// # Construction
 ///
-/// Use the [SeparableProblemBuilder](self::builder::SeparableProblemBuilder) to create an instance of a
+/// Use the [`SeparableProblemBuilder`](self::builder::SeparableProblemBuilder) to create an instance of a
 /// levmar problem.
 ///
 /// # Usage
 ///
-/// After obtaining an instance of `SeparableProblem` we can pass it to the [LevMarSolver](crate::solvers::levmar::LevMarSolver)
+/// After obtaining an instance of [`SeparableProblem`](self::SeparableProblem) we can pass it to the [`LevMarSolver`](crate::solvers::levmar::LevMarSolver)
 /// which uses the Levenberg-Marquardt algorithm from the levenberg_marquardt crate for minimization.
 /// Refer to the documentation of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt)
 /// crate for an overview of the algorithm. A usage example is provided in this crate's documentation as well.
@@ -46,7 +46,7 @@ impl RhsType for SingleRhs {}
 /// # Right Hand Sides: Single vs Multiple
 ///
 /// The problem is generic over the `Rhs` type parameter which indicates whether the
-/// problem fits a single (`SingleRhs`) or multiple (`MultiRhs`) right
+/// problem fits a single ([`SingleRhs`](self::SingleRhs)) or multiple ([`MultiRhs`](self::MultiRhs)) right
 /// hand sides. This is decided during the building process. The underlying
 /// math does not change, but the interface changes to use vectors for coefficients
 /// and data in case of a single right hand side. For multiple right hand sides,
@@ -134,7 +134,7 @@ where
     ///
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
-    /// for the linear coefficients of the base functions.
+    /// for the linear coefficients of the basis functions.
     ///
     /// Since this method is for fitting multiple right hand sides, the coefficients
     /// are returned as a matrix view where each column represents the coefficients
@@ -166,7 +166,7 @@ where
     /// # Returns
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
-    /// for the linear coefficients of the base functions.
+    /// for the linear coefficients of the basis functions.
     ///
     /// Since this method is for fitting a single right hand side, the coefficients
     /// are returned as a single column vector.
