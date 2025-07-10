@@ -96,7 +96,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
     let tau2_guess = 6.5;
     let mut model =
         get_double_exponential_model_with_constant_offset(x, vec![tau1_guess, tau2_guess]);
-    _ = format!("{:?}", model);
+    _ = format!("{model:?}");
     // true parameters
     let tau1 = 1.;
     let tau2 = 3.;
@@ -115,7 +115,7 @@ fn double_exponential_fitting_without_noise_produces_accurate_results() {
         .observations(y.clone())
         .build()
         .expect("Building valid problem should not panic");
-    _ = format!("{:?}", problem);
+    _ = format!("{problem:?}");
 
     let (fit_result, statistics) = LevMarSolver::default()
         .fit_with_statistics(problem)
