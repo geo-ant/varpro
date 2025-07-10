@@ -38,7 +38,7 @@ where
     /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
     /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
     ///
-    /// This is an implementation of the [`LeastSquaresProblem::set_params`](levenberg_marquardt::LeastSquaresProblem::set_params) method.
+    /// This is an implementation of the [`LeastSquaresProblem::set_params`] method.
     fn set_params(&mut self, params: &Vector<Model::ScalarType, Dyn, Self::ParameterStorage>) {
         if self.model.set_params(params.clone()).is_err() {
             self.cached = None;
@@ -231,7 +231,7 @@ where
     /// # Returns
     ///
     /// See also the [`LevMarSolver::fit`](LevMarSolver::fit) function, but on success also returns statistical
-    /// information about the fit in the form of a [`FitStatistics`](crate::statistics::FitStatistics) object.
+    /// information about the fit in the form of a [`FitStatistics`] object.
     ///
     /// ## Problems with Multiple Right Hand Sides
     ///

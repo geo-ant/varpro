@@ -386,8 +386,8 @@
 //! model, we just have to make a slight modification to the way we build a problem.
 //! The crucial differences to the single right hand side case are:
 //!
-//! 1. We have to use the [`SeparableProblemBuilder::mrhs`](crate::problem::builder::SeparableProblemBuilder::mrhs)
-//!    constructor rather than [`SeparableProblemBuilder::new`](crate::problem::builder::SeparableProblemBuilder::new).
+//! 1. We have to use the [`SeparableProblemBuilder::mrhs`](crate::problem::SeparableProblemBuilder::mrhs)
+//!    constructor rather than [`SeparableProblemBuilder::new`](crate::problem::SeparableProblemBuilder::new).
 //! 2. We have to sort the right hand sides into a matrix, where each right
 //!    hand side, which is a column-vector on its own, will become a column
 //!    of the resulting matrix.
@@ -407,7 +407,7 @@
 //!
 //! The order of the vectors in the matrix doesn't matter, but it will determine
 //! the order of the linear coefficients, see
-//! [`SeparableProblemBuilder::mrhs`](crate::problem::builder::SeparableProblemBuilder::mrhs)
+//! [`SeparableProblemBuilder::mrhs`](crate::problem::SeparableProblemBuilder::mrhs)
 //! for a more detailed explanation.
 //!
 //! ## Example

@@ -9,7 +9,7 @@ use thiserror::Error as ThisError;
 
 use super::{MultiRhs, RhsType, SingleRhs};
 
-/// Errors pertaining to use errors of the [LeastSquaresProblemBuilder]
+/// Errors pertaining to use errors of the `SeparableProblemBuilder`
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 #[allow(missing_docs)]
 pub enum LevMarBuilderError {
