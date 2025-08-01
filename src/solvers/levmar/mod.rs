@@ -4,7 +4,8 @@ use crate::problem::{CachedCalculations, RhsType, SeparableProblem, SingleRhs};
 use crate::statistics::FitStatistics;
 use crate::util::to_vector;
 use levenberg_marquardt::LeastSquaresProblem;
-/// type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate
+/// Type alias for the solver of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate.
+/// This provides the Levenberg-Marquardt nonlinear least squares optimization algorithm.
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::storage::Owned;
@@ -36,6 +37,8 @@ where
     /// problem accordingly. The parameters are expected in the same order that the parameter
     /// names were provided in at model creation. So if we gave `&["tau","beta"]` as parameters at
     /// model creation, the function expects the layout of the parameter vector to be `$\vec{\alpha}=(\tau,\beta)^T$`.
+    ///
+    /// This is an implementation of the [`LeastSquaresProblem::set_params`] method.
     fn set_params(&mut self, params: &Vector<Model::ScalarType, Dyn, Self::ParameterStorage>) {
         if self.model.set_params(params.clone()).is_err() {
             self.cached = None;
@@ -222,13 +225,13 @@ impl<Model> LevMarSolver<Model>
 where
     Model: SeparableNonlinearModel,
 {
-    /// Same as the [LevMarSolver::fit] function but also calculates some additional
+    /// Same as the [`LevMarSolver::fit`](LevMarSolver::fit) function but also calculates some additional
     /// statistical information about the fit, if the fit was successful.
     ///
     /// # Returns
     ///
-    /// See also the [LevMarSolver::fit] function, but on success also returns statistical
-    /// information about the fit.
+    /// See also the [`LevMarSolver::fit`](LevMarSolver::fit) function, but on success also returns statistical
+    /// information about the fit in the form of a [`FitStatistics`] object.
     ///
     /// ## Problems with Multiple Right Hand Sides
     ///

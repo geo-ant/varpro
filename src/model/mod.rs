@@ -28,26 +28,26 @@ pub mod test;
 /// model is vector valued, i.e. it returns a vector of `$n$` values.
 ///
 /// *Separable* means that the nonlinear model function can be written as the
-/// linear combination of `$M$` nonlinear base functions , i.e.
+/// linear combination of `$M$` nonlinear basis functions, i.e.
 ///
 /// ```math
 /// \vec{f}(\vec{x},\vec{\alpha},\vec{c}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(S_j(\vec{\alpha})),
 /// ```
 ///
-/// where `$\vec{c}=(c_1,\dots,c_M)$` are the coefficients of the model base functions `$f_j$` and
+/// where `$\vec{c}=(c_1,\dots,c_M)$` are the coefficients of the model basis functions `$f_j$` and
 /// `$S_j(\vec{\alpha})$` is a subset of the nonlinear model parameters that may be different
-/// for each model function. The base functions should depend on the model parameters nonlinearly.
+/// for each model function. The basis functions should depend on the model parameters nonlinearly.
 /// Linear parameters should be in the coefficient vector `$\vec{c}$` only.
 ///
-/// ## Important Considerations for Base Functions
+/// ## Important Considerations for Basis Functions
 ///
-/// We have already stated that the base functions should depend on their parameter subset
+/// We have already stated that the basis functions should depend on their parameter subset
 /// `$S_j(\vec{\alpha})$` in a *non-linear* manner. Linear dependencies should be rewritten in such a
 /// way that we can stick them into the coefficient vector `$\vec{c}$`. It is not strictly necessary
 /// to do that, but it will only make the fitting process slower and less robust. The great strength
 /// of varpro comes from treating the linear and nonlinear parameters differently.
 ///
-/// Another important thing is to ensure that the base functions are not linearly dependent,
+/// Another important thing is to ensure that the basis functions are not linearly dependent,
 /// at least not for all possible choices of `$\vec{alpha}$`. It is sometimes unavoidable that
 /// that model functions become linearly
 /// dependent for *some* combinations of model parameters. See also
@@ -160,7 +160,7 @@ pub mod test;
 ///         // same as above
 ///         3
 ///     }
-///     
+///
 ///     // we use this method not only to set the parameters inside the
 ///     // model but we also cache some calculations. The advantage is that
 ///     // we don't have to recalculate the exponential terms for either
@@ -189,7 +189,7 @@ pub mod test;
 ///     fn params(&self) -> OVector<f64, Dyn> {
 ///         self.params.clone()
 ///     }
-///     
+///
 ///     // since we cached the model evaluation, we can just return
 ///     // it here
 ///     fn eval(
@@ -197,7 +197,7 @@ pub mod test;
 ///     ) -> Result<OMatrix<f64,Dyn,Dyn>, Self::Error> {
 ///         Ok(self.eval.clone())
 ///     }
-///     
+///
 ///     // here we take advantage of the cached calculations
 ///     // so that we do not have to recalculate the exponential
 ///     // to calculate the derivative.
@@ -241,25 +241,25 @@ where
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn>,
     DefaultAllocator: nalgebra::allocator::Allocator<Dyn, Dyn>,
 {
-    /// the scalar number type for this model, which should be
-    /// a real or complex number type, commonly either `f64` or `f32`.
+    /// The scalar number type for this model, which should be
+    /// a real or complex number type, commonly either [`f64`] or [`f32`].
     type ScalarType: Scalar;
 
-    /// the associated error type that can occur when the
+    /// The associated error type that can occur when the
     /// model or the derivative is evaluated.
     /// If this model does not need (or for performance reasons does not want)
     /// to return an error, it is possible to specify [`std::convert::Infallible`]
     /// as the associated `Error` type.
     type Error: std::error::Error + Send;
 
-    /// return the number of *nonlinear* parameters that this model depends on.
+    /// Returns the number of *nonlinear* parameters that this model depends on.
     fn parameter_count(&self) -> usize;
 
-    /// return the number of base functions that this model depends on.
+    /// Returns the number of basis functions that this model depends on.
     fn base_function_count(&self) -> usize;
 
-    /// return the dimension `$n$` of the output of the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c}) \in \mathbb{R}^n$`.
-    /// This is also the dimension of every single base function.
+    /// Returns the dimension `$n$` of the output of the model `$\vec{f}(\vec{x},\vec{\alpha},\vec{c}) \in \mathbb{R}^n$`.
+    /// This is also the dimension of every single basis function.
     fn output_len(&self) -> usize;
 
     /// Set the nonlinear parameters `$\vec{\alpha}$` of the model to the given vector .
@@ -270,21 +270,21 @@ where
     /// the vector `$\vec{\alpha}$`.
     fn params(&self) -> OVector<Self::ScalarType, Dyn>;
 
-    /// Evaluate the base functions of the model at the currently
+    /// Evaluate the basis functions of the model at the currently
     /// set parameters `$\vec{\alpha}$` and return them in matrix form.
-    /// The columns of this matrix are the evaluated base functions.
+    /// The columns of this matrix are the evaluated basis functions.
     /// See below for a detailed explanation.
     ///
     /// # Result
     ///
     /// As explained above, this method returns a matrix, whose columns are the
-    /// base functions evaluated at the given parameters. More formally,
-    /// if the model is written as a superposition of `$M$` base functions like so:
+    /// basis functions evaluated at the given parameters. More formally,
+    /// if the model is written as a superposition of `$M$` basis functions like so:
     ///
     /// ```math
     /// \vec{f}(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(\vec{x},S_j(\vec{\alpha})),
     /// ```
-    ///  
+    ///
     /// then the matrix must look like this:
     ///
     /// ```math
@@ -296,9 +296,9 @@ where
     ///   \end{pmatrix},
     /// ```
     ///
-    /// The ordering of the function must not change between function calls
+    /// The ordering of the functions must not change between function calls
     /// and it must also be the same as for the evaluation of the derivatives.
-    /// The j-th base function must be at the j-th column. The one thing to remember
+    /// The j-th basis function must be at the j-th column. The one thing to remember
     /// is that in Rust the matrix indices start at 0, so the first function
     /// is at column 0, and so on...
     ///
@@ -307,7 +307,7 @@ where
     ///
     fn eval(&self) -> Result<OMatrix<Self::ScalarType, Dyn, Dyn>, Self::Error>;
 
-    /// Evaluate the partial derivatives for the base function at for the
+    /// Evaluate the partial derivatives for the basis functions at the
     /// currently set parameters and return them in matrix form.
     ///
     /// # Arguments
@@ -321,11 +321,10 @@ where
     ///
     /// # Result
     ///
-    /// Like the `eval` method, this method must return a matrix, whose columns are the
-    /// correspond to the base functions evaluated at the given parameters and location.
-    /// However, for this.
+    /// Like the [`eval`](SeparableNonlinearModel::eval) method, this method must return a matrix, whose columns
+    /// correspond to the basis functions evaluated at the given parameters and location.
     ///
-    /// More formally, if the model is written as a superposition of `$M$` base functions like so:
+    /// More formally, if the model is written as a superposition of `$M$` basis functions like so:
     ///
     /// ```math
     /// \vec{f}(\vec{x},\vec{\alpha}) = \sum_{j=1}^M c_j \cdot \vec{f}_j(\vec{x},S_j(\vec{\alpha})),
@@ -352,11 +351,11 @@ where
     ///
     /// ## Errors
     ///
-    /// An error result is returned when
+    /// An error result is returned when:
     /// * the parameters do not have the same length as the model parameters given when building the model
-    /// * the basis functions do not produce a vector of the same length as the `location` argument `$\vec{x}$`
+    /// * the basis functions do not produce a vector of the same length as the independent variable `$\vec{x}$`
     /// * the given parameter index is out of bounds
-    /// * ...
+    /// * any other implementation-specific error occurs
     fn eval_partial_deriv(
         &self,
         derivative_index: usize,

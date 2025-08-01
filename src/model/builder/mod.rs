@@ -15,7 +15,7 @@ mod test;
 /// contains the error for the model builder
 pub mod error;
 
-/// A builder that allows us to construct a valid [SeparableModel](crate::model::SeparableModel),
+/// A builder that allows us to construct a valid [SeparableModel],
 /// which is an implementor of the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel)
 /// trait.
 ///
@@ -361,7 +361,7 @@ where
     /// Add a function `$\vec{f}(\vec{x})$` to the model. In the `varpro` library this is called
     /// an *invariant* function because the model function is independent of the model parameters
     /// # Usage
-    /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// For usage see the documentation of the [SeparableModelBuilder]
     /// struct documentation.
     pub fn invariant_function<F>(self, function: F) -> Self
     where
@@ -392,7 +392,7 @@ where
     /// Add a function `$\vec{f}(\vec{x},\alpha_1,...,\alpha_n)$` to the model that depends on the
     /// location parameter `\vec{x}` and nonlinear model parameters.
     /// # Usage
-    /// For usage see the documentation of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// For usage see the documentation of the [SeparableModelBuilder]
     /// struct documentation.
     pub fn function<F, StrCollection, ArgList>(
         self,
@@ -456,7 +456,7 @@ where
     }
 
     /// Set the independent variable `$x$` which will be used when evaluating the model.
-    /// Also see the struct documentation of [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// Also see the struct documentation of [SeparableModelBuilder]
     /// for information on how to use this method.
     pub fn independent_variable(self, x: DVector<ScalarType>) -> Self {
         match self {
@@ -473,7 +473,7 @@ where
     }
 
     /// Set the initial values for the model parameters `$\vec{\alpha}$`.
-    /// Also see the struct documentation of [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder)
+    /// Also see the struct documentation of [SeparableModelBuilder]
     /// for information on how to use this method.
     pub fn initial_parameters(self, initial_parameters: Vec<ScalarType>) -> Self {
         match self {

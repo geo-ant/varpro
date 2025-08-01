@@ -32,9 +32,10 @@ pub(crate) enum Error<ModelError: std::error::Error> {
     MatrixInversion,
 }
 
-/// This structure contains some additional statistical information
-/// about the fit, such as errors on the parameters and other useful
-/// information to assess the quality of the fit.
+/// This structure contains additional statistical information
+/// about the fit, such as standard errors on the parameters and other useful
+/// information to assess the quality of the fit. It is created by calling
+/// [`LevMarSolver::fit_with_statistics`](crate::solvers::levmar::LevMarSolver::fit_with_statistics).
 ///
 /// # Where is `$R^2$`?
 ///
@@ -47,7 +48,7 @@ pub(crate) enum Error<ModelError: std::error::Error> {
 /// where the recommendation is to use the standard error of the regression instead.
 /// See also the next section.
 ///
-/// # Model Selection
+/// # Model Selection and Evaluation
 ///
 /// If you want to want to use goodness of fit metrics to decide which of two
 /// models to use, please look into the [Akaike information criterion](https://en.wikipedia.org/wiki/Akaike_information_criterion),

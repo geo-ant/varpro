@@ -7,8 +7,8 @@ use nalgebra::{Dim, Dyn};
 
 mod builder;
 
-pub use builder::LevMarBuilderError;
 pub use builder::SeparableProblemBuilder;
+pub use builder::SeparableProblemBuilderError;
 
 /// trait describing the type of right hand side for the problem, meaning either
 /// a single right hand side or multiple right hand sides. The latter implies
@@ -27,27 +27,26 @@ pub struct MultiRhs;
 impl RhsType for MultiRhs {}
 impl RhsType for SingleRhs {}
 
-/// This is a the problem of fitting the separable model to data in a form that the
+/// This is the problem of fitting the separable model to data in a form that the
 /// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) crate can use it to
 /// perform the least squares fit.
 ///
 /// # Construction
 ///
-/// Use the [SeparableProblemBuilder](self::builder::SeparableProblemBuilder) to create an instance of a
+/// Use the [`SeparableProblemBuilder`] to create an instance of a
 /// levmar problem.
 ///
 /// # Usage
 ///
-/// After obtaining an instance of `SeparableProblem` we can pass it to the [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
-/// structure of the levenberg_marquardt crate for minimization. Refer to the documentation of the
-/// [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt) for an overview. A usage example
-/// is provided in this crate documentation as well. The [LevenbergMarquardt](levenberg_marquardt::LevenbergMarquardt)
-/// solver is reexported by this module as [LevMarSolver](self::LevMarSolver) for naming consistency.
+/// After obtaining an instance of [`SeparableProblem`] we can pass it to the [`LevMarSolver`](crate::solvers::levmar::LevMarSolver)
+/// which uses the Levenberg-Marquardt algorithm from the levenberg_marquardt crate for minimization.
+/// Refer to the documentation of the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt)
+/// crate for an overview of the algorithm. A usage example is provided in this crate's documentation as well.
 ///
-/// # `MRHS`: Multiple Right Hand Sides
+/// # Right Hand Sides: Single vs Multiple
 ///
-/// The problem generic on the boolean `MRHS` which indicates whether the
-/// problem fits a single (`MRHS == false`) or multiple (`MRHS == true`) right
+/// The problem is generic over the `Rhs` type parameter which indicates whether the
+/// problem fits a single ([`SingleRhs`]) or multiple ([`MultiRhs`]) right
 /// hand sides. This is decided during the building process. The underlying
 /// math does not change, but the interface changes to use vectors for coefficients
 /// and data in case of a single right hand side. For multiple right hand sides,
@@ -60,12 +59,12 @@ where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
 {
-    /// the *weighted* data matrix to which to fit the model `$\boldsymbol{Y}_w$`.
-    /// It is a matrix so it can accomodate multiple right hand sides. If
-    /// the problem has only a single right hand side (MRHS = false), this is just
+    /// The *weighted* data matrix to which to fit the model `$\boldsymbol{Y}_w$`.
+    /// It is a matrix so it can accommodate multiple right hand sides. If
+    /// the problem has only a single right hand side (SingleRhs), this is just
     /// a matrix with one column. The underlying math does not change in either case.
-    /// **Attention** the data matrix is weighted with the weights if some weights
-    /// where provided (otherwise it is unweighted)
+    /// **Attention:** The data matrix is weighted with the weights if some weights
+    /// were provided (otherwise it is unweighted)
     pub(crate) Y_w: DMatrix<Model::ScalarType>,
     /// a reference to the separable model we are trying to fit to the data
     pub(crate) model: Model,
@@ -129,27 +128,28 @@ where
     Model::ScalarType: Scalar + ComplexField + Copy,
 {
     /// Get the linear coefficients for the current problem. After a successful pass of the solver,
-    /// this contains a value with the best fitting linear coefficients
+    /// this contains a value with the best fitting linear coefficients.
     ///
     /// # Returns
     ///
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
-    /// for the linear coefficients of the base functions.
+    /// for the linear coefficients of the basis functions.
     ///
-    /// Since this method is for fitting a single right hand side, the coefficients
-    /// are a single column vector.
+    /// Since this method is for fitting multiple right hand sides, the coefficients
+    /// are returned as a matrix view where each column represents the coefficients
+    /// for the corresponding right-hand side.
     pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
         self.cached
             .as_ref()
             .map(|cache| cache.linear_coefficients.as_view())
     }
 
-    /// the weighted data matrix`$\boldsymbol{Y}_w$` to which to fit the model. Note
+    /// The weighted data matrix `$\boldsymbol{Y}_w$` to which to fit the model. Note
     /// that the weights are already applied to the data matrix and this
     /// is not the original data vector.
     ///
-    /// This method is for fitting a multiple right hand sides, hence the data
+    /// This method is for fitting multiple right hand sides, hence the data
     /// matrix is a matrix that contains the right hand sides as columns.
     pub fn weighted_data(&self) -> MatrixView<Model::ScalarType, Dyn, Dyn> {
         self.Y_w.as_view()
@@ -166,11 +166,10 @@ where
     /// # Returns
     /// Either the current best estimate coefficients or None, if none were calculated or the solver
     /// encountered an error. After the solver finished, this is the least squares best estimate
-    /// for the linear coefficients of the base functions.
+    /// for the linear coefficients of the basis functions.
     ///
-    /// The linear coefficients are column vectors that are ordered
-    /// into a matrix, where the column at index $$s$$ are the best linear
-    /// coefficients for the member at index $$s$$ of the dataset.
+    /// Since this method is for fitting a single right hand side, the coefficients
+    /// are returned as a single column vector.
     pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
         self.cached
             .as_ref()
@@ -181,7 +180,7 @@ where
             })
     }
 
-    /// the weighted data vector `$\vec{y}_w$` to which to fit the model. Note
+    /// The weighted data vector `$\vec{y}_w$` to which to fit the model. Note
     /// that the weights are already applied to the data vector and this
     /// is not the original data vector.
     ///

@@ -38,12 +38,12 @@ is solved by using a nonlinear minimization algorithm, such as Levenberg-Marquar
 ### When Should You Give it a Try?
 
 VarPro can dramatically increase the robustness and speed of the fitting process
-compared to using a general purpose nonlinear least squares fitting algorithm. When
+compared to using a general purpose nonlinear least squares fitting algorithm. When:
 
 * the model function you want to fit is a linear combination of nonlinear functions,
-* _and_ you know the analytical derivatives of all those functions
+* _and_ you know the analytical derivatives of all those functions with respect to their parameters
 
-_then_ you should give it a whirl. Also consider the section on global fitting below,
+_then_ you should give it a whirl. Also consider the section on [global fitting](#global-fitting-of-multiple-right-hand-sides) below,
 which provides another great use case for this crate.
 
 ## Example Usage
@@ -83,7 +83,7 @@ let y = dvector![6.0,4.8,4.0,3.3,2.8,2.5,2.2,1.9,1.7,1.6,1.5];
 // 1. create the model by giving only the nonlinear parameter names it depends on
 let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
   // provide the nonlinear basis functions and their derivatives.
-  // In general, base functions can depend on more than just one parameter.
+  // In general, basis functions can depend on more than just one parameter.
   // first function:
   .function(&["tau1"], exp_decay)
   .partial_deriv("tau1", exp_decay_dtau)
@@ -91,7 +91,7 @@ let model = SeparableModelBuilder::<f64>::new(&["tau1", "tau2"])
   // that it depends on (just one in this case)
   .function(&["tau2"], exp_decay)
   .partial_deriv("tau2", exp_decay_dtau)
-  // a constant offset is added as an invariant basefunction
+  // a constant offset is added as an invariant basis function
   // as a vector of ones. It is multiplied with its own linear coefficient,
   // creating a fittable offset
   .invariant_function(|v|DVector::from_element(v.len(),1.))
@@ -121,16 +121,16 @@ For more in-depth examples, please refer to the crate documentation.
 
 ### Fit Statistics
 
-Additionally to the `fit` member function,
-the `LevMarSolver` provides a `fit_with_statistics` function that calculates
+Additionally to the [`fit`](https://docs.rs/varpro/latest/varpro/solvers/levmar/struct.LevMarSolver.html#method.fit) member function,
+the [`LevMarSolver`](https://docs.rs/varpro/latest/varpro/solvers/levmar/struct.LevMarSolver.html) provides a [`fit_with_statistics`](https://docs.rs/varpro/latest/varpro/solvers/levmar/struct.LevMarSolver.html#method.fit_with_statistics) function that calculates
 an extra bit of useful statistical information.
 
 ### Global Fitting of Multiple Right Hand Sides
 
 In the example above, we have passed a single column vector as the observations.
 The library also allows fitting multiple right hand sides, by constructing a
-problem via `SeparableProblem::mrhs`. When fitting multiple right hand sides,
-`varpro` will performa a _global fit_, in which the nonlinear parameters are optimized
+problem via [`SeparableProblemBuilder::mrhs`](https://docs.rs/varpro/latest/varpro/problem/struct.SeparableProblemBuilder.html#method.mrhs). When fitting multiple right hand sides,
+`varpro` will perform a _global fit_, in which the nonlinear parameters are optimized
 across all right hand sides, while linear coefficients of the fit are optimized for
 each right hand side individually.
 
@@ -143,15 +143,15 @@ where conventional nonlinear solvers must perform much more work.
 
 The example code above will already run many times faster
 than just using a nonlinear solver without the magic of varpro.
-But this crate offers an additional way to eek out the last bits of performance.
+But this crate offers an additional way to eke out the last bits of performance.
 
-The `SeparableNonlinearModel` trait can be manually implemented to describe a
+The [`SeparableNonlinearModel`](https://docs.rs/varpro/latest/varpro/model/trait.SeparableNonlinearModel.html) trait can be manually implemented to describe a
 model function. This often allows us to shave off the last hundreds of microseconds
 from the computation, e.g. by caching intermediate calculations. The crate documentation
 contains detailed examples.
 
 This is not only useful for performance, but also for use cases that are difficult
-or impossible to accomodate using only the `SeparableModelBuilder`. The builder
+or impossible to accommodate using only the [`SeparableModelBuilder`](https://docs.rs/varpro/latest/varpro/model/builder/struct.SeparableModelBuilder.html). The builder
 was created for ease of use _and_ performance, but it has some limitations by design.
 
 ## Minimum Supported Rust Version (MSRV)

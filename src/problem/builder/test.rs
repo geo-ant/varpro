@@ -1,6 +1,6 @@
 use crate::model::test::MockSeparableNonlinearModel;
-use crate::problem::LevMarBuilderError;
 use crate::problem::SeparableProblemBuilder;
+use crate::problem::SeparableProblemBuilderError;
 use crate::util::DiagMatrix;
 use crate::util::Weights;
 use assert_matches::assert_matches;
@@ -114,7 +114,7 @@ fn builder_gives_errors_for_missing_y_data() {
 
     assert_matches!(
         SeparableProblemBuilder::new(model).build(),
-        Err(LevMarBuilderError::YDataMissing)
+        Err(SeparableProblemBuilderError::YDataMissing)
     );
 }
 
@@ -134,7 +134,7 @@ fn builder_gives_errors_for_wrong_data_length() {
 
     assert_matches!(
         SeparableProblemBuilder::new(model).observations(y).build(),
-        Err(LevMarBuilderError::InvalidLengthOfData { .. }),
+        Err(SeparableProblemBuilderError::InvalidLengthOfData { .. }),
         "invalid parameter count must produce correct error"
     );
 }
@@ -155,7 +155,7 @@ fn builder_gives_errors_for_zero_length_data() {
         SeparableProblemBuilder::new(model)
             .observations(DVector::from(Vec::<f64>::new()))
             .build(),
-        Err(LevMarBuilderError::ZeroLengthVector),
+        Err(SeparableProblemBuilderError::ZeroLengthVector),
         "zero parameter count must produce correct error"
     );
 }
@@ -177,7 +177,7 @@ fn builder_gives_errors_for_wrong_length_of_weights() {
             .observations(y)
             .weights(DVector::from_vec(vec! {1.,2.,3.}))
             .build(),
-        Err(LevMarBuilderError::InvalidLengthOfWeights),
+        Err(SeparableProblemBuilderError::InvalidLengthOfWeights),
         "invalid length of weights"
     );
 }

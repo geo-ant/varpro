@@ -1,16 +1,16 @@
 #![warn(missing_docs)]
 //!
 //! # Introduction
-//!  
+//!
 //! `varpro` is a crate for least squares fitting nonlinear models to observations.
 //! It works for so-called _separable_ models, which is a large class of models.
 //! It's fast, flexible, well-tested, and it's easy to use.
 //!
 //! ## Multiple Right Hand Sides
 //!
-//! Since version 0.8.0, support for _global fitting_ with multiple right hand
-//! sides has been added to this library. This is a powerful technique for suitable
-//! problems and is explained at the end of this introduction.
+//! This library supports _global fitting_ with multiple right hand
+//! sides. This is a powerful technique for suitable
+//! problems and is explained in the [Global Fitting with Multiple Right Hand Sides](#global-fitting-with-multiple-right-hand-sides) section.
 //!
 //! ## Overview
 //!
@@ -24,14 +24,14 @@
 //! because all too often it hard to even formulate a fitting
 //! problem in code. Thus, this libary provides an API that allows to
 //! formulate a separable model in a few lines of code using the
-//! [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder).
+//! [`SeparableModelBuilder`](crate::model::builder::SeparableModelBuilder).
 //! This is typically already many times faster than using nonlinear
-//! least squares solvers directly. That's because this crates takes advantage
+//! least squares solvers directly. That's because this crate takes advantage
 //! of the Variable Projection (VarPro) algorithm for fitting, which makes use
 //! of the separable structure of the model.
 //!
 //! To shave off the last couple hundreds of microseconds, you can manually implement
-//! the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait directly
+//! the [`SeparableNonlinearModel`](crate::model::SeparableNonlinearModel) trait directly
 //! to describe your model function.
 //!
 //! The test and benchmark suite of this crate should give you a good idea of how fast
@@ -100,6 +100,8 @@
 //!
 //! # Usage and Examples
 //!
+//! Using this crate involves these three steps:
+//!
 //! Using this crate is a step-by-step process:
 //!
 //! 1. Describe the separable model.
@@ -107,8 +109,8 @@
 //! 3. Fit the problem with a model using a solver.
 //!
 //! The first step in using this crate is to formulate the separable model.
-//! This is done by either creating a type that implements the [SeparableNonlinearModel](crate::model::SeparableNonlinearModel) trait
-//! or by using the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder) to create a model
+//! This is done by either creating a type that implements the [`SeparableNonlinearModel`](crate::model::SeparableNonlinearModel) trait
+//! or by using the [`SeparableModelBuilder`](crate::model::builder::SeparableModelBuilder) to create a model
 //! in a few lines of code. See the examples for the trait and the builder how to
 //! use either to generate a separable nonlinear model.
 //!
@@ -139,10 +141,10 @@
 //! ```
 //!
 //! The third step is to use a solver to fit the model to the problem.
-//! Currently, the only the available solver is the
+//! Currently, the only available solver is the
 //! [Levenberg-Marquardt](https://en.wikipedia.org/wiki/Levenberg%E2%80%93Marquardt_algorithm) algorithm
 //! using the [levenberg_marquardt](https://crates.io/crates/levenberg-marquardt/) crate.
-//! It is provided via the [`LevMarSolver`](crate::solver::levmar::LevMarSolver)
+//! It is provided via the [`LevMarSolver`](crate::solvers::levmar::LevMarSolver)
 //! type, which allows us to make additional configurations to the solver.
 //!
 //! ```no_run
@@ -154,11 +156,11 @@
 //! ```
 //!
 //! If successful, retrieve the nonlinear parameters `$\alpha$` using the
-//! [`FitResult::nonlinear_params`](crate::fit::FitResult::nonlinear_params) and the linear
-//! coefficients `$\vec{c}$` using [FitResult::linear_coefficients](crate::fit::FitResult::linear_coefficients)
+//! [`FitResult::nonlinear_parameters`](crate::fit::FitResult::nonlinear_parameters) and the linear
+//! coefficients `$\vec{c}$` using [`FitResult::linear_coefficients`](crate::fit::FitResult::linear_coefficients)
 //!
 //! **Fit Statistics:** To get additional statistical information after the fit
-//! has finished, use the [LevMarSolver::fit_with_statistics](crate::solvers::levmar::LevMarSolver::fit_with_statistics)
+//! has finished, use the [`LevMarSolver::fit_with_statistics`](crate::solvers::levmar::LevMarSolver::fit_with_statistics)
 //! method.
 //!
 //! ```no_run
@@ -211,15 +213,15 @@
 //! }
 //! ```
 //!
-//! We'll see in the example how the [function](crate::model::builder::SeparableModelBuilder::function) method
-//! and the [partial_deriv](crate::model::builder::SeparableModelBuilder::partial_deriv)
-//! methods let us add the function and the derivative as base functions.
+//! We'll see in the example how the [`function`](crate::model::builder::SeparableModelBuilder::function) method
+//! and the [`partial_deriv`](crate::model::builder::SeparableModelBuilder::partial_deriv)
+//! methods let us add the function and the derivative as basis functions.
 //!
 //! There is a second type of basis function, which corresponds to coefficient `$c_3$`. This is a constant
 //! function returning a vector of ones. It does not depend on any parameters, which is why there
 //! is a separate way of adding these types of *invariant functions* to the model. For that, use
-//! [invariant_function](crate::model::builder::SeparableModelBuilder::invariant_function)
-//! of the [SeparableModelBuilder](crate::model::builder::SeparableModelBuilder).
+//! [`invariant_function`](crate::model::builder::SeparableModelBuilder::invariant_function)
+//! of the [`SeparableModelBuilder`](crate::model::builder::SeparableModelBuilder).
 //!
 //! ## Example Code
 //!
@@ -280,7 +282,7 @@
 //! let c = fit_result.linear_coefficients().unwrap();
 //! ```
 //!
-//! # Example 2: Mixed exponential and trigonometric model
+//! ## Example 2: Mixed Exponential and Trigonometric Model
 //!
 //! This example is taken from the matlab code that is published as part of the
 //! O'Leary 2013 paper and fits a mixed exponential and trigonometric model to
@@ -358,7 +360,7 @@
 //! // the linear coefficients
 //! let c  = fit_result.linear_coefficients().unwrap();
 //! ```
-//! # Global Fitting with Multiple Right Hand Sides
+//! ## Global Fitting with Multiple Right Hand Sides
 //!
 //! Instead of fitting a single data vector (i.e. a single _right hand side_),
 //! this library can also solve a related, but slightly different problem. This
@@ -385,7 +387,7 @@
 //! The crucial differences to the single right hand side case are:
 //!
 //! 1. We have to use the [`SeparableProblemBuilder::mrhs`](crate::problem::SeparableProblemBuilder::mrhs)
-//!    constructor rather than `new`.
+//!    constructor rather than [`SeparableProblemBuilder::new`](crate::problem::SeparableProblemBuilder::new).
 //! 2. We have to sort the right hand sides into a matrix, where each right
 //!    hand side, which is a column-vector on its own, will become a column
 //!    of the resulting matrix.
@@ -393,7 +395,7 @@
 //! For a set of observations `$\vec{y}_1,\dots,\vec{y}_S$` (column vectors) we
 //! now have to pass a _matrix_ `$Y$` of observations, rather than a single
 //! vector to the builder. As explained above, the resulting matrix would look
-//! like this.
+//! like this:
 //!
 //! ```math
 //! \boldsymbol{Y}=\left(\begin{matrix}
@@ -405,7 +407,7 @@
 //!
 //! The order of the vectors in the matrix doesn't matter, but it will determine
 //! the order of the linear coefficients, see
-//! [`SeparableProblemBuilder::mrhs`](crate::problem::SeparableProblem::mrhs)
+//! [`SeparableProblemBuilder::mrhs`](crate::problem::SeparableProblemBuilder::mrhs)
 //! for a more detailed explanation.
 //!
 //! ## Example
@@ -454,11 +456,12 @@
 //! the best fit linear coefficients of the observations in the same matrix column.
 //!
 //! # References and Further Reading
-//! (O'Leary2013) O’Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems. *Comput Optim Appl* **54**, 579–593 (2013). DOI: [10.1007/s10589-012-9492-9](https://doi.org/10.1007/s10589-012-9492-9)
 //!
-//! **attention**: the O'Leary paper contains errors that are fixed in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/) of mine.
+//! * (O'Leary2013) O'Leary, D.P., Rust, B.W. Variable projection for nonlinear least squares problems. *Comput Optim Appl* **54**, 579–593 (2013). DOI: [10.1007/s10589-012-9492-9](https://doi.org/10.1007/s10589-012-9492-9)
 //!
-//! (Golub2003) Golub, G. , Pereyra, V Separable nonlinear least squares: the variable projection method and its applications. Inverse Problems **19** R1 (2003) [https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201](https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201)
+//!   **Attention**: The O'Leary paper contains errors that are fixed in [this blog article](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
+//!
+//! * (Golub2003) Golub, G., Pereyra, V. Separable nonlinear least squares: the variable projection method and its applications. Inverse Problems **19** R1 (2003) [https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201](https://iopscience.iop.org/article/10.1088/0266-5611/19/2/201)
 
 /// helper implementation to make working with basis functions more seamless
 pub mod basis_function;
