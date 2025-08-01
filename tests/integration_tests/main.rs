@@ -9,7 +9,6 @@ use shared_test_code::evaluate_complete_model_at_params;
 use shared_test_code::get_double_exponential_model_with_constant_offset;
 use shared_test_code::levmar_mrhs::DoubleExponentialModelWithConstantOffsetLevmarMrhs;
 
-mod fit_result_tests;
 use shared_test_code::linspace;
 use shared_test_code::models::o_leary_example_model;
 use shared_test_code::models::DoubleExpModelWithConstantOffsetSepModel;
