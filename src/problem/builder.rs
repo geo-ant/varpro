@@ -12,7 +12,7 @@ use super::{MultiRhs, RhsType, SingleRhs};
 /// Errors pertaining to use errors of the `SeparableProblemBuilder`
 #[derive(Debug, Clone, ThisError, PartialEq, Eq)]
 #[allow(missing_docs)]
-pub enum LevMarBuilderError {
+pub enum SeparableProblemBuilderError {
     /// the data for y variable was not given to the builder
     #[error("Right hand side(s) not provided")]
     YDataMissing,
@@ -275,9 +275,9 @@ where
     /// If all prerequisites are fulfilled, returns a [SeparableProblem](super::SeparableProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<SeparableProblem<Model, Rhs>, LevMarBuilderError> {
+    pub fn build(self) -> Result<SeparableProblem<Model, Rhs>, SeparableProblemBuilderError> {
         // and assign the defaults to the values we don't have
-        let Y = self.Y.ok_or(LevMarBuilderError::YDataMissing)?;
+        let Y = self.Y.ok_or(SeparableProblemBuilderError::YDataMissing)?;
         let model = self.separable_model;
         let epsilon = self.epsilon.unwrap_or_else(Float::epsilon);
         let weights = self.weights;
@@ -286,11 +286,11 @@ where
         // an error if they do not pass the test
         let x_len: usize = model.output_len();
         if x_len == 0 || Y.is_empty() {
-            return Err(LevMarBuilderError::ZeroLengthVector);
+            return Err(SeparableProblemBuilderError::ZeroLengthVector);
         }
 
         if x_len != Y.nrows() {
-            return Err(LevMarBuilderError::InvalidLengthOfData {
+            return Err(SeparableProblemBuilderError::InvalidLengthOfData {
                 x_length: x_len,
                 y_length: Y.nrows(),
             });
@@ -298,7 +298,7 @@ where
 
         if !weights.is_size_correct_for_data_length(Y.nrows()) {
             //check that weights have correct length if they were given
-            return Err(LevMarBuilderError::InvalidLengthOfWeights);
+            return Err(SeparableProblemBuilderError::InvalidLengthOfWeights);
         }
 
         //now that we have valid inputs, construct the levmar problem

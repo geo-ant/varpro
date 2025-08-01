@@ -7,8 +7,8 @@ use nalgebra::{Dim, Dyn};
 
 mod builder;
 
-pub use builder::LevMarBuilderError;
 pub use builder::SeparableProblemBuilder;
+pub use builder::SeparableProblemBuilderError;
 
 /// trait describing the type of right hand side for the problem, meaning either
 /// a single right hand side or multiple right hand sides. The latter implies
