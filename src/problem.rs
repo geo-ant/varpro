@@ -103,7 +103,7 @@ where
     /// The current residual matrix of model function values belonging to the current parameters
     pub(crate) current_residuals: DMatrix<ScalarType>,
     /// Singular value decomposition of the current function value matrix
-    //TODO QR
+    // TODO QR
     pub(crate) decomposition: SVD<ScalarType, OutputDim, ModelDim>,
     // pub(crate) decomposition: nalgebra_lapack::ColPivQR<ScalarType, OutputDim, ModelDim>,
     /// the linear coefficients `$\boldsymbol C$` providing the current best fit
