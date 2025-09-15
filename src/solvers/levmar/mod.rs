@@ -127,12 +127,6 @@ where
             .assume_init()
         };
 
-        // let U = current_svd.u.as_ref()?; // will return None if this was not calculated
-        // let U_t = U.transpose();
-
-        //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
-        //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
-
         // we use a functional style calculation here that is more easy to
         // parallelize with rayon later on. The only disadvantage is that
         // we don't short circuit anymore if there is an error in calculation,
@@ -143,17 +137,17 @@ where
             .enumerate()
             .map(|(k, mut jacobian_col)| {
                 // weighted derivative matrix
-                let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
+                let mut Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
+
+                // TODO replace by correct error handling
+                decomposition.q_tr_mul_mut(&mut Dk).unwrap();
+                let (m, n) = (Dk.nrows(), Dk.ncols());
+                let k = decomposition.rank();
+                Dk.view_mut((0, 0), (k as _, n))
+                    .fill(Model::ScalarType::from_i8(0).unwrap());
 
                 // TODO experiment with computation reordering
-                let mut Dk_C = -Dk * linear_coefficients;
-                // TODO replace by correct error handling
-                decomposition.q_tr_mul_mut(&mut Dk_C).unwrap();
-
-                let (m, n) = (Dk_C.nrows(), Dk_C.ncols());
-                let k = decomposition.rank();
-                Dk_C.view_mut((0, 0), (k as _, n))
-                    .fill(Model::ScalarType::from_i8(0).unwrap());
+                let Dk_C = -Dk * linear_coefficients;
 
                 //@todo CAUTION this relies on the fact that the
                 //elements are ordered in column major order but it avoids a copy
