@@ -16,6 +16,8 @@ use nalgebra::{
 use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;
 
+use nalgebra_lapack::ColPivQR as NlColPivQr;
+
 #[cfg(any(test, doctest))]
 mod test;
 
@@ -48,8 +50,8 @@ where
 
         // calculate the svd
         let svd_epsilon = self.svd_epsilon;
-        let current_svd = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
-        let linear_coefficients = current_svd
+        let decomposition = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
+        let linear_coefficients = decomposition
             .as_ref()
             .and_then(|svd| svd.solve(&self.Y_w, svd_epsilon).ok());
 
@@ -59,12 +61,12 @@ where
             .map(|(Phi_w, coeff)| &self.Y_w - &Phi_w * coeff);
 
         // if everything was successful, update the cached calculations, otherwise set the cache to none
-        if let (Some(current_residuals), Some(current_svd), Some(linear_coefficients)) =
-            (current_residuals, current_svd, linear_coefficients)
+        if let (Some(current_residuals), Some(decomposition), Some(linear_coefficients)) =
+            (current_residuals, decomposition, linear_coefficients)
         {
             self.cached = Some(CachedCalculations {
                 current_residuals,
-                current_svd,
+                decomposition,
                 linear_coefficients,
             })
         } else {
@@ -104,7 +106,7 @@ where
         // make it more efficient
         let CachedCalculations {
             current_residuals: _,
-            current_svd,
+            decomposition: current_svd,
             linear_coefficients,
         } = self.cached.as_ref()?;
 

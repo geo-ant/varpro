@@ -18,6 +18,7 @@ members = ["shared_test_code"]
 thiserror = "1"
 levenberg-marquardt = "0.14"
 nalgebra = { version = "0.33", features = []}
+nalgebra-lapack = "0.26"
 num-traits = "0.2"
 distrs = "0.2"
 
@@ -44,3 +45,7 @@ harness = false
 # To build locally use
 #   RUSTDOCFLAGS="--html-in-header katex-header.html" cargo doc --no-deps --open
 rustdoc-args = ["--html-in-header", "katex-header.html"]
+
+# TODO TODO TODO remove this before publish
+[patch.crates-io]
+nalgebra-lapack = {path = "../nalgebra/nalgebra-lapack"}
