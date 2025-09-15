@@ -2,8 +2,9 @@ use crate::prelude::*;
 use crate::problem::SeparableProblem;
 use crate::util::Weights;
 use levenberg_marquardt::LeastSquaresProblem;
-use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, Scalar};
-use num_traits::{Float, Zero};
+use nalgebra::{ComplexField, DMatrix, Dyn, OMatrix, OVector, RealField, Scalar};
+use nalgebra_lapack::colpiv_qr::{ColPivQrReal, ColPivQrScalar};
+use num_traits::{float::TotalOrder, Float, Zero};
 use std::ops::Mul;
 use thiserror::Error as ThisError;
 
@@ -275,7 +276,11 @@ where
     /// If all prerequisites are fulfilled, returns a [SeparableProblem](super::SeparableProblem) with the given
     /// content and the parameters set to the initial guess. Otherwise returns an error variant.
     #[allow(non_snake_case)]
-    pub fn build(self) -> Result<SeparableProblem<Model, Rhs>, SeparableProblemBuilderError> {
+    pub fn build(self) -> Result<SeparableProblem<Model, Rhs>, SeparableProblemBuilderError>
+    where
+        // TODO QR/SVD
+        Model::ScalarType: ColPivQrReal + ColPivQrScalar + Float + RealField + TotalOrder,
+    {
         // and assign the defaults to the values we don't have
         let Y = self.Y.ok_or(SeparableProblemBuilderError::YDataMissing)?;
         let model = self.separable_model;
