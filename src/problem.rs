@@ -97,11 +97,15 @@ where
     DefaultAllocator:
         nalgebra::allocator::Allocator<OutputDim, <OutputDim as DimMin<ModelDim>>::Output>,
     DefaultAllocator: nalgebra::allocator::Allocator<<OutputDim as DimMin<ModelDim>>::Output>,
+    //TODO QR
+    DefaultAllocator: nalgebra::allocator::Allocator<OutputDim, ModelDim>,
 {
     /// The current residual matrix of model function values belonging to the current parameters
     pub(crate) current_residuals: DMatrix<ScalarType>,
     /// Singular value decomposition of the current function value matrix
+    //TODO QR
     pub(crate) decomposition: SVD<ScalarType, OutputDim, ModelDim>,
+    // pub(crate) decomposition: nalgebra_lapack::ColPivQR<ScalarType, OutputDim, ModelDim>,
     /// the linear coefficients `$\boldsymbol C$` providing the current best fit
     pub(crate) linear_coefficients: DMatrix<ScalarType>,
 }

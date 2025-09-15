@@ -16,8 +16,6 @@ use nalgebra::{
 use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;
 
-use nalgebra_lapack::ColPivQR as NlColPivQr;
-
 #[cfg(any(test, doctest))]
 mod test;
 
@@ -53,7 +51,7 @@ where
         let decomposition = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
         let linear_coefficients = decomposition
             .as_ref()
-            .and_then(|svd| svd.solve(&self.Y_w, svd_epsilon).ok());
+            .and_then(|decomp| decomp.solve(&self.Y_w, svd_epsilon).ok());
 
         // calculate the residuals
         let current_residuals = Phi_w

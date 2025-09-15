@@ -16,8 +16,8 @@ members = ["shared_test_code"]
 
 [dependencies]
 thiserror = "1"
-levenberg-marquardt = "0.14"
-nalgebra = { version = "0.33", features = []}
+levenberg-marquardt = "0.15"
+nalgebra = { version = "0.34", features = []}
 nalgebra-lapack = "0.26"
 num-traits = "0.2"
 distrs = "0.2"
@@ -49,3 +49,4 @@ rustdoc-args = ["--html-in-header", "katex-header.html"]
 # TODO TODO TODO remove this before publish
 [patch.crates-io]
 nalgebra-lapack = {path = "../nalgebra/nalgebra-lapack"}
+nalgebra = {path = "../nalgebra"}
