@@ -102,5 +102,6 @@ pub(crate) fn to_vector<T: Scalar + std::fmt::Debug + Clone>(
     mat: OMatrix<T, Dyn, Dyn>,
 ) -> DVector<T> {
     let new_rows = Dyn(mat.nrows() * mat.ncols());
+    // this shouldn't allocate for valid DMatrix instances.
     mat.reshape_generic(new_rows, U1)
 }

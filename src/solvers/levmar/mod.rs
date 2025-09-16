@@ -10,8 +10,8 @@ use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, RawStorageMut, RealField, Scalar,
-    UninitMatrix, Vector, U1,
+    ComplexField, Const, DMatrix, DefaultAllocator, Dyn, Matrix, MatrixViewMut, RawStorageMut,
+    RealField, Scalar, UninitMatrix, Vector, U1,
 };
 use nalgebra_lapack::colpiv_qr::{ColPivQrReal, ColPivQrScalar};
 use num_traits::float::TotalOrder;
@@ -118,9 +118,6 @@ where
             .view_mut((0, 0), (k as _, current_residuals.ncols()))
             .fill(Model::ScalarType::from_i8(0).unwrap());
         Some(to_vector(current_residuals))
-        // self.cached
-        //     .as_ref()
-        //     .map(|cached| to_vector(cached.current_residuals.clone()))
     }
 
     #[allow(non_snake_case)]
@@ -161,32 +158,42 @@ where
                 // weighted derivative matrix
                 // let mut Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
 
+                // // // TODO replace by correct error handling
+                // let Dk = &self.weights * self.model.eval_partial_deriv(k)?;
+                // let mut Dk_C = Dk * (-linear_coefficients);
+
                 // // TODO replace by correct error handling
-                // decomposition.q_tr_mul_mut(&mut Dk).unwrap();
-                // let (m, n) = (Dk.nrows(), Dk.ncols());
+                // decomposition.q_tr_mul_mut(&mut Dk_C).unwrap();
+                // let (m, n) = (Dk_C.nrows(), Dk_C.ncols());
                 // let k = decomposition.rank();
-                // Dk.view_mut((0, 0), (k as _, n))
+                // Dk_C.view_mut((0, 0), (k as _, n))
                 //     .fill(Model::ScalarType::from_i8(0).unwrap());
 
-                // // TODO experiment with computation reordering
-                // let Dk_C = -Dk * linear_coefficients;
-
-                // let mut Dk_C =
-                //     &self.weights * (self.model.eval_partial_deriv(k)? * (-linear_coefficients));
-
-                let mut Dk_C =
-                    (&self.weights * self.model.eval_partial_deriv(k)?) * (-linear_coefficients);
-
-                // TODO replace by correct error handling
-                decomposition.q_tr_mul_mut(&mut Dk_C).unwrap();
-                let (m, n) = (Dk_C.nrows(), Dk_C.ncols());
+                // TODO NOTE good for MRHS (same perf as SVD)
+                // // TODO replace by correct error handling
+                let mut Dk = &self.weights * self.model.eval_partial_deriv(k)?;
+                decomposition.q_tr_mul_mut(&mut Dk).unwrap();
+                let n = Dk.ncols();
                 let k = decomposition.rank();
-                Dk_C.view_mut((0, 0), (k as _, n))
+                Dk.view_mut((0, 0), (k as _, n))
                     .fill(Model::ScalarType::from_i8(0).unwrap());
+                // let Dk_C = Dk * (-linear_coefficients);
+                let view: MatrixViewMut<Model::ScalarType, Dyn, Dyn, _, _> =
+                    jacobian_col.as_view_mut();
+                view.reshape_generic::<Dyn, Dyn>(
+                    Dk.shape_generic().0,
+                    linear_coefficients.shape_generic().1,
+                )
+                .gemm(
+                    Model::ScalarType::from_i8(-1).unwrap(),
+                    &Dk,
+                    &linear_coefficients,
+                    Model::ScalarType::from_i8(0).unwrap(),
+                );
 
                 //@todo CAUTION this relies on the fact that the
                 //elements are ordered in column major order but it avoids a copy
-                copy_matrix_to_column(Dk_C, &mut jacobian_col);
+                // copy_matrix_to_column(Dk_C, &mut jacobian_col);
                 Ok(())
             })
             .collect::<Result<_, _>>();
