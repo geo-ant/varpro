@@ -22,6 +22,10 @@ use std::ops::Mul;
 #[cfg(any(test, doctest))]
 mod test;
 
+/// contains traits and structures for underlying matrix decomposition backends
+/// that are used as part of the levmar solver.
+pub mod decomp;
+
 // TODO QR
 impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
     for SeparableProblem<Model, Rhs>
@@ -47,46 +51,32 @@ where
     fn set_params(&mut self, params: &Vector<Model::ScalarType, Dyn, Self::ParameterStorage>) {
         if self.model.set_params(params.clone()).is_err() {
             self.cached = None;
+            return;
         }
+
         // matrix of weighted model function values
-        let Phi_w = self.model.eval().ok().map(|Phi| &self.weights * Phi);
-
-        // calculate the svd
-        // let svd_epsilon = self.svd_epsilon;
-        let decomposition = Phi_w.and_then(|m| nalgebra_lapack::ColPivQR::new(m).ok());
-
-        let linear_coefficients = decomposition
-            .as_ref()
-            .and_then(|decomp| decomp.solve(self.Y_w.clone()).ok());
-
-        // calculate the residuals
-        // let current_residuals = Phi_w
-        //     .zip(linear_coefficients.as_ref())
-        //     .map(|(Phi_w, coeff)| &Phi_w * coeff - &self.Y_w);
-
-        // if everything was successful, update the cached calculations, otherwise set the cache to none
-        if let (Some(decomposition), Some(linear_coefficients)) =
-            (decomposition, linear_coefficients)
-        // if let (Some(current_residuals), Some(decomposition), Some(linear_coefficients)) =
-        //     (current_residuals, decomposition, linear_coefficients)
-        {
-            // let mut current_residuals = self.Y_w.clone();
-            // // @todo handle errors
-            // decomposition.q_tr_mul_mut(&mut current_residuals).unwrap();
-
-            // let k = decomposition.rank();
-            // current_residuals
-            //     .view_mut((0, 0), (k as _, current_residuals.ncols()))
-            //     .fill(Model::ScalarType::from_i8(0).unwrap());
-
-            self.cached = Some(CachedCalculations {
-                // current_residuals,
-                decomposition,
-                linear_coefficients,
-            })
-        } else {
+        let Some(Phi) = self.model.eval().ok() else {
             self.cached = None;
-        }
+            return;
+        };
+
+        let Phi_w = &self.weights * Phi;
+
+        let Ok(decomposition) = nalgebra_lapack::ColPivQR::new(Phi_w) else {
+            self.cached = None;
+            return;
+        };
+
+        let Ok(linear_coefficients) = decomposition.solve(self.Y_w.clone()) else {
+            self.cached = None;
+            return;
+        };
+
+        self.cached = Some(CachedCalculations {
+            // current_residuals,
+            decomposition,
+            linear_coefficients,
+        })
     }
 
     /// Retrieve the (nonlinear) model parameters as a vector `$\vec{\alpha}$`.
@@ -231,6 +221,7 @@ where
 //     fn set_params(&mut self, params: &Vector<Model::ScalarType, Dyn, Self::ParameterStorage>) {
 //         if self.model.set_params(params.clone()).is_err() {
 //             self.cached = None;
+//             return;
 //         }
 //         // matrix of weighted model function values
 //         let Phi_w = self.model.eval().ok().map(|Phi| &self.weights * Phi);
