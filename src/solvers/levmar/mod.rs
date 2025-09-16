@@ -63,7 +63,7 @@ where
         // calculate the residuals
         let current_residuals = Phi_w
             .zip(linear_coefficients.as_ref())
-            .map(|(Phi_w, coeff)| &self.Y_w - &Phi_w * coeff);
+            .map(|(Phi_w, coeff)| &Phi_w * coeff - &self.Y_w);
 
         // if everything was successful, update the cached calculations, otherwise set the cache to none
         if let (Some(current_residuals), Some(decomposition), Some(linear_coefficients)) =
@@ -137,17 +137,27 @@ where
             .enumerate()
             .map(|(k, mut jacobian_col)| {
                 // weighted derivative matrix
-                let mut Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
+                // let mut Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
+
+                // // TODO replace by correct error handling
+                // decomposition.q_tr_mul_mut(&mut Dk).unwrap();
+                // let (m, n) = (Dk.nrows(), Dk.ncols());
+                // let k = decomposition.rank();
+                // Dk.view_mut((0, 0), (k as _, n))
+                //     .fill(Model::ScalarType::from_i8(0).unwrap());
+
+                // // TODO experiment with computation reordering
+                // let Dk_C = -Dk * linear_coefficients;
+
+                let mut Dk_C =
+                    &self.weights * (self.model.eval_partial_deriv(k)? * linear_coefficients);
 
                 // TODO replace by correct error handling
-                decomposition.q_tr_mul_mut(&mut Dk).unwrap();
-                let (m, n) = (Dk.nrows(), Dk.ncols());
+                decomposition.q_tr_mul_mut(&mut Dk_C).unwrap();
+                let (m, n) = (Dk_C.nrows(), Dk_C.ncols());
                 let k = decomposition.rank();
-                Dk.view_mut((0, 0), (k as _, n))
+                Dk_C.view_mut((0, 0), (k as _, n))
                     .fill(Model::ScalarType::from_i8(0).unwrap());
-
-                // TODO experiment with computation reordering
-                let Dk_C = -Dk * linear_coefficients;
 
                 //@todo CAUTION this relies on the fact that the
                 //elements are ordered in column major order but it avoids a copy
