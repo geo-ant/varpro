@@ -13,6 +13,7 @@ use nalgebra::{
     ComplexField, Const, DMatrix, DefaultAllocator, Dyn, Matrix, MatrixViewMut, RawStorageMut,
     RealField, Scalar, UninitMatrix, Vector, U1,
 };
+
 use nalgebra_lapack::colpiv_qr::{ColPivQrReal, ColPivQrScalar};
 use num_traits::float::TotalOrder;
 use num_traits::{Float, FromPrimitive};
