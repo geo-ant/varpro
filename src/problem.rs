@@ -100,8 +100,8 @@ where
     //TODO QR
     DefaultAllocator: nalgebra::allocator::Allocator<OutputDim, ModelDim>,
 {
-    /// The current residual matrix of model function values belonging to the current parameters
-    pub(crate) current_residuals: DMatrix<ScalarType>,
+    // /// The current residual matrix of model function values belonging to the current parameters
+    // pub(crate) current_residuals: DMatrix<ScalarType>,
     /// Singular value decomposition of the current function value matrix
     // TODO QR
     // pub(crate) decomposition: SVD<ScalarType, OutputDim, ModelDim>,

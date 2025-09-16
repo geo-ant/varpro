@@ -52,9 +52,7 @@ where
 
         // calculate the svd
         // let svd_epsilon = self.svd_epsilon;
-        let decomposition = Phi_w
-            .as_ref()
-            .and_then(|m| nalgebra_lapack::ColPivQR::new(m.clone()).ok());
+        let decomposition = Phi_w.and_then(|m| nalgebra_lapack::ColPivQR::new(m).ok());
 
         let linear_coefficients = decomposition
             .as_ref()
@@ -71,17 +69,17 @@ where
         // if let (Some(current_residuals), Some(decomposition), Some(linear_coefficients)) =
         //     (current_residuals, decomposition, linear_coefficients)
         {
-            let mut current_residuals = self.Y_w.clone();
-            // @todo handle errors
-            decomposition.q_tr_mul_mut(&mut current_residuals).unwrap();
+            // let mut current_residuals = self.Y_w.clone();
+            // // @todo handle errors
+            // decomposition.q_tr_mul_mut(&mut current_residuals).unwrap();
 
-            let k = decomposition.rank();
-            current_residuals
-                .view_mut((0, 0), (k as _, current_residuals.ncols()))
-                .fill(Model::ScalarType::from_i8(0).unwrap());
+            // let k = decomposition.rank();
+            // current_residuals
+            //     .view_mut((0, 0), (k as _, current_residuals.ncols()))
+            //     .fill(Model::ScalarType::from_i8(0).unwrap());
 
             self.cached = Some(CachedCalculations {
-                current_residuals,
+                // current_residuals,
                 decomposition,
                 linear_coefficients,
             })
@@ -107,9 +105,22 @@ where
     /// fit, given the current `$\vec{\alpha}$`. For more info on the math of VarPro, see
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn residuals(&self) -> Option<Vector<Model::ScalarType, Dyn, Self::ResidualStorage>> {
-        self.cached
-            .as_ref()
-            .map(|cached| to_vector(cached.current_residuals.clone()))
+        let cached = self.cached.as_ref()?;
+        let mut current_residuals = self.Y_w.clone();
+        // @todo handle errors
+        cached
+            .decomposition
+            .q_tr_mul_mut(&mut current_residuals)
+            .unwrap();
+
+        let k = cached.decomposition.rank();
+        current_residuals
+            .view_mut((0, 0), (k as _, current_residuals.ncols()))
+            .fill(Model::ScalarType::from_i8(0).unwrap());
+        Some(to_vector(current_residuals))
+        // self.cached
+        //     .as_ref()
+        //     .map(|cached| to_vector(cached.current_residuals.clone()))
     }
 
     #[allow(non_snake_case)]
@@ -121,7 +132,7 @@ where
         // but remember that just slapping rayon on the column_iter DOES NOT
         // make it more efficient
         let CachedCalculations {
-            current_residuals: _,
+            // current_residuals: _,
             decomposition,
             linear_coefficients,
         } = self.cached.as_ref()?;
@@ -160,8 +171,11 @@ where
                 // // TODO experiment with computation reordering
                 // let Dk_C = -Dk * linear_coefficients;
 
+                // let mut Dk_C =
+                //     &self.weights * (self.model.eval_partial_deriv(k)? * (-linear_coefficients));
+
                 let mut Dk_C =
-                    &self.weights * (self.model.eval_partial_deriv(k)? * (-linear_coefficients));
+                    (&self.weights * self.model.eval_partial_deriv(k)?) * (-linear_coefficients);
 
                 // TODO replace by correct error handling
                 decomposition.q_tr_mul_mut(&mut Dk_C).unwrap();
