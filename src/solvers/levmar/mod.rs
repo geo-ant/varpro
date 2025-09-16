@@ -61,14 +61,25 @@ where
             .and_then(|decomp| decomp.solve(self.Y_w.clone()).ok());
 
         // calculate the residuals
-        let current_residuals = Phi_w
-            .zip(linear_coefficients.as_ref())
-            .map(|(Phi_w, coeff)| &Phi_w * coeff - &self.Y_w);
+        // let current_residuals = Phi_w
+        //     .zip(linear_coefficients.as_ref())
+        //     .map(|(Phi_w, coeff)| &Phi_w * coeff - &self.Y_w);
 
         // if everything was successful, update the cached calculations, otherwise set the cache to none
-        if let (Some(current_residuals), Some(decomposition), Some(linear_coefficients)) =
-            (current_residuals, decomposition, linear_coefficients)
+        if let (Some(decomposition), Some(linear_coefficients)) =
+            (decomposition, linear_coefficients)
+        // if let (Some(current_residuals), Some(decomposition), Some(linear_coefficients)) =
+        //     (current_residuals, decomposition, linear_coefficients)
         {
+            let mut current_residuals = self.Y_w.clone();
+            // @todo handle errors
+            decomposition.q_tr_mul_mut(&mut current_residuals).unwrap();
+
+            let k = decomposition.rank();
+            current_residuals
+                .view_mut((0, 0), (k as _, current_residuals.ncols()))
+                .fill(Model::ScalarType::from_i8(0).unwrap());
+
             self.cached = Some(CachedCalculations {
                 current_residuals,
                 decomposition,
@@ -150,7 +161,7 @@ where
                 // let Dk_C = -Dk * linear_coefficients;
 
                 let mut Dk_C =
-                    &self.weights * (self.model.eval_partial_deriv(k)? * linear_coefficients);
+                    &self.weights * (self.model.eval_partial_deriv(k)? * (-linear_coefficients));
 
                 // TODO replace by correct error handling
                 decomposition.q_tr_mul_mut(&mut Dk_C).unwrap();
