@@ -12,3 +12,6 @@ num-traits = "0.2"
 levenberg-marquardt = "0.15"
 approx = "0.5"
 rand = "0.8"
+
+[patch.crates-io]
+lapack-src = { path = "../lapack-src" }

@@ -18,7 +18,7 @@ members = ["shared_test_code"]
 thiserror = "1"
 levenberg-marquardt = "0.15"
 nalgebra = { version = "0.34", features = []}
-nalgebra-lapack = "0.26"
+nalgebra-lapack = {version = "0.26", default-features = false, features = ["intel-mkl"]}
 num-traits = "0.2"
 distrs = "0.2"
 
@@ -50,3 +50,4 @@ rustdoc-args = ["--html-in-header", "katex-header.html"]
 [patch.crates-io]
 nalgebra-lapack = {path = "../nalgebra/nalgebra-lapack"}
 nalgebra = {path = "../nalgebra"}
+lapack-src = {path = "../lapack-src"}
