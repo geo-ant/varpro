@@ -161,6 +161,11 @@ where
                 //     .fill(Model::ScalarType::from_i8(0).unwrap());
 
                 // TODO NOTE good for MRHS (same perf as SVD)
+                // this calculates (Q^T * Dk) * C, in an efficient way.
+                // However, for single (or few) right hand sides, it's more efficient
+                // to calculate Q^T * (Dk *C), but I couldn't yet figure this
+                // out with the trait bounds using gemm and avoiding intermediate
+                // allocations.
                 // // TODO replace by correct error handling
                 let mut Dk = &self.weights * self.model.eval_partial_deriv(k)?;
                 decomposition.q_tr_mul_mut(&mut Dk).unwrap();
