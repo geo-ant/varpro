@@ -22,9 +22,15 @@ use std::ops::Mul;
 #[cfg(any(test, doctest))]
 mod test;
 
-/// contains traits and structures for underlying matrix decomposition backends
-/// that are used as part of the levmar solver.
-pub mod decomp;
+pub struct LevMarProblem<Model, Rhs, Solver>
+where
+    Model: SeparableNonlinearModel,
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    Rhs: RhsType,
+{
+    problem: SeparableProblem<Model, Rhs>,
+    solver: Solver,
+}
 
 // TODO QR
 impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>

@@ -54,10 +54,11 @@ impl RhsType for SingleRhs {}
 /// coefficient vectors and data vectors respectively.
 #[derive(Clone)]
 #[allow(non_snake_case)]
-pub struct SeparableProblem<Model, Rhs: RhsType>
+pub struct SeparableProblem<Model, Rhs>
 where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
+    Rhs: RhsType,
 {
     /// The *weighted* data matrix to which to fit the model `$\boldsymbol{Y}_w$`.
     /// It is a matrix so it can accommodate multiple right hand sides. If
