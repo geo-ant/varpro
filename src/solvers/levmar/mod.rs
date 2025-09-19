@@ -10,8 +10,8 @@ use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, RawStorageMut, RealField, Scalar,
-    UninitMatrix, Vector, U1,
+    ComplexField, DefaultAllocator, Dyn, Matrix, MatrixViewMut, RealField, Scalar, UninitMatrix,
+    Vector,
 };
 use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;
@@ -123,6 +123,8 @@ where
         let U = current_svd.u.as_ref()?; // will return None if this was not calculated
         let U_t = U.transpose();
 
+        let one = Model::ScalarType::from_i8(1).unwrap();
+
         //let Sigma_inverse : DMatrix<Model::ScalarType::RealField> = DMatrix::from_diagonal(&self.current_svd.singular_values.map(|val|val.powi(-1)));
         //let V_t = self.current_svd.v_t.as_ref().expect("Did not calculate U of SVD. This should not happen and indicates a logic error in the library.");
 
@@ -138,24 +140,55 @@ where
                 // weighted derivative matrix
                 let Dk = &self.weights * self.model.eval_partial_deriv(k)?; // will return none if this could not be calculated
 
+                // this creates a view of the jacobian column with the same
+                // shape as Dk*C, which is the right thing to do, because
+                // that column is just the vectorized (i.e. stacked column)
+                // form of a matrix of that shape
+                let view: MatrixViewMut<Model::ScalarType, Dyn, Dyn, _, _> =
+                    jacobian_col.as_view_mut();
+                let mut dkc_shaped_jacobian: Matrix<Model::ScalarType, Dyn, Dyn, _> = view
+                    .reshape_generic::<Dyn, Dyn>(
+                        Dk.shape_generic().0,
+                        linear_coefficients.shape_generic().1,
+                    );
                 // this orders the computations in a more efficient way for problems with multiple right hand sides,
                 // which gives ~20-30% performance improvements for the benchmark cases
-                let minus_ak = if data_cols <= parameter_count {
-                    let Dk_C = Dk * linear_coefficients;
-                    U * (&U_t * (&Dk_C)) - Dk_C
+                if data_cols <= parameter_count {
+                    // formula:
+                    // j_k = vec(U * (&U_t * (&Dk_C)) - Dk_C), where Dk_C = Dk*C
+                    // where vec is an operation that stacks the columns of a matrix
+                    // to form a column vector.
+                    // We just use mul_to and gemm operations to avoid as many
+                    // temporary allocations and copies as we can.
+
+                    Dk.mul_to(linear_coefficients, &mut dkc_shaped_jacobian);
+                    // now the jacobian contains Dk*C
+
+                    // temporary result for U_t * Dk_C
+                    let Ut_DkC = &U_t * &dkc_shaped_jacobian;
+                    // then use gemm to calculate the full result according
+                    // to the formula above
+                    dkc_shaped_jacobian.gemm(one, &U, &Ut_DkC, -one);
                 } else {
-                    // this version is
-                    // 23-30% faster computations for MRHS benchmark
-                    (U * (&U_t * (&Dk)) - Dk) * linear_coefficients
+                    // formula: j_k = vec( (U * (&U_t * (&Dk)) - Dk) * linear_coefficients)
+                    // even using this version without gemm and mul_to is
+                    // 23-30% faster computations for MRHS benchmark.
+                    //
+                    // Additionally we also use primitive operations to avoid
+                    // intermediate allocations and copies as much as we can
+
+                    // intermediate result
+                    let Ut_Dk = &U_t * &Dk;
+                    let mut Dk = Dk;
+                    Dk.gemm(one, &U, &Ut_Dk, -one);
+                    // now Dk contains the result of (U * (&U_t * (&Dk)) - Dk)
+                    Dk.mul_to(&linear_coefficients, &mut dkc_shaped_jacobian);
                 };
 
                 //for non-approximate jacobian we require our scalar type to be a real field (or maybe we can finagle it with clever trait bounds)
                 //let Dk_t_rw : DVector<Model::ScalarType> = &Dk.transpose()*self.residuals().as_ref().expect("Residuals must produce result");
                 //let _minus_bk : DVector<Model::ScalarType> = U*(&Sigma_inverse*(V_t*(&Dk_t_rw)));
 
-                //@todo CAUTION this relies on the fact that the
-                //elements are ordered in column major order but it avoids a copy
-                copy_matrix_to_column(minus_ak, &mut jacobian_col);
                 Ok(())
             })
             .collect::<Result<_, _>>();
@@ -279,14 +312,4 @@ where
     fn default() -> Self {
         Self::with_solver(Default::default())
     }
-}
-
-/// copy the given matrix to a matrix column by stacking its column on top of each other
-fn copy_matrix_to_column<T: Scalar + std::fmt::Display + Clone, S: RawStorageMut<T, Dyn>>(
-    source: DMatrix<T>,
-    target: &mut Matrix<T, Dyn, U1, S>,
-) {
-    //@todo make this more efficient...
-    //@todo inefficient
-    target.copy_from(&to_vector(source));
 }
