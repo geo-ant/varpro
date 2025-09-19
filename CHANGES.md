@@ -3,6 +3,11 @@
 This is the changelog for the `varpro` library.
 See also here for a [version history](https://crates.io/crates/varpro/versions).
 
+## 0.13.3
+
+* Minor performance improvements by using `gemm` and `mul_to` for matrix
+  calculations in SVD interface at the expense of slighlyt more unreadable code...
+
 ## 0.13.2 (AI assisted)
 
 * Improved documentation clarity and fixed inconsistencies between code and documentation
