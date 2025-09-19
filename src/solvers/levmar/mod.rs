@@ -10,8 +10,8 @@ use levenberg_marquardt::LeastSquaresProblem;
 use levenberg_marquardt::LevenbergMarquardt;
 use nalgebra::storage::Owned;
 use nalgebra::{
-    ComplexField, Const, DMatrix, DefaultAllocator, Dyn, Matrix, MatrixViewMut, RawStorageMut,
-    RealField, Scalar, UninitMatrix, Vector, U1,
+    ComplexField, DefaultAllocator, Dyn, Matrix, MatrixViewMut, RealField, Scalar, UninitMatrix,
+    Vector,
 };
 use num_traits::{Float, FromPrimitive};
 use std::ops::Mul;
@@ -312,14 +312,4 @@ where
     fn default() -> Self {
         Self::with_solver(Default::default())
     }
-}
-
-/// copy the given matrix to a matrix column by stacking its column on top of each other
-fn copy_matrix_to_column<T: Scalar + std::fmt::Display + Clone, S: RawStorageMut<T, Dyn>>(
-    source: DMatrix<T>,
-    target: &mut Matrix<T, Dyn, U1, S>,
-) {
-    //@todo make this more efficient...
-    //@todo inefficient
-    target.copy_from(&to_vector(source));
 }
