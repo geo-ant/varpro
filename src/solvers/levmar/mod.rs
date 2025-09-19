@@ -333,10 +333,16 @@ where
 //                 // which gives ~20-30% performance improvements for the benchmark cases
 //                 let minus_ak = if data_cols <= parameter_count {
 //                     let Dk_C = Dk * linear_coefficients;
+//                     // probably more efficient:
+//                     let U_t_mul_Dk_c = U_t* &Dk_C;
+//                     then gemm on Dk_C with U and the above and beta = -1
 //                     U * (&U_t * (&Dk_C)) - Dk_C
 //                 } else {
 //                     // this version is
 //                     // 23-30% faster computations for MRHS benchmark
+//                     also here we can have intermediate result U_t Dk, then
+//                     gemm that result and then gemm that and mul_to into j_k
+//                     with appropriate shape
 //                     (U * (&U_t * (&Dk)) - Dk) * linear_coefficients
 //                 };
 
@@ -346,6 +352,10 @@ where
 
 //                 //@todo CAUTION this relies on the fact that the
 //                 //elements are ordered in column major order but it avoids a copy
+//
+//                 // TODO TODO TODO we should be able to make this more
+//                 // efficient by using mul_to and gemm with the correct rhs
+//                 // above.
 //                 copy_matrix_to_column(minus_ak, &mut jacobian_col);
 //                 Ok(())
 //             })
@@ -499,7 +509,7 @@ where
             problem.model(),
             problem.weighted_data(),
             problem.weights(),
-            coefficients,
+            coefficients.as_view(),
         ) {
             Ok(statistics) => Ok((FitResult::new(problem, minimization_report), statistics)),
             Err(_) => Err(FitResult::new(problem, minimization_report)),
