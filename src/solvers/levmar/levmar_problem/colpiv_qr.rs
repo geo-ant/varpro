@@ -26,8 +26,8 @@ where
 {
     type ScalarType = ScalarType;
 
-    fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType> {
-        self.linear_coefficients.clone()
+    fn linear_coefficients_matrix(self) -> DMatrix<Self::ScalarType> {
+        self.linear_coefficients
     }
 }
 

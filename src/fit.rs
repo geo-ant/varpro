@@ -4,7 +4,8 @@ use crate::{
 };
 use levenberg_marquardt::MinimizationReport;
 use nalgebra::{
-    DMatrix, DVector, Dyn, MatrixView, OMatrix, OVector, RealField, Scalar, VectorView,
+    DMatrix, DMatrixView, DVector, DVectorView, Dyn, MatrixView, OMatrix, OVector, RealField,
+    Scalar, VectorView,
 };
 use num_traits::Float;
 
@@ -22,6 +23,10 @@ where
     /// The final state of the fitting problem after the
     /// minimization finished (regardless of whether fitting was successful or not).
     pub problem: SeparableProblem<Model, Rhs>,
+
+    /// the linear coefficient matrix (in case of single rhs: matrix has
+    /// only one column) at the solution.
+    pub(crate) linear_coefficients: Option<DMatrix<Model::ScalarType>>,
 
     /// The minimization report of the underlying solver.
     /// It contains information about the minimization process
@@ -44,8 +49,8 @@ where
     /// The coefficients vectors for the individual
     /// members of the datasets are the colums of the returned matrix. That means
     /// one coefficient vector for each right hand side.
-    pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
-        self.problem.linear_coefficients()
+    pub fn linear_coefficients(&self) -> Option<DMatrixView<Model::ScalarType>> {
+        self.linear_coefficients.as_ref().map(|c| c.as_view())
     }
 
     /// **Note** This implementation is for fitting problems with multiple right hand sides.
@@ -72,14 +77,14 @@ where
     /// Convenience function to get the linear coefficients after the fit has
     /// finished. Will return None if there was an error during fitting.
     /// The coefficients are given as a single vector.
-    pub fn linear_coefficients(&self) -> Option<DVector<Model::ScalarType>> {
-        let coeff = self.problem.linear_coefficients()?;
+    pub fn linear_coefficients(&self) -> Option<DVectorView<Model::ScalarType>> {
+        let coeff = self.linear_coefficients.as_ref()?;
         debug_assert_eq!(
             coeff.ncols(),
             1,
             "Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!"
         );
-        Some(coeff.column(0).into_owned())
+        Some(coeff.column(0))
     }
     /// **Note** This implementation is for fitting problems with multiple right hand sides
     ///
@@ -102,11 +107,13 @@ where
     /// internal helper for constructing an instance
     pub(crate) fn new(
         problem: SeparableProblem<Model, Rhs>,
+        linear_coefficients: Option<DMatrix<Model::ScalarType>>,
         minimization_report: MinimizationReport<Model::ScalarType>,
     ) -> Self {
         Self {
             problem,
             minimization_report,
+            linear_coefficients,
         }
     }
 

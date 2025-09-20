@@ -2,13 +2,14 @@ use crate::{
     model::SeparableNonlinearModel,
     problem::{RhsType, SeparableProblem},
 };
-use nalgebra::{ComplexField, DMatrix, Dyn, Scalar, SVD};
+use nalgebra::{ComplexField, DMatrix, Scalar};
 mod svd;
 
 // TODO only on lapack feature
 mod colpiv_qr;
 
 use colpiv_qr::ColPivQrLinearSolver;
+use svd::SvdSolver;
 
 #[allow(type_alias_bounds)]
 /// levmar problem where the linear part is solved via column pivoted QR
@@ -16,6 +17,10 @@ use colpiv_qr::ColPivQrLinearSolver;
 //TODO expose only on lapack feature
 pub type LevMarProblemCpQr<Model: SeparableNonlinearModel, Rhs> =
     LevMarProblem<Model, Rhs, ColPivQrLinearSolver<Model::ScalarType>>;
+
+#[allow(type_alias_bounds)]
+pub type LevMarProblemSvd<Model: SeparableNonlinearModel, Rhs> =
+    LevMarProblem<Model, Rhs, SvdSolver<Model::ScalarType>>;
 
 #[derive(Debug)]
 pub struct LevMarProblem<Model, Rhs, Solver>
@@ -49,9 +54,13 @@ where
 /// here, other than giving a method for getting the linear coefficients,
 /// becaue the actual implementation of the LeastSquaresProblem
 /// trait is done for specializations on the solvers for concrete types.
+///
+/// This is only used once when the problem is solved internally, which
+/// is why we can move out of the solver here and save some needless
+/// copies.
 pub trait LinearSolver {
     type ScalarType: Scalar;
     /// get the linear coefficients in matrix form. For single RHS
     /// this is a matrix with just one column.
-    fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType>;
+    fn linear_coefficients_matrix(self) -> DMatrix<Self::ScalarType>;
 }

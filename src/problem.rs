@@ -74,11 +74,6 @@ where
     /// If weights were provided, the builder has checked that the weights have the
     /// correct dimension for the data
     pub(crate) weights: Weights<Model::ScalarType, Dyn>,
-    /// the currently cached calculations belonging to the currently set model parameters
-    /// those are updated on set_params. If this is None, then it indicates some error that
-    /// is propagated on to the levenberg-marquardt crate by also returning None results
-    /// by residuals() and/or jacobian()
-    pub(crate) cached: Option<CachedCalculations<Model::ScalarType, Dyn, Dyn>>,
     phantom: std::marker::PhantomData<Rhs>,
 }
 
@@ -121,7 +116,6 @@ where
             .field("model", &"/* omitted */")
             .field("svd_epsilon", &self.svd_epsilon)
             .field("weights", &self.weights)
-            .field("cached", &self.cached)
             .finish()
     }
 }
@@ -131,24 +125,6 @@ where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
 {
-    /// Get the linear coefficients for the current problem. After a successful pass of the solver,
-    /// this contains a value with the best fitting linear coefficients.
-    ///
-    /// # Returns
-    ///
-    /// Either the current best estimate coefficients or None, if none were calculated or the solver
-    /// encountered an error. After the solver finished, this is the least squares best estimate
-    /// for the linear coefficients of the basis functions.
-    ///
-    /// Since this method is for fitting multiple right hand sides, the coefficients
-    /// are returned as a matrix view where each column represents the coefficients
-    /// for the corresponding right-hand side.
-    pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
-        self.cached
-            .as_ref()
-            .map(|cache| cache.linear_coefficients.clone())
-    }
-
     /// The weighted data matrix `$\boldsymbol{Y}_w$` to which to fit the model. Note
     /// that the weights are already applied to the data matrix and this
     /// is not the original data vector.
@@ -165,25 +141,6 @@ where
     Model: SeparableNonlinearModel,
     Model::ScalarType: Scalar + ComplexField + Copy,
 {
-    /// Get the linear coefficients for the current problem. After a successful pass of the solver,
-    /// this contains a value with the best fitting linear coefficients
-    /// # Returns
-    /// Either the current best estimate coefficients or None, if none were calculated or the solver
-    /// encountered an error. After the solver finished, this is the least squares best estimate
-    /// for the linear coefficients of the basis functions.
-    ///
-    /// Since this method is for fitting a single right hand side, the coefficients
-    /// are returned as a single column vector.
-    pub fn linear_coefficients(&self) -> Option<DVector<Model::ScalarType>> {
-        self.cached
-            .as_ref()
-            .map(|cache|{
-                debug_assert_eq!(cache.linear_coefficients.ncols(),1,
-                    "coefficient matrix must have exactly one column for single right hand side. This indicates a programming error in the library.");
-                to_vector(cache.linear_coefficients.clone())
-            })
-    }
-
     /// The weighted data vector `$\vec{y}_w$` to which to fit the model. Note
     /// that the weights are already applied to the data vector and this
     /// is not the original data vector.

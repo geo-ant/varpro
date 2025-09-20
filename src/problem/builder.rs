@@ -311,19 +311,16 @@ where
         #[allow(non_snake_case)]
         let Y_w = &weights * Y;
 
-        let params = model.params();
         // 2) initialize the levmar problem. Some field values are dummy initialized
         // (like the SVD) because they are calculated in step 3 as part of set_params
-        let mut problem = SeparableProblem {
+        let problem = SeparableProblem {
             // these parameters all come from the builder
             Y_w,
             model,
             svd_epsilon: epsilon,
-            cached: None,
             weights,
             phantom: Default::default(),
         };
-        problem.set_params(&params);
 
         Ok(problem)
     }
