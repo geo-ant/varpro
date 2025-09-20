@@ -362,7 +362,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct LevMarProblem<Model, Solver, Rhs>
+pub struct LevMarProblem<Model, Rhs, Solver>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     Solver: LinearSolver<ScalarType = Model::ScalarType>,
@@ -371,6 +371,21 @@ where
 {
     separable_problem: SeparableProblem<Model, Rhs>,
     cached: Option<Solver>,
+}
+
+impl<Model, Rhs, Solver> From<SeparableProblem<Model, Rhs>> for LevMarProblem<Model, Rhs, Solver>
+where
+    Model::ScalarType: Scalar + ComplexField + Copy,
+    Solver: LinearSolver<ScalarType = Model::ScalarType>,
+    Rhs: RhsType,
+    Model: SeparableNonlinearModel,
+{
+    fn from(problem: SeparableProblem<Model, Rhs>) -> Self {
+        Self {
+            separable_problem: problem,
+            cached: None,
+        }
+    }
 }
 
 pub trait LinearSolver {
@@ -402,24 +417,22 @@ impl<Model> LevMarSolver<Model>
 where
     Model: SeparableNonlinearModel,
 {
-    /// creata a new solver using the given underlying solver. This allows
+    /// construct a new solver using the given underlying solver. This allows
     /// us to configure the underlying solver with non-default parameters
     pub fn with_solver(solver: LevenbergMarquardt<Model::ScalarType>) -> Self {
         Self { solver }
     }
 
     #[allow(clippy::result_large_err)]
-    pub fn solve<Rhs: RhsType, Solver: LinearSolver<ScalarType = Model::ScalarType>>(
+    fn solve<Rhs: RhsType, Solver: LinearSolver<ScalarType = Model::ScalarType>>(
         &self,
-        problem: LevMarProblem<Model, Solver, Rhs>,
+        problem: LevMarProblem<Model, Rhs, Solver>,
     ) -> Result<FitResult<Model, Rhs>, FitResult<Model, Rhs>>
     where
         Model: SeparableNonlinearModel,
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
-        Model::ScalarType: ColPivQrReal + ColPivQrScalar + Float + RealField + TotalOrder,
-        LevMarProblem<Model, Solver, Rhs>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+        LevMarProblem<Model, Rhs, Solver>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
     {
-        #[allow(deprecated)]
         let (problem, report) = self.solver.minimize(problem);
         let result = FitResult::new(problem.separable_problem, report);
         if result.was_successful() {
@@ -427,6 +440,22 @@ where
         } else {
             Err(result)
         }
+    }
+
+    #[allow(clippy::result_large_err)]
+    pub fn solve_with_cpqr<Rhs: RhsType>(
+        &self,
+        problem: SeparableProblem<Model, Rhs>,
+    ) -> Result<FitResult<Model, Rhs>, FitResult<Model, Rhs>>
+    where
+        Model: SeparableNonlinearModel,
+        Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
+        Model::ScalarType: ColPivQrReal + ColPivQrScalar + Float + RealField + TotalOrder,
+    {
+        let levmar_problem =
+            LevMarProblem::<_, _, ColPivQrLinearSolver<Model::ScalarType>>::from(problem);
+
+        self.solve(levmar_problem)
     }
 
     /// Try to solve the given varpro minimization problem. The parameters of
@@ -452,7 +481,6 @@ where
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
         Model::ScalarType: ColPivQrReal + ColPivQrScalar + Float + RealField + TotalOrder,
     {
-        #[allow(deprecated)]
         let (problem, report) = self.solver.minimize(problem);
         let result = FitResult::new(problem, report);
         if result.was_successful() {
@@ -464,7 +492,7 @@ where
 }
 
 impl<Model, Rhs> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
-    for LevMarProblem<Model, ColPivQrLinearSolver<Model::ScalarType>, Rhs>
+    for LevMarProblem<Model, Rhs, ColPivQrLinearSolver<Model::ScalarType>>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
