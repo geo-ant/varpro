@@ -1,9 +1,11 @@
-use nalgebra::{ComplexField, DMatrix, Dyn, Scalar};
-
 use crate::{
     model::SeparableNonlinearModel,
     problem::{RhsType, SeparableProblem},
 };
+use nalgebra::{ComplexField, DMatrix, Dyn, Scalar, SVD};
+
+mod colpiv_qr;
+pub use colpiv_qr::ColPivQrLinearSolver;
 
 #[derive(Debug)]
 pub struct LevMarProblem<Model, Rhs, Solver>
@@ -32,27 +34,28 @@ where
     }
 }
 
+/// helper trait to abstract over the linear solvers (as of now ColPivQr
+/// and SVD) used in the LevMarProblem. We don't actually abstract much
+/// here, other than giving a method for getting the linear coefficients,
+/// becaue the actual implementation of the LeastSquaresProblem
+/// trait is done for specializations on the solvers for concrete types.
 pub trait LinearSolver {
     type ScalarType: Scalar;
+    /// get the linear coefficients in matrix form. For single RHS
+    /// this is a matrix with just one column.
     fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType>;
 }
 
-pub struct ColPivQrLinearSolver<ScalarType>
+///
+#[derive(Debug, Clone)]
+pub(crate) struct SvdSolver<ScalarType>
 where
     ScalarType: Scalar + ComplexField,
 {
-    pub(crate) decomposition: nalgebra_lapack::ColPivQR<ScalarType, Dyn, Dyn>,
+    /// The current residual matrix of model function values belonging to the current parameters
+    pub(crate) current_residuals: DMatrix<ScalarType>,
+    /// Singular value decomposition of the current function value matrix
+    pub(crate) decomposition: SVD<ScalarType, Dyn, Dyn>,
     /// the linear coefficients `$\boldsymbol C$` providing the current best fit
     pub(crate) linear_coefficients: DMatrix<ScalarType>,
-}
-
-impl<ScalarType> LinearSolver for ColPivQrLinearSolver<ScalarType>
-where
-    ScalarType: Scalar + ComplexField,
-{
-    type ScalarType = ScalarType;
-
-    fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType> {
-        self.linear_coefficients.clone()
-    }
 }
