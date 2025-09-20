@@ -489,7 +489,7 @@ where
             problem.model(),
             problem.weighted_data(),
             problem.weights(),
-            coefficients,
+            coefficients.as_view(),
         ) {
             Ok(statistics) => Ok((FitResult::new(problem, minimization_report), statistics)),
             Err(_) => Err(FitResult::new(problem, minimization_report)),

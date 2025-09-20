@@ -3,7 +3,9 @@ use crate::{
     problem::{MultiRhs, RhsType, SeparableProblem, SingleRhs},
 };
 use levenberg_marquardt::MinimizationReport;
-use nalgebra::{Dyn, MatrixView, OMatrix, OVector, RealField, Scalar, VectorView};
+use nalgebra::{
+    DMatrix, DVector, Dyn, MatrixView, OMatrix, OVector, RealField, Scalar, VectorView,
+};
 use num_traits::Float;
 
 /// A helper type that contains the fitting problem after the
@@ -42,8 +44,8 @@ where
     /// The coefficients vectors for the individual
     /// members of the datasets are the colums of the returned matrix. That means
     /// one coefficient vector for each right hand side.
-    pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
-        Some(self.problem.cached.as_ref()?.linear_coefficients.as_view())
+    pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
+        self.problem.linear_coefficients()
     }
 
     /// **Note** This implementation is for fitting problems with multiple right hand sides.
@@ -70,14 +72,14 @@ where
     /// Convenience function to get the linear coefficients after the fit has
     /// finished. Will return None if there was an error during fitting.
     /// The coefficients are given as a single vector.
-    pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
-        let coeff = &self.problem.cached.as_ref()?.linear_coefficients;
+    pub fn linear_coefficients(&self) -> Option<DVector<Model::ScalarType>> {
+        let coeff = self.problem.linear_coefficients()?;
         debug_assert_eq!(
             coeff.ncols(),
             1,
             "Coefficient matrix must have exactly one colum for problem with single right hand side. This indicates a programming error inside this library!"
         );
-        Some(self.problem.cached.as_ref()?.linear_coefficients.column(0))
+        Some(coeff.column(0).into_owned())
     }
     /// **Note** This implementation is for fitting problems with multiple right hand sides
     ///

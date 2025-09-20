@@ -1,7 +1,7 @@
 use crate::prelude::*;
-use crate::util::Weights;
+use crate::util::{to_vector, Weights};
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, DimMin, MatrixView, Scalar, VectorView, SVD,
+    ComplexField, DMatrix, DVector, DefaultAllocator, DimMin, MatrixView, Scalar, VectorView, SVD,
 };
 use nalgebra::{Dim, Dyn};
 
@@ -143,10 +143,10 @@ where
     /// Since this method is for fitting multiple right hand sides, the coefficients
     /// are returned as a matrix view where each column represents the coefficients
     /// for the corresponding right-hand side.
-    pub fn linear_coefficients(&self) -> Option<MatrixView<Model::ScalarType, Dyn, Dyn>> {
+    pub fn linear_coefficients(&self) -> Option<DMatrix<Model::ScalarType>> {
         self.cached
             .as_ref()
-            .map(|cache| cache.linear_coefficients.as_view())
+            .map(|cache| cache.linear_coefficients.clone())
     }
 
     /// The weighted data matrix `$\boldsymbol{Y}_w$` to which to fit the model. Note
@@ -174,13 +174,13 @@ where
     ///
     /// Since this method is for fitting a single right hand side, the coefficients
     /// are returned as a single column vector.
-    pub fn linear_coefficients(&self) -> Option<VectorView<Model::ScalarType, Dyn>> {
+    pub fn linear_coefficients(&self) -> Option<DVector<Model::ScalarType>> {
         self.cached
             .as_ref()
             .map(|cache|{
                 debug_assert_eq!(cache.linear_coefficients.ncols(),1,
                     "coefficient matrix must have exactly one column for single right hand side. This indicates a programming error in the library.");
-                cache.linear_coefficients.as_view()
+                to_vector(cache.linear_coefficients.clone())
             })
     }
 
