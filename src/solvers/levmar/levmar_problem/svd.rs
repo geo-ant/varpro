@@ -2,10 +2,10 @@ use super::{LevMarProblem, LinearSolver};
 use crate::{model::SeparableNonlinearModel, problem::RhsType, util::to_vector};
 use levenberg_marquardt::LeastSquaresProblem;
 use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, MatrixViewMut, Owned, Scalar,
+    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, MatrixViewMut, Owned, RealField, Scalar,
     UninitMatrix, Vector, SVD,
 };
-use num_traits::{float::TotalOrder, Float, FromPrimitive};
+use num_traits::{float::TotalOrder, Float, FromPrimitive, Zero};
 use std::ops::Mul;
 
 #[derive(Debug, Clone)]
@@ -36,6 +36,7 @@ impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
     for LevMarProblem<Model, Rhs, SvdSolver<Model::ScalarType>>
 where
     Model::ScalarType: Scalar + ComplexField + Copy,
+    <Model::ScalarType as ComplexField>::RealField: Float + Zero,
     <<Model as SeparableNonlinearModel>::ScalarType as ComplexField>::RealField:
         Mul<Model::ScalarType, Output = Model::ScalarType> + Float,
     Model: SeparableNonlinearModel,
@@ -60,40 +61,51 @@ where
             .is_err()
         {
             self.cached = None;
+            return;
         }
-        // matrix of weighted model function values
-        let Phi_w = self
-            .separable_problem
-            .model
-            .eval()
-            .ok()
-            .map(|Phi| &self.separable_problem.weights * Phi);
 
-        let svd_epsilon = todo!();
+        let Ok(Phi) = self.separable_problem.model.eval() else {
+            self.cached = None;
+            return;
+        };
+
+        // matrix of weighted model function values
+        // @note(geo-ant) this matrix multiplication is fast for diagonal or unit
+        // weights, which is all we allow for now.
+        let Phi_w = &self.separable_problem.weights * Phi;
+
+        let max_dim_phiw = Phi_w.ncols().max(Phi_w.nrows());
 
         // calculate the svd
-        let current_svd = Phi_w.as_ref().map(|Phi_w| Phi_w.clone().svd(true, true));
-        let linear_coefficients = current_svd
-            .as_ref()
-            .and_then(|svd| svd.solve(&self.separable_problem.Y_w, svd_epsilon).ok());
+        let current_svd = Phi_w.clone().svd(true, true);
+
+        // NOTE: since I don't want to have to deal with exposing the svd_epsilon
+        // to the outside, I'll use the same heuristic that OCTAVE uses for it's
+        // rank function, see https://octave.sourceforge.io/octave/function/rank.html.
+        // This should be fine, since a much simpler heuristic was used previously
+        // (just compare against a fixed number which was usually floating
+        // point epilon) and that also seemed to work fine.
+        let svd_epsilon = current_svd.singular_values.max()
+            * <Model::ScalarType as ComplexField>::RealField::from_usize(max_dim_phiw)
+                .expect("integer size out of floating point bounds")
+            * <Model::ScalarType as ComplexField>::RealField::epsilon();
+
+        let Ok(linear_coefficients) =
+            current_svd.solve(&self.separable_problem.Y_w, svd_epsilon.real())
+        else {
+            self.cached = None;
+            return;
+        };
 
         // calculate the residuals
-        let current_residuals = Phi_w
-            .zip(linear_coefficients.as_ref())
-            .map(|(Phi_w, coeff)| &self.separable_problem.Y_w - &Phi_w * coeff);
+        let current_residuals = &self.separable_problem.Y_w - Phi_w * &linear_coefficients;
 
         // if everything was successful, update the cached calculations, otherwise set the cache to none
-        if let (Some(current_residuals), Some(current_svd), Some(linear_coefficients)) =
-            (current_residuals, current_svd, linear_coefficients)
-        {
-            self.cached = Some(SvdSolver {
-                current_residuals,
-                decomposition: current_svd,
-                linear_coefficients,
-            })
-        } else {
-            self.cached = None;
-        }
+        self.cached = Some(SvdSolver {
+            current_residuals,
+            decomposition: current_svd,
+            linear_coefficients,
+        })
     }
 
     /// Retrieve the (nonlinear) model parameters as a vector `$\vec{\alpha}$`.
