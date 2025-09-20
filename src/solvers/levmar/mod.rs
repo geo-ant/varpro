@@ -73,7 +73,7 @@ where
     }
 
     #[allow(clippy::result_large_err)]
-    pub fn solve_with_cpqr<Rhs: RhsType>(
+    pub fn fit_with_cpqr<Rhs: RhsType>(
         &self,
         problem: SeparableProblem<Model, Rhs>,
     ) -> Result<FitResult<Model, Rhs>, FitResult<Model, Rhs>>
@@ -93,7 +93,7 @@ where
     }
 
     #[allow(clippy::result_large_err)]
-    pub fn solve_with_svd<Rhs: RhsType>(
+    pub fn fit_with_svd<Rhs: RhsType>(
         &self,
         problem: SeparableProblem<Model, Rhs>,
     ) -> Result<FitResult<Model, Rhs>, FitResult<Model, Rhs>>
@@ -132,48 +132,6 @@ where
     }
 }
 
-// TODO SVD
-// impl<Model> LevMarSolver<Model>
-// where
-//     Model: SeparableNonlinearModel,
-// {
-//     /// creata a new solver using the given underlying solver. This allows
-//     /// us to configure the underlying solver with non-default parameters
-//     pub fn with_solver(solver: LevenbergMarquardt<Model::ScalarType>) -> Self {
-//         Self { solver }
-//     }
-
-//     /// Try to solve the given varpro minimization problem. The parameters of
-//     /// the problem which are set when this function is called are used as the initial guess
-//     ///
-//     /// # Returns
-//     ///
-//     /// On success, returns an Ok value containing the fit result, which contains
-//     /// the final state of the problem as well as some convenience functions that
-//     /// allow to query the optimal parameters. Note that success of failure is
-//     /// determined from the minimization report. A successful result might still
-//     /// correspond to a failed minimization in some cases.
-//     /// On failure (when the minimization was not deemeed successful), returns
-//     /// an error with the same information as in the success case.
-//     #[allow(clippy::result_large_err)]
-//     pub fn fit<Rhs: RhsType>(
-//         &self,
-//         problem: SeparableProblem<Model, Rhs>,
-//     ) -> Result<FitResult<Model, Rhs>, FitResult<Model, Rhs>>
-//     where
-//         Model: SeparableNonlinearModel,
-//         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
-//     {
-//         #[allow(deprecated)]
-//         let (problem, report) = self.solver.minimize(problem);
-//         let result = FitResult::new(problem, report);
-//         if result.was_successful() {
-//             Ok(result)
-//         } else {
-//             Err(result)
-//         }
-//     }
-// }
 impl<Model> LevMarSolver<Model>
 where
     Model: SeparableNonlinearModel,
@@ -192,6 +150,8 @@ where
     /// with a single right hand side. If this function is invoked on a problem
     /// with multiple right hand sides, an error is returned.
     #[allow(clippy::result_large_err, clippy::type_complexity)]
+    //@todo(geo-ant) this statistics interface is not so good. Rather
+    // get it from the fit result
     pub fn fit_with_statistics(
         &self,
         problem: SeparableProblem<Model, SingleRhs>,
