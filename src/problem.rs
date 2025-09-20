@@ -77,34 +77,6 @@ where
     phantom: std::marker::PhantomData<Rhs>,
 }
 
-/// helper structure that stores the cached calculations,
-/// which are carried out by the SeparableProblem on setting the parameters
-#[derive(Debug, Clone)]
-pub(crate) struct CachedCalculations<ScalarType, ModelDim, OutputDim>
-where
-    ScalarType: Scalar + ComplexField,
-    ModelDim: Dim,
-    OutputDim: Dim + nalgebra::DimMin<ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<ModelDim>,
-    DefaultAllocator: nalgebra::allocator::Allocator<OutputDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<<OutputDim as DimMin<ModelDim>>::Output, ModelDim>,
-    DefaultAllocator:
-        nalgebra::allocator::Allocator<OutputDim, <OutputDim as DimMin<ModelDim>>::Output>,
-    DefaultAllocator: nalgebra::allocator::Allocator<<OutputDim as DimMin<ModelDim>>::Output>,
-    //TODO QR
-    DefaultAllocator: nalgebra::allocator::Allocator<OutputDim, ModelDim>,
-{
-    // /// The current residual matrix of model function values belonging to the current parameters
-    // pub(crate) current_residuals: DMatrix<ScalarType>,
-    /// Singular value decomposition of the current function value matrix
-    // TODO QR
-    // pub(crate) decomposition: SVD<ScalarType, OutputDim, ModelDim>,
-    pub(crate) decomposition: nalgebra_lapack::ColPivQR<ScalarType, OutputDim, ModelDim>,
-    /// the linear coefficients `$\boldsymbol C$` providing the current best fit
-    pub(crate) linear_coefficients: DMatrix<ScalarType>,
-}
-
 impl<Model, Rhs: RhsType> std::fmt::Debug for SeparableProblem<Model, Rhs>
 where
     Model: SeparableNonlinearModel,

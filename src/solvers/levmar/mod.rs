@@ -1,6 +1,6 @@
 use crate::fit::FitResult;
 use crate::prelude::*;
-use crate::problem::{CachedCalculations, RhsType, SeparableProblem, SingleRhs};
+use crate::problem::{RhsType, SeparableProblem, SingleRhs};
 use crate::statistics::FitStatistics;
 use crate::util::to_vector;
 use levenberg_marquardt::LeastSquaresProblem;
@@ -9,16 +9,11 @@ use levenberg_marquardt::LeastSquaresProblem;
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
 use levmar_problem::{LevMarProblem, LevMarProblemCpQr, LevMarProblemSvd, LinearSolver};
-use nalgebra::storage::Owned;
-use nalgebra::{
-    ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, MatrixViewMut, RawStorageMut, RealField,
-    Scalar, UninitMatrix, Vector, U1,
-};
+use nalgebra::{ComplexField, DMatrix, Dyn, Matrix, RawStorageMut, RealField, Scalar, U1};
 
 use nalgebra_lapack::colpiv_qr::{ColPivQrReal, ColPivQrScalar};
 use num_traits::float::TotalOrder;
 use num_traits::{Float, FromPrimitive};
-use std::ops::Mul;
 
 #[cfg(any(test, doctest))]
 mod test;
@@ -84,8 +79,14 @@ where
     ) -> Result<FitResult<Model, Rhs>, FitResult<Model, Rhs>>
     where
         Model: SeparableNonlinearModel,
-        Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
-        Model::ScalarType: ColPivQrReal + ColPivQrScalar + Float + RealField + TotalOrder,
+        Model::ScalarType: ColPivQrReal
+            + ColPivQrScalar
+            + Scalar
+            + ComplexField
+            + RealField
+            + Float
+            + FromPrimitive
+            + TotalOrder,
     {
         let levmar_problem = LevMarProblemCpQr::from(problem);
         self.solve(levmar_problem)
@@ -99,7 +100,6 @@ where
     where
         Model: SeparableNonlinearModel,
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
-        Model::ScalarType: ColPivQrReal + ColPivQrScalar + Float + RealField + TotalOrder,
     {
         let levmar_problem = LevMarProblemSvd::from(problem);
         self.solve(levmar_problem)
