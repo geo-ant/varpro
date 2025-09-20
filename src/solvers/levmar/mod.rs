@@ -8,6 +8,7 @@ use levenberg_marquardt::LeastSquaresProblem;
 /// This provides the Levenberg-Marquardt nonlinear least squares optimization algorithm.
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
+use levmar_problem::{ColPivQrLinearSolver, LevMarProblem, LinearSolver};
 use nalgebra::storage::Owned;
 use nalgebra::{
     ComplexField, Const, DMatrix, DefaultAllocator, Dim, Dyn, Matrix, MatrixViewMut, RawStorageMut,
@@ -21,6 +22,11 @@ use std::ops::Mul;
 
 #[cfg(any(test, doctest))]
 mod test;
+
+// I got 99 problems but a module ain't one...
+// Maybe we'll make this module public, but for now I feel this would make
+// the API more complicated.
+mod levmar_problem;
 
 // TODO QR
 impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
@@ -359,58 +365,6 @@ where
     Model: SeparableNonlinearModel,
 {
     solver: LevenbergMarquardt<Model::ScalarType>,
-}
-
-#[derive(Debug)]
-pub struct LevMarProblem<Model, Rhs, Solver>
-where
-    Model::ScalarType: Scalar + ComplexField + Copy,
-    Solver: LinearSolver<ScalarType = Model::ScalarType>,
-    Rhs: RhsType,
-    Model: SeparableNonlinearModel,
-{
-    separable_problem: SeparableProblem<Model, Rhs>,
-    cached: Option<Solver>,
-}
-
-impl<Model, Rhs, Solver> From<SeparableProblem<Model, Rhs>> for LevMarProblem<Model, Rhs, Solver>
-where
-    Model::ScalarType: Scalar + ComplexField + Copy,
-    Solver: LinearSolver<ScalarType = Model::ScalarType>,
-    Rhs: RhsType,
-    Model: SeparableNonlinearModel,
-{
-    fn from(problem: SeparableProblem<Model, Rhs>) -> Self {
-        Self {
-            separable_problem: problem,
-            cached: None,
-        }
-    }
-}
-
-pub trait LinearSolver {
-    type ScalarType: Scalar;
-    fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType>;
-}
-
-pub struct ColPivQrLinearSolver<ScalarType>
-where
-    ScalarType: Scalar + ComplexField,
-{
-    pub(crate) decomposition: nalgebra_lapack::ColPivQR<ScalarType, Dyn, Dyn>,
-    /// the linear coefficients `$\boldsymbol C$` providing the current best fit
-    pub(crate) linear_coefficients: DMatrix<ScalarType>,
-}
-
-impl<ScalarType> LinearSolver for ColPivQrLinearSolver<ScalarType>
-where
-    ScalarType: Scalar + ComplexField,
-{
-    type ScalarType = ScalarType;
-
-    fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType> {
-        self.linear_coefficients.clone()
-    }
 }
 
 impl<Model> LevMarSolver<Model>
