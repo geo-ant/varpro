@@ -369,7 +369,7 @@ where
     Rhs: RhsType,
     Model: SeparableNonlinearModel,
 {
-    problem: SeparableProblem<Model, Rhs>,
+    separable_problem: SeparableProblem<Model, Rhs>,
     cached: Option<Solver>,
 }
 
@@ -408,6 +408,27 @@ where
         Self { solver }
     }
 
+    #[allow(clippy::result_large_err)]
+    pub fn solve<Rhs: RhsType, Solver: LinearSolver<ScalarType = Model::ScalarType>>(
+        &self,
+        problem: LevMarProblem<Model, Solver, Rhs>,
+    ) -> Result<FitResult<Model, Rhs>, FitResult<Model, Rhs>>
+    where
+        Model: SeparableNonlinearModel,
+        Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
+        Model::ScalarType: ColPivQrReal + ColPivQrScalar + Float + RealField + TotalOrder,
+        LevMarProblem<Model, Solver, Rhs>: LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>,
+    {
+        #[allow(deprecated)]
+        let (problem, report) = self.solver.minimize(problem);
+        let result = FitResult::new(problem.separable_problem, report);
+        if result.was_successful() {
+            Ok(result)
+        } else {
+            Err(result)
+        }
+    }
+
     /// Try to solve the given varpro minimization problem. The parameters of
     /// the problem which are set when this function is called are used as the initial guess
     ///
@@ -421,6 +442,7 @@ where
     /// On failure (when the minimization was not deemeed successful), returns
     /// an error with the same information as in the success case.
     #[allow(clippy::result_large_err)]
+    #[deprecated(since = "0.14.0", note = "use the solve method instead")]
     pub fn fit<Rhs: RhsType>(
         &self,
         problem: SeparableProblem<Model, Rhs>,
@@ -464,25 +486,31 @@ where
     ///
     /// This is an implementation of the [`LeastSquaresProblem::set_params`] method.
     fn set_params(&mut self, params: &Vector<Model::ScalarType, Dyn, Self::ParameterStorage>) {
-        if self.problem.model.set_params(params.clone()).is_err() {
+        if self
+            .separable_problem
+            .model
+            .set_params(params.clone())
+            .is_err()
+        {
             self.cached = None;
             return;
         }
 
         // matrix of weighted model function values
-        let Some(Phi) = self.problem.model.eval().ok() else {
+        let Some(Phi) = self.separable_problem.model.eval().ok() else {
             self.cached = None;
             return;
         };
 
-        let Phi_w = &self.problem.weights * Phi;
+        let Phi_w = &self.separable_problem.weights * Phi;
 
         let Ok(decomposition) = nalgebra_lapack::ColPivQR::new(Phi_w) else {
             self.cached = None;
             return;
         };
 
-        let Ok(linear_coefficients) = decomposition.solve(self.problem.Y_w.clone()) else {
+        let Ok(linear_coefficients) = decomposition.solve(self.separable_problem.Y_w.clone())
+        else {
             self.cached = None;
             return;
         };
@@ -500,7 +528,7 @@ where
     /// `&["tau","beta"]`, then the returned vector is `$\vec{\alpha} = (\tau,\beta)^T$`, i.e.
     /// the value of parameter `$\tau$` is at index `0` and the value of `$\beta$` at index `1`.
     fn params(&self) -> Vector<Model::ScalarType, Dyn, Self::ParameterStorage> {
-        self.problem.model.params()
+        self.separable_problem.model.params()
     }
 
     /// Calculate the residual vector `$\vec{r}_w$` of *weighted* residuals at every location `$\vec{x}$`.
@@ -512,7 +540,7 @@ where
     /// e.g. [here](https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/).
     fn residuals(&self) -> Option<Vector<Model::ScalarType, Dyn, Self::ResidualStorage>> {
         let cached = self.cached.as_ref()?;
-        let mut current_residuals = self.problem.Y_w.clone();
+        let mut current_residuals = self.separable_problem.Y_w.clone();
         // @todo handle errors
         cached
             .decomposition
@@ -540,13 +568,13 @@ where
             linear_coefficients,
         } = self.cached.as_ref()?;
 
-        let data_cols = self.problem.Y_w.ncols();
-        let parameter_count = self.problem.model.parameter_count();
+        let data_cols = self.separable_problem.Y_w.ncols();
+        let parameter_count = self.separable_problem.model.parameter_count();
         // this is not a great pattern, but the trait bounds on copy_from
         // as of now prevent us from doing something more idiomatic
         let mut jacobian_matrix = unsafe {
             UninitMatrix::uninit(
-                Dyn(self.problem.model.output_len() * data_cols),
+                Dyn(self.separable_problem.model.output_len() * data_cols),
                 Dyn(parameter_count),
             )
             .assume_init()
@@ -582,7 +610,8 @@ where
                 // out with the trait bounds using gemm and avoiding intermediate
                 // allocations.
                 // // TODO replace by correct error handling
-                let mut Dk = &self.problem.weights * self.problem.model.eval_partial_deriv(k)?;
+                let mut Dk = &self.separable_problem.weights
+                    * self.separable_problem.model.eval_partial_deriv(k)?;
                 decomposition.q_tr_mul_mut(&mut Dk).unwrap();
                 let n = Dk.ncols();
                 let k = decomposition.rank();
