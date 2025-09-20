@@ -375,7 +375,7 @@ where
 
 pub trait LinearSolver {
     type ScalarType: Scalar;
-    fn linear_coefficients_matrix(&self) -> Option<DMatrix<Self::ScalarType>>;
+    fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType>;
 }
 
 pub struct ColPivQrLinearSolver<ScalarType>
@@ -393,8 +393,8 @@ where
 {
     type ScalarType = ScalarType;
 
-    fn linear_coefficients_matrix(&self) -> Option<DMatrix<Self::ScalarType>> {
-        todo!()
+    fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType> {
+        self.linear_coefficients.clone()
     }
 }
 
