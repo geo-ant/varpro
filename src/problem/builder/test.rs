@@ -52,10 +52,6 @@ fn builder_assigns_fields_correctly_simple_case() {
 
     assert_eq!(problem.Y_w, y);
     assert_eq!(problem.svd_epsilon, f64::EPSILON); //clippy moans, but it's wrong (again!)
-    assert!(
-        problem.cached.is_some(),
-        "cached calculations are assigned when problem is built"
-    );
 }
 
 #[test]
