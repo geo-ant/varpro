@@ -22,10 +22,6 @@ use std::ops::Mul;
 #[cfg(any(test, doctest))]
 mod test;
 
-/// contains traits and structures for underlying matrix decomposition backends
-/// that are used as part of the levmar solver.
-pub mod decomp;
-
 // TODO QR
 impl<Model, Rhs: RhsType> LeastSquaresProblem<Model::ScalarType, Dyn, Dyn>
     for SeparableProblem<Model, Rhs>
