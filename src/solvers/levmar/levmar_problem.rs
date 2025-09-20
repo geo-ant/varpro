@@ -3,9 +3,19 @@ use crate::{
     problem::{RhsType, SeparableProblem},
 };
 use nalgebra::{ComplexField, DMatrix, Dyn, Scalar, SVD};
+mod svd;
 
+// TODO only on lapack feature
 mod colpiv_qr;
-pub use colpiv_qr::ColPivQrLinearSolver;
+
+use colpiv_qr::ColPivQrLinearSolver;
+
+#[allow(type_alias_bounds)]
+/// levmar problem where the linear part is solved via column pivoted QR
+/// decomposition.
+//TODO expose only on lapack feature
+pub type LevMarProblemCpQr<Model: SeparableNonlinearModel, Rhs> =
+    LevMarProblem<Model, Rhs, ColPivQrLinearSolver<Model::ScalarType>>;
 
 #[derive(Debug)]
 pub struct LevMarProblem<Model, Rhs, Solver>
@@ -44,18 +54,4 @@ pub trait LinearSolver {
     /// get the linear coefficients in matrix form. For single RHS
     /// this is a matrix with just one column.
     fn linear_coefficients_matrix(&self) -> DMatrix<Self::ScalarType>;
-}
-
-///
-#[derive(Debug, Clone)]
-pub(crate) struct SvdSolver<ScalarType>
-where
-    ScalarType: Scalar + ComplexField,
-{
-    /// The current residual matrix of model function values belonging to the current parameters
-    pub(crate) current_residuals: DMatrix<ScalarType>,
-    /// Singular value decomposition of the current function value matrix
-    pub(crate) decomposition: SVD<ScalarType, Dyn, Dyn>,
-    /// the linear coefficients `$\boldsymbol C$` providing the current best fit
-    pub(crate) linear_coefficients: DMatrix<ScalarType>,
 }

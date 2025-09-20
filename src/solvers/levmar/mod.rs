@@ -8,7 +8,7 @@ use levenberg_marquardt::LeastSquaresProblem;
 /// This provides the Levenberg-Marquardt nonlinear least squares optimization algorithm.
 // pub use levenberg_marquardt::LevenbergMarquardt as LevMarSolver;
 use levenberg_marquardt::LevenbergMarquardt;
-use levmar_problem::{ColPivQrLinearSolver, LevMarProblem, LinearSolver};
+use levmar_problem::{LevMarProblem, LevMarProblemCpQr, LinearSolver};
 use nalgebra::storage::Owned;
 use nalgebra::{
     ComplexField, DMatrix, DefaultAllocator, Dyn, Matrix, MatrixViewMut, RawStorageMut, RealField,
@@ -406,8 +406,7 @@ where
         Model::ScalarType: Scalar + ComplexField + RealField + Float + FromPrimitive,
         Model::ScalarType: ColPivQrReal + ColPivQrScalar + Float + RealField + TotalOrder,
     {
-        let levmar_problem =
-            LevMarProblem::<_, _, ColPivQrLinearSolver<Model::ScalarType>>::from(problem);
+        let levmar_problem = LevMarProblemCpQr::from(problem);
 
         self.solve(levmar_problem)
     }
